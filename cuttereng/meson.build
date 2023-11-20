@@ -4,4 +4,5 @@ cuttereng_lib = library(
   'src/cuttereng.c',
   'src/log.c',
   'src/platform/linux.c',
+  'src/fs.c'
 )

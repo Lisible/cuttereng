@@ -8,5 +8,6 @@ void cutter_bootstrap() {
   LOG_INFO("Bootstrapping...");
   char executable_path[4096] = {0};
   platform_get_process_executable(executable_path, 4096);
+  fs_path_pop(executable_path);
   LOG_DEBUG("executable directory: %s", executable_path);
 }
