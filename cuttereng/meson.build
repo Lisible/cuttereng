@@ -6,3 +6,5 @@ cuttereng_lib = library(
   'src/filesystem/linux.c',
   'src/environment/linux.c'
 )
+
+cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir)
