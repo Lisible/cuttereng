@@ -3,6 +3,6 @@ cuttereng_lib = library(
   'cuttereng',
   'src/cuttereng.c',
   'src/log.c',
-  'src/platform/linux.c',
-  'src/fs.c'
+  'src/filesystem/linux.c',
+  'src/environment/linux.c'
 )

@@ -1,13 +1,18 @@
 #include "cuttereng.h"
-#include "fs.h"
+#include "environment.h"
+#include "filesystem.h"
 #include "log.h"
-#include "platform.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void cutter_bootstrap() {
   LOG_INFO("Bootstrapping...");
-  char executable_path[4096] = {0};
-  platform_get_process_executable(executable_path, 4096);
-  fs_path_pop(executable_path);
-  LOG_DEBUG("executable directory: %s", executable_path);
+  char *configuration_file_path = env_get_configuration_file_path();
+  LOG_DEBUG("Configuration file path: %s", configuration_file_path);
+  char *configuration_file_content =
+      read_file_to_string(configuration_file_path);
+  LOG_DEBUG("Configuration file content:\n%s", configuration_file_content);
+
+  free(configuration_file_path);
+  free(configuration_file_content);
 }
