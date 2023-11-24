@@ -1,4 +1,4 @@
-#include "../filesystem.h"
+#include "filesystem.h"
 #include "src/log.h"
 #include <errno.h>
 #include <stdio.h>
