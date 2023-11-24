@@ -24,7 +24,9 @@ char *read_file_to_string(char *path) {
   if (content == NULL)
     goto err_2;
 
-  fread(content, 1, length - 1, file);
+  if (fread(content, 1, length, file) != length)
+    goto err_3;
+
   content[length - 1] = '\0';
 
   if (fclose(file) < 0)
