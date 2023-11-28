@@ -1,6 +1,7 @@
 #ifndef TEST_H
 #define TEST_H
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,11 @@ inline static void assert(int boolean, const char *fmt, ...) {
   } while (0)
 
 #define ASSERT_EQ(a, b) ASSERT_MSG((a == b), #a " != " #b)
+#define ASSERT_FLOAT_EQ(a, b, epsilon)                                         \
+  ASSERT_MSG((fabs(a - b) < epsilon), #a " != " #b)
+
+#define ASSERT_NULL(a) ASSERT_MSG((a == NULL), #a " is not NULL")
+#define ASSERT_NOT_NULL(a) ASSERT_MSG((a != NULL), #a " is NULL")
 
 #define ASSERT_STR_EQ(a, b, length)                                            \
   ASSERT_MSG((strncmp(a, b, length) == 0), #a " != " #b)
