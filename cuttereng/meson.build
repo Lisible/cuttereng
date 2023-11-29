@@ -1,5 +1,6 @@
 cc = meson.get_compiler('c')
 m_dep = cc.find_library('m', required: true)
+sdl2_dep = dependency('sdl2')
 
 cuttereng_incdir = include_directories('src/')
 cuttereng_lib = library(
@@ -11,7 +12,7 @@ cuttereng_lib = library(
   'src/json.c',
   'src/hash.c',
   'src/memory.c',
-  dependencies: m_dep
+  dependencies: [m_dep, sdl2_dep]
 )
 
 cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: cuttereng_lib)
