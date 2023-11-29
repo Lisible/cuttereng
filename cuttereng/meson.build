@@ -12,6 +12,7 @@ cuttereng_lib = library(
   'src/json.c',
   'src/hash.c',
   'src/memory.c',
+  'src/engine.c',
   dependencies: [m_dep, sdl2_dep]
 )
 
