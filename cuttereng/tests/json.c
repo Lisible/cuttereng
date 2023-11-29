@@ -2,8 +2,8 @@
 #include <json.h>
 
 static void parse_true_literal() {
-  const char json[] = "true";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "true";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_BOOLEAN);
   ASSERT(parsed_json->boolean);
@@ -11,8 +11,8 @@ static void parse_true_literal() {
 }
 
 static void parse_false_literal() {
-  const char json[] = "false";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "false";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_BOOLEAN);
   ASSERT(!parsed_json->boolean);
@@ -20,16 +20,16 @@ static void parse_false_literal() {
 }
 
 static void parse_null_literal() {
-  const char json[] = "null";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "null";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NULL);
   json_destroy(parsed_json);
 }
 
 static void parse_number_integer() {
-  const char json[] = "1996";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "1996";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NUMBER);
   ASSERT_FLOAT_EQ(parsed_json->number, 1996, 0.1);
@@ -37,8 +37,8 @@ static void parse_number_integer() {
 }
 
 static void parse_number_integer_with_whitespaces() {
-  const char json[] = "   \t\n\r 1996   \n";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "   \t\n\r 1996   \n";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NUMBER);
   ASSERT_FLOAT_EQ(parsed_json->number, 1996, 0.1);
@@ -46,8 +46,8 @@ static void parse_number_integer_with_whitespaces() {
 }
 
 static void parse_number_integer_zero() {
-  const char json[] = "0";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "0";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NUMBER);
   ASSERT_FLOAT_EQ(parsed_json->number, 0.0, 0.1);
@@ -55,8 +55,8 @@ static void parse_number_integer_zero() {
 }
 
 static void parse_number_fractional() {
-  const char json[] = "19.96";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "19.96";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NUMBER);
   ASSERT_FLOAT_EQ(parsed_json->number, 19.96, 0.1);
@@ -64,8 +64,8 @@ static void parse_number_fractional() {
 }
 
 static void parse_number_exponent() {
-  const char json[] = "19.96e2";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "19.96e2";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_NUMBER);
   ASSERT_FLOAT_EQ(parsed_json->number, 1996, 0.1);
@@ -73,8 +73,8 @@ static void parse_number_exponent() {
 }
 
 static void parse_ascii_string() {
-  const char json[] = "\"Bonjour\"";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "\"Bonjour\"";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_STRING);
   ASSERT(strcmp(parsed_json->string, "Bonjour") == 0);
@@ -82,8 +82,8 @@ static void parse_ascii_string() {
 }
 
 static void parse_string_with_escape_sequence() {
-  const char json[] = "\"Bonjour\\\"Test\"";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "\"Bonjour\\\"Test\"";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_STRING);
   ASSERT(strcmp(parsed_json->string, "Bonjour\"Test") == 0);
@@ -91,16 +91,16 @@ static void parse_string_with_escape_sequence() {
 }
 
 static void parse_string_with_unicode_sequence() {
-  const char json[] = "\"Bonjour\\u20AC\"";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "\"Bonjour\\u20AC\"";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_STRING);
   ASSERT(strcmp(parsed_json->string, "Bonjour\xe2\x82\xac") == 0);
   json_destroy(parsed_json);
 }
 static void parse_string_with_unicode_sequence_with_surrogate_pair() {
-  const char json[] = "\"Bonjour\\uD83D\\uDE4A\"";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "\"Bonjour\\uD83D\\uDE4A\"";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_STRING);
   ASSERT(strcmp(parsed_json->string, "Bonjour\xf0\x9f\x99\x8a") == 0);
@@ -108,8 +108,8 @@ static void parse_string_with_unicode_sequence_with_surrogate_pair() {
 }
 
 static void parse_array() {
-  const char json[] = "[1, 2, 4, 5]";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "[1, 2, 4, 5]";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_ARRAY);
   ASSERT_EQ(parsed_json->array[0]->type, JSON_NUMBER);
@@ -125,9 +125,9 @@ static void parse_array() {
 }
 
 static void parse_array_with_reallocation() {
-  const char json[] =
+  const char json_string[] =
       "[1, 2, 4, 5, 1, 2, 3, 4, 5, 6, 3, 1, 2, 4, 5, 6, 2, 12, 34, 5432, 234]";
-  json_value *parsed_json = json_parse_from_str(json);
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_ARRAY);
   for (size_t i = 0; i < 21; i++) {
@@ -138,8 +138,8 @@ static void parse_array_with_reallocation() {
 }
 
 static void parse_heterogeneous_array() {
-  const char json[] = "[1, \"this is a string\", 4, []]";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "[1, \"this is a string\", 4, []]";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_NOT_NULL(parsed_json);
   ASSERT_EQ(parsed_json->type, JSON_ARRAY);
   ASSERT_EQ(parsed_json->array[0]->type, JSON_NUMBER);
@@ -154,31 +154,31 @@ static void parse_heterogeneous_array() {
 }
 
 static void parse_empty_object() {
-  const char json[] = "{}";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "{}";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_EQ(parsed_json->type, JSON_OBJECT);
   json_destroy(parsed_json);
 }
 
 static void parse_object_with_single_attribute() {
-  const char json[] = "{\"some_field\": \"some_value\"}";
-  json_value *parsed_json = json_parse_from_str(json);
+  const char json_string[] = "{\"some_field\": \"some_value\"}";
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_EQ(parsed_json->type, JSON_OBJECT);
   ASSERT_NOT_NULL(json_object_get(parsed_json->object, "some_field"));
   json_destroy(parsed_json);
 }
 
 static void parse_object_with_multiple_attributes() {
-  const char json[] =
+  const char json_string[] =
       "{\"some_field\": \"some_value\", \"bla\":\"blu\", \"bli\":\"blo\"}";
-  json_value *parsed_json = json_parse_from_str(json);
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_EQ(parsed_json->type, JSON_OBJECT);
   ASSERT_NOT_NULL(json_object_get(parsed_json->object, "some_field"));
   json_destroy(parsed_json);
 }
 
 static void parse_object_with_a_ton_of_attributes() {
-  const char json[] =
+  const char json_string[] =
       "{\"property0\":0,\"property1\":1,\"property2\":2,\"property3\":3,"
       "\"property4\":4,\"property5\":5,\"property6\":6,\"property7\":7,"
       "\"property8\":"
@@ -206,7 +206,7 @@ static void parse_object_with_a_ton_of_attributes() {
       "\"property93\":93,\"property94\":94,\"property95\":95,\"property96\":96,"
       "\"property97\":97,\"property98\":98,\"property99\":99,\"property100\":"
       "100}";
-  json_value *parsed_json = json_parse_from_str(json);
+  json *parsed_json = json_parse_from_str(json_string);
   ASSERT_EQ(parsed_json->type, JSON_OBJECT);
   ASSERT_NOT_NULL(json_object_get(parsed_json->object, "property97"));
   ASSERT_FLOAT_EQ(json_object_get(parsed_json->object, "property97")->number,

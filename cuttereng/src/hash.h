@@ -34,6 +34,9 @@ const char *hash_table_set(hash_table *table, const char *key, void *value);
 /// @return The item or NULL if it is not found
 void *hash_table_get(hash_table *table, const char *key);
 
+/// Removes an item without calling the item destructor
+void hash_table_steal(hash_table *table, const char *key);
+
 /// @return true if an item is present for the given key
 bool hash_table_has(hash_table *table, const char *key);
 

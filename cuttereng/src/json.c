@@ -28,12 +28,12 @@
 typedef struct parsing_context parsing_context;
 
 void advance(parsing_context *ctx, size_t count);
-json_value *parse_element(parsing_context *ctx);
-json_value *parse_value(parsing_context *ctx);
-bool parse_object(parsing_context *ctx, json_value *output_value);
-bool parse_array(parsing_context *ctx, json_value *output_value);
-void parse_number(parsing_context *ctx, json_value *output_value);
-bool parse_string(parsing_context *ctx, json_value *output_value);
+json *parse_element(parsing_context *ctx);
+json *parse_value(parsing_context *ctx);
+bool parse_object(parsing_context *ctx, json *output_value);
+bool parse_array(parsing_context *ctx, json *output_value);
+void parse_number(parsing_context *ctx, json *output_value);
+bool parse_string(parsing_context *ctx, json *output_value);
 void eat_character(parsing_context *ctx, char expected);
 void eat_whitespaces(parsing_context *ctx);
 bool is_character(char c);
@@ -42,8 +42,8 @@ bool is_digit(char c);
 bool is_non_zero_digit(char c);
 char current_character(parsing_context *ctx);
 char next_character(parsing_context *ctx);
-json_value *json_value_create();
-const char *json_object_set(json_object *object, char *key, json_value *value);
+json *json_create();
+const char *json_object_set(json_object *object, char *key, json *value);
 
 struct parsing_context {
   const char *str;
@@ -53,24 +53,24 @@ struct parsing_context {
   size_t column;
 };
 
-json_value *json_parse_from_str(const char *str) {
+json *json_parse_from_str(const char *str) {
   parsing_context ctx = {
       .str = str, .len = strlen(str), .index = 0, .line = 0, .column = 0};
   return parse_element(&ctx);
 }
 
-json_value *parse_element(parsing_context *ctx) {
+json *parse_element(parsing_context *ctx) {
   eat_whitespaces(ctx);
-  json_value *value = parse_value(ctx);
+  json *value = parse_value(ctx);
   eat_whitespaces(ctx);
   return value;
 }
 
-json_value *parse_value(parsing_context *ctx) {
-  json_value *value = json_value_create();
+json *parse_value(parsing_context *ctx) {
+  json *value = json_create();
 
   if (!value) {
-    LOG_ERROR("json_value allocation failed");
+    LOG_ERROR("json allocation failed");
     goto err;
   }
 
@@ -118,14 +118,14 @@ err:
 
 typedef struct {
   const char *name;
-  json_value *value;
+  json *value;
 } json_object_property;
 
 struct json_object {
   hash_table *hash_table;
 };
 
-void json_item_destructor(void *ptr) { json_destroy((json_value *)ptr); }
+void json_item_destructor(void *ptr) { json_destroy((json *)ptr); }
 
 json_object *json_object_create() {
   json_object *object = malloc(sizeof(json_object));
@@ -146,21 +146,21 @@ err:
   return NULL;
 }
 
-bool parse_object(parsing_context *ctx, json_value *output_value) {
+bool parse_object(parsing_context *ctx, json *output_value) {
   json_object *object = json_object_create();
   eat_character(ctx, TOKEN_OBJECT_BEGIN);
 
   while (current_character(ctx) != TOKEN_OBJECT_END) {
     eat_whitespaces(ctx);
 
-    json_value *name = json_value_create();
+    json *name = json_create();
     parse_string(ctx, name);
 
     eat_whitespaces(ctx);
     eat_character(ctx, TOKEN_COLON);
     eat_whitespaces(ctx);
 
-    json_value *value = parse_value(ctx);
+    json *value = parse_value(ctx);
 
     json_object_set(object, name->string, value);
     json_destroy(name);
@@ -177,13 +177,13 @@ bool parse_object(parsing_context *ctx, json_value *output_value) {
   return output_value;
 }
 
-bool parse_array(parsing_context *ctx, json_value *output_value) {
+bool parse_array(parsing_context *ctx, json *output_value) {
   static const size_t MINIMUM_ARRAY_CAPACITY = 16;
 
   eat_character(ctx, TOKEN_ARRAY_BEGIN);
   size_t capacity = MINIMUM_ARRAY_CAPACITY;
 
-  json_value **array = malloc((capacity + 1) * sizeof(json_value *));
+  json **array = malloc((capacity + 1) * sizeof(json *));
   if (!array) {
     LOG_ERROR("memory allocation failed");
     goto err;
@@ -194,7 +194,7 @@ bool parse_array(parsing_context *ctx, json_value *output_value) {
     eat_whitespaces(ctx);
     if (length == capacity) {
       capacity *= 2;
-      array = realloc(array, (capacity + 1) * sizeof(json_value *));
+      array = realloc(array, (capacity + 1) * sizeof(json *));
       if (!array) {
         LOG_ERROR("memory reallocation failed");
         goto err;
@@ -239,7 +239,7 @@ size_t write_utf8_from_code_point(char *string, size_t current_index,
 bool is_utf16_leading_surrogate(uint32_t code_point);
 uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
                                     uint16_t trailing_surrogate);
-bool parse_string(parsing_context *ctx, json_value *output_value) {
+bool parse_string(parsing_context *ctx, json *output_value) {
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
   size_t estimated_string_size = estimate_string_size(&ctx->str[ctx->index]);
   char *string = malloc(estimated_string_size * sizeof(char));
@@ -379,7 +379,7 @@ size_t estimate_string_size(const char *str) {
   return estimated_str_length;
 }
 
-void parse_number(parsing_context *ctx, json_value *output_value) {
+void parse_number(parsing_context *ctx, json *output_value) {
   int sign = 1;
   if (current_character(ctx) == TOKEN_MINUS) {
     sign = -1;
@@ -421,10 +421,7 @@ void parse_number(parsing_context *ctx, json_value *output_value) {
   output_value->number = sign * (number * pow(10, exponent));
 }
 
-void json_destroy(json_value *value) {
-  if (!value)
-    return;
-
+void json_cleanup(json *value) {
   if (value->type == JSON_STRING) {
     free(value->string);
     value->string = NULL;
@@ -442,6 +439,19 @@ void json_destroy(json_value *value) {
     free(value->object);
     value->object = NULL;
   }
+}
+
+void json_destroy(json *value) {
+  if (!value)
+    return;
+
+  json_cleanup(value);
+  free(value);
+}
+
+void json_destroy_without_cleanup(json *value) {
+  if (!value)
+    return;
 
   free(value);
 }
@@ -485,12 +495,16 @@ bool is_escapable_character(char c) {
 bool is_digit(char c) { return c >= '0' && c <= '9'; }
 bool is_non_zero_digit(char c) { return is_digit(c) && c != '0'; }
 
-json_value *json_value_create() { return malloc(sizeof(json_value)); }
+json *json_create() { return malloc(sizeof(json)); }
 
-json_value *json_object_get(json_object *object, char *key) {
+json *json_object_get(json_object *object, char *key) {
   return hash_table_get(object->hash_table, key);
 }
 
-const char *json_object_set(json_object *object, char *key, json_value *value) {
+const char *json_object_set(json_object *object, char *key, json *value) {
   return hash_table_set(object->hash_table, key, value);
+}
+
+void json_object_steal(json_object *object, const char *key) {
+  hash_table_steal(object->hash_table, key);
 }

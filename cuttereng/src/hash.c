@@ -11,6 +11,7 @@ struct hash_table {
   item_destructor_fn item_destructor;
 };
 
+size_t hash_table_index_for_key(hash_table *table, const char *key);
 hash_table *hash_table_new(item_destructor_fn item_destructor) {
   static const size_t INITIAL_CAPACITY = 16;
   hash_table *table = memory_allocate(sizeof(hash_table));
@@ -135,6 +136,27 @@ bool hash_table_has(hash_table *table, const char *key) {
   }
 
   return false;
+}
+
+void hash_table_remove_at_index(hash_table *table, size_t index) {
+  if (!table->items[index].key) {
+    return;
+  }
+
+  memory_free((void *)table->items[index].key);
+  table->items[index].key = NULL;
+  table->items[index].value = NULL;
+  table->length--;
+}
+
+void hash_table_steal(hash_table *table, const char *key) {
+  size_t index = hash_table_index_for_key(table, key);
+  hash_table_remove_at_index(table, index);
+}
+
+size_t hash_table_index_for_key(hash_table *table, const char *key) {
+  uint64_t hash = hash_fnv_1a(key);
+  return hash & (table->capacity - 1);
 }
 
 size_t hash_table_length(hash_table *hash_table) { return hash_table->length; }

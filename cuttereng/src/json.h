@@ -7,9 +7,10 @@
   LOG_ERROR("%d:%d " msg, ctx->line, ctx->column, ##__VA_ARGS__)
 
 typedef enum json_value_type json_value_type;
-typedef struct json_value json_value;
+typedef struct json json;
 typedef struct json_object json_object;
-json_value *json_object_get(json_object *object, char *key);
+json *json_object_get(json_object *object, char *key);
+void json_object_steal(json_object *object, const char *key);
 
 enum json_value_type {
   JSON_OBJECT,
@@ -20,11 +21,11 @@ enum json_value_type {
   JSON_NULL
 };
 
-struct json_value {
+struct json {
   json_value_type type;
   union {
     json_object *object;
-    json_value **array;
+    json **array;
     char *string;
     double number;
     bool boolean;
@@ -35,9 +36,11 @@ struct json_value {
 ///
 /// This value is dynamically allocated and must be freed using `json_free()`
 /// @return The parsed json or NULL in case of error
-json_value *json_parse_from_str(const char *str);
+json *json_parse_from_str(const char *str);
 
 /// Destroys a `json_value`
-void json_destroy(json_value *json_value);
+void json_destroy(json *json_value);
+/// Destroys a `json_value` but without cleaning up it's underlying data
+void json_destroy_without_cleanup(json *json_value);
 
 #endif // CUTTERENG_JSON_H
