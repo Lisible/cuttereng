@@ -1,18 +1,13 @@
-#ifndef CUTTERENG_BITSET_H
-#define CUTTERENG_BITSET_H
+#ifndef BITSET_H
+#define BITSET_H
 
-#include "common.h"
-#define WORD_BITS (8 * sizeof(unsigned int))
+#include <limits.h>
 
-static inline void bitset_set(unsigned int *bitset, size_t index) {
-  bitset[index / WORD_BITS] |= (1 << (index % WORD_BITS));
-}
+#define BITMASK(b) (1 << ((b) % CHAR_BIT))
+#define BITSLOT(b) ((b) / CHAR_BIT)
+#define BITSET(a, b) ((a)[BITSLOT(b)] |= BITMASK(b))
+#define BITCLEAR(a, b) ((a)[BITSLOT(b)] &= ~BITMASK(b))
+#define BITTEST(a, b) ((a)[BITSLOT(b)] & BITMASK(b))
+#define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
 
-static inline void bitset_unset(unsigned int *bitset, size_t index) {
-  bitset[index / WORD_BITS] &= ~(1 << (index % WORD_BITS));
-}
-static inline bool bitset_is_set(unsigned int *bitset, size_t index) {
-  return (bitset[index / WORD_BITS] &= (1 << (index % WORD_BITS))) != 0;
-}
-
-#endif // CUTTERENG_BITSET_H
+#endif // BITSET_H

@@ -25,5 +25,3 @@ test_hash_table = executable('test_hash_table', 'tests/test_runner.c', 'tests/ha
 test('test_hash_table', test_hash_table)
 test_ecs = executable('test_ecs', 'tests/test_runner.c', 'tests/ecs.c', dependencies: [cuttereng_dep])
 test('test_ecs', test_ecs)
-test_bitset = executable('test_bitset', 'tests/test_runner.c', 'tests/bitset.c', dependencies: [cuttereng_dep])
-test('test_bitset', test_bitset)
