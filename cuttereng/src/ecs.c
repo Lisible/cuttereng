@@ -11,7 +11,7 @@ typedef struct component_store {
   size_t capacity;
   size_t item_size;
   // TODO make a growable bitset, maybe hierarchical at some point
-  uint64_t bitset[4];
+  uint64_t bitset[8];
 } component_store;
 
 component_store *component_store_new(size_t item_size) {
@@ -20,6 +20,7 @@ component_store *component_store_new(size_t item_size) {
   store->capacity = INITIAL_CAPACITY;
   store->length = 0;
   store->item_size = item_size;
+  memset(store->bitset, 0, 8);
   store->data = memory_allocate_array(store->capacity, store->item_size);
   return store;
 }
@@ -35,11 +36,16 @@ void component_store_item_destructor(void *item) {
 
 void component_store_set(component_store *store, ecs_id entity_id, void *data) {
   char *dst = (char *)store->data;
-  memcpy(dst + (entity_id * store->item_size), (char *)data, store->item_size);
+  memcpy(dst + (entity_id * store->item_size), (char *)data,
+         store->item_size * sizeof(char));
   BITSET(store->bitset, entity_id);
 }
 
 void *component_store_get(component_store *store, ecs_id entity_id) {
+  if (!BITTEST(store->bitset, entity_id)) {
+    return NULL;
+  }
+
   char *ptr = (char *)store->data;
   return ptr + (entity_id * store->item_size);
 }
@@ -82,11 +88,32 @@ bool ecs_has_component(ecs *ecs, ecs_id entity_id, char *component_name) {
 void *ecs_get_component(ecs *ecs, ecs_id entity_id, char *component_name) {
   component_store *store =
       hash_table_get(ecs->component_stores, component_name);
+
   if (!store)
     return NULL;
 
-  if (!BITTEST(store->bitset, entity_id))
-    return NULL;
-
   return component_store_get(store, entity_id);
+}
+
+size_t ecs_count_matching(ecs *ecs, ecs_query *query) {
+  size_t result = 0;
+
+  // FIXME this is O(n + m) with n being the entity count
+  // Using a hierarchical bitset could help
+  for (size_t entity_id = 0; entity_id < ecs_get_entity_count(ecs);
+       entity_id++) {
+    bool matches = true;
+    size_t component_index = 0;
+    while (query->components[component_index] != NULL) {
+      component_store *component_store = hash_table_get(
+          ecs->component_stores, query->components[component_index]);
+      matches = matches && BITTEST(component_store->bitset, entity_id);
+      component_index++;
+    }
+
+    if (matches)
+      result++;
+  }
+
+  return result;
 }

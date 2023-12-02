@@ -66,5 +66,27 @@ void t_ecs_get_component() {
   ecs_deinit(&ecs);
 }
 
+void t_ecs_count_matching() {
+  ecs ecs;
+  ecs_init(&ecs);
+  ecs_id entity = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity, position, {.x = 4, .y = 22});
+  ecs_id entity2 = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity2, position, {.x = 5, .y = 85});
+  ecs_insert(&ecs, entity2, velocity, {.x = 123, .y = 865});
+
+  ecs_query query_positions = {
+      .components = (char *[]){ecs_component_id(position), NULL}};
+  ASSERT_EQ(ecs_count_matching(&ecs, &query_positions), 2);
+  ecs_query query_velocities = {
+      .components = (char *[]){ecs_component_id(velocity), NULL}};
+  ASSERT_EQ(ecs_count_matching(&ecs, &query_velocities), 1);
+  ecs_query query_positions_and_velocities = {
+      .components = (char *[]){ecs_component_id(position),
+                               ecs_component_id(velocity), NULL}};
+  ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
+}
+
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),
-           TEST(t_ecs_insert_component), TEST(t_ecs_get_component));
+           TEST(t_ecs_insert_component), TEST(t_ecs_get_component),
+           TEST(t_ecs_count_matching));
