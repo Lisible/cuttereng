@@ -4,15 +4,25 @@
 
 void engine_init(engine *engine, const configuration *configuration) {
   engine->application_title = configuration->application_title;
+  engine->running = true;
 }
 
 void engine_deinit(engine *engine) {
   memory_free((void *)engine->application_title);
 }
 
-void engine_handle_events(engine *engine) { LOG_INFO("handle events"); }
+void engine_handle_events(engine *engine, event *event) {
+  switch (event->type) {
+  case EVT_QUIT:
+    engine->running = false;
+    break;
+  default:
+    break;
+  }
+}
 void engine_update(engine *engine) { LOG_INFO("update"); }
 void engine_render(engine *engine) { LOG_INFO("render"); }
+bool engine_is_running(engine *engine) { return engine->running; }
 
 bool configuration_from_json(json *configuration_json,
                              configuration *output_configuration) {

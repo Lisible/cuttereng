@@ -2,18 +2,21 @@
 #define CUTTERENG_ENGINE_H
 
 #include "common.h"
+#include "event.h"
 #include "json.h"
 
 typedef struct configuration configuration;
 typedef struct engine engine;
 struct engine {
   const char *application_title;
+  bool running;
 };
 void engine_init(engine *engine, const configuration *config);
 void engine_deinit(engine *engine);
-void engine_handle_events(engine *engine);
+void engine_handle_events(engine *engine, event *event);
 void engine_update(engine *engine);
 void engine_render(engine *engine);
+bool engine_is_running(engine *engine);
 
 typedef struct window_size window_size;
 struct window_size {
