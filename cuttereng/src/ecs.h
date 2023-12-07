@@ -12,7 +12,7 @@ struct Ecs {
 };
 
 typedef struct {
-  char **components;
+  const char **components;
 } EcsQuery;
 
 typedef struct EcsQueryItState EcsQueryItState;

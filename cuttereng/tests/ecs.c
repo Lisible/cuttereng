@@ -75,15 +75,15 @@ void t_ecs_count_matching() {
   ecs_insert(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {.components =
-                                  (char *[]){ecs_component_id(Position), NULL}};
+  EcsQuery query_positions = {
+      .components = (const char *[]){ecs_component_id(Position), NULL}};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions), 2);
   EcsQuery query_velocities = {
-      .components = (char *[]){ecs_component_id(Velocity), NULL}};
+      .components = (const char *[]){ecs_component_id(Velocity), NULL}};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_velocities), 1);
   EcsQuery query_positions_and_velocities = {
-      .components = (char *[]){ecs_component_id(Position),
-                               ecs_component_id(Velocity), NULL}};
+      .components = (const char *[]){ecs_component_id(Position),
+                                     ecs_component_id(Velocity), NULL}};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
 }
 
@@ -96,8 +96,8 @@ void t_ecs_query() {
   ecs_insert(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {.components =
-                                  (char *[]){ecs_component_id(Position), NULL}};
+  EcsQuery query_positions = {
+      .components = (const char *[]){ecs_component_id(Position), NULL}};
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions);
 
   Position *pos = (Position *)ecs_query_it_get(&query_iterator, 0);
@@ -124,8 +124,8 @@ void t_ecs_query_two_components() {
   ecs_insert(&ecs, entity3, Velocity, {.x = 121, .y = 300});
 
   EcsQuery query_positions_and_velocities = {
-      .components = (char *[]){ecs_component_id(Position),
-                               ecs_component_id(Velocity), NULL}};
+      .components = (const char *[]){ecs_component_id(Position),
+                                     ecs_component_id(Velocity), NULL}};
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions_and_velocities);
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 2);
 
