@@ -4,13 +4,13 @@
 #include "log.h"
 
 #ifdef DEBUG
-#define ASSERT(expr) \
-	do { \
-		if(!(expr)) { \
-			LOG_ERROR("Assertion failed: "#expr); \
-			exit(1); \
-		} \
-	} while(0)
+#define ASSERT(expr, ...)                                                      \
+  do {                                                                         \
+    if (!(expr)) {                                                             \
+      LOG_ERROR("Assertion failed: \n\t%s" #expr, ##__VA_ARGS__);              \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 #else
 #define ASSERT(expr)
 #endif // DEBUG

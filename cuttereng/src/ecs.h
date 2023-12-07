@@ -15,6 +15,11 @@ typedef struct {
   char **components;
 } EcsQuery;
 
+typedef struct EcsQueryItState EcsQueryItState;
+typedef struct {
+  EcsQueryItState *state;
+} EcsQueryIt;
+
 void ecs_init(Ecs *ecs);
 void ecs_deinit(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
@@ -26,6 +31,13 @@ bool ecs_has_component(const Ecs *ecs, EcsId entity_id,
 void *ecs_get_component(const Ecs *ecs, EcsId entity_id,
                         const char *component_name);
 size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query);
+EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query);
+bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
+                           EcsId entity_id);
+bool ecs_query_it_next(EcsQueryIt *it);
+void *ecs_query_it_get(const EcsQueryIt *it, size_t component);
+EcsId ecs_query_it_entity_id(const EcsQueryIt *it);
+void ecs_query_it_deinit(EcsQueryIt *it);
 
 #define ecs_insert(ecs, entity_id, component_type, ...)                        \
   ecs_insert_component(ecs, entity_id, #component_type,                        \

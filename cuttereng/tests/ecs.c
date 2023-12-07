@@ -87,6 +87,65 @@ void t_ecs_count_matching() {
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
 }
 
+void t_ecs_query() {
+  Ecs ecs;
+  ecs_init(&ecs);
+  EcsId entity = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity, Position, {.x = 4, .y = 22});
+  EcsId entity2 = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity2, Position, {.x = 5, .y = 85});
+  ecs_insert(&ecs, entity2, Velocity, {.x = 123, .y = 865});
+
+  EcsQuery query_positions = {.components =
+                                  (char *[]){ecs_component_id(Position), NULL}};
+  EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions);
+
+  Position *pos = (Position *)ecs_query_it_get(&query_iterator, 0);
+  ASSERT_EQ(pos->x, 4);
+  ASSERT_EQ(pos->y, 22);
+
+  ecs_query_it_next(&query_iterator);
+  pos = ecs_query_it_get(&query_iterator, 0);
+  ASSERT_EQ(pos->x, 5);
+  ASSERT_EQ(pos->y, 85);
+  ASSERT_NULL(ecs_query_it_get(&query_iterator, 1));
+}
+
+void t_ecs_query_two_components() {
+  Ecs ecs;
+  ecs_init(&ecs);
+  EcsId entity = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity, Position, {.x = 4, .y = 22});
+  ecs_insert(&ecs, entity, Velocity, {.x = 123, .y = 865});
+  EcsId entity2 = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity2, Position, {.x = 5, .y = 85});
+  EcsId entity3 = ecs_create_entity(&ecs);
+  ecs_insert(&ecs, entity3, Position, {.x = 9, .y = 5});
+  ecs_insert(&ecs, entity3, Velocity, {.x = 121, .y = 300});
+
+  EcsQuery query_positions_and_velocities = {
+      .components = (char *[]){ecs_component_id(Position),
+                               ecs_component_id(Velocity), NULL}};
+  EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions_and_velocities);
+  ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 2);
+
+  Position *pos = (Position *)ecs_query_it_get(&query_iterator, 0);
+  ASSERT_EQ(pos->x, 4);
+  ASSERT_EQ(pos->y, 22);
+  Velocity *vel = (Velocity *)ecs_query_it_get(&query_iterator, 1);
+  ASSERT_EQ(vel->x, 123);
+  ASSERT_EQ(vel->y, 865);
+
+  ecs_query_it_next(&query_iterator);
+  pos = ecs_query_it_get(&query_iterator, 0);
+  ASSERT_EQ(pos->x, 9);
+  ASSERT_EQ(pos->y, 5);
+  vel = (Velocity *)ecs_query_it_get(&query_iterator, 1);
+  ASSERT_EQ(vel->x, 121);
+  ASSERT_EQ(vel->y, 300);
+}
+
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),
            TEST(t_ecs_insert_component), TEST(t_ecs_get_component),
-           TEST(t_ecs_count_matching));
+           TEST(t_ecs_count_matching), TEST(t_ecs_query),
+           TEST(t_ecs_query_two_components));
