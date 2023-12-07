@@ -6,41 +6,40 @@
 #define JSON_LOG_PARSE_ERROR(ctx, msg, ...)                                    \
   LOG_ERROR("%d:%d " msg, ctx->line, ctx->column, ##__VA_ARGS__)
 
-typedef enum json_value_type json_value_type;
-typedef struct json json;
-typedef struct json_object json_object;
-json *json_object_get(json_object *object, char *key);
-void json_object_steal(json_object *object, const char *key);
-
-enum json_value_type {
+typedef enum {
   JSON_OBJECT,
   JSON_ARRAY,
   JSON_STRING,
   JSON_NUMBER,
   JSON_BOOLEAN,
   JSON_NULL
-};
+} JsonValueType;
 
-struct json {
-  json_value_type type;
+typedef struct JsonObject JsonObject;
+typedef struct Json Json;
+struct Json {
+  JsonValueType type;
   union {
-    json_object *object;
-    json **array;
+    JsonObject *object;
+    Json **array;
     char *string;
     double number;
     bool boolean;
   };
 };
 
+Json *json_object_get(const JsonObject *object, const char *key);
+void json_object_steal(JsonObject *object, const char *key);
+
 /// Parses a json from a string
 ///
 /// This value is dynamically allocated and must be freed using `json_free()`
 /// @return The parsed json or NULL in case of error
-json *json_parse_from_str(const char *str);
+Json *json_parse_from_str(const char *str);
 
 /// Destroys a `json_value`
-void json_destroy(json *json_value);
+void json_destroy(Json *json_value);
 /// Destroys a `json_value` but without cleaning up it's underlying data
-void json_destroy_without_cleanup(json *json_value);
+void json_destroy_without_cleanup(Json *json_value);
 
 #endif // CUTTERENG_JSON_H

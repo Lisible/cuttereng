@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char *read_file_to_string(char *path) {
+char *read_file_to_string(const char *path) {
   FILE *file = fopen(path, "r");
   if (file == NULL)
     goto err;

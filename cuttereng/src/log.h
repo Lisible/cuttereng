@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-typedef enum log_level_t { TRACE, DBG, WARN, ERROR, INFO } log_level_t;
+typedef enum { TRACE, DBG, WARN, ERROR, INFO } LogLevel;
 
 #define LOG_TRACE(format_str, ...) LOG(TRACE, format_str, ##__VA_ARGS__)
 #define LOG_DEBUG(format_str, ...) LOG(DBG, format_str, ##__VA_ARGS__)
@@ -18,6 +18,6 @@ typedef enum log_level_t { TRACE, DBG, WARN, ERROR, INFO } log_level_t;
   } while (0)
 
 void log_message(const char *format_str, ...);
-const char *log_level_to_string(log_level_t log_level);
+const char *log_level_to_string(LogLevel log_level);
 
 #endif // CUTTERENG_LOG_H

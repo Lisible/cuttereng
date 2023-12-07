@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void event_from_sdl_event(SDL_Event *sdl_event, event *event);
+void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
 void cutter_bootstrap() {
   LOG_INFO("Bootstrapping...");
@@ -19,15 +19,15 @@ void cutter_bootstrap() {
   char *configuration_file_content =
       read_file_to_string(configuration_file_path);
 
-  json *configuration_json = json_parse_from_str(configuration_file_content);
+  Json *configuration_json = json_parse_from_str(configuration_file_content);
   if (!configuration_json)
     goto cleanup;
 
-  configuration config;
+  Configuration config;
   if (!configuration_from_json(configuration_json, &config))
     goto cleanup_2;
 
-  engine engine;
+  Engine engine;
   engine_init(&engine, &config);
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window = SDL_CreateWindow(
@@ -37,7 +37,7 @@ void cutter_bootstrap() {
   while (engine_is_running(&engine)) {
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event) != 0) {
-      event event;
+      Event event;
       event_from_sdl_event(&sdl_event, &event);
       engine_handle_events(&engine, &event);
     }
@@ -56,7 +56,7 @@ cleanup:
   free(configuration_file_content);
 }
 
-void event_from_sdl_event(SDL_Event *sdl_event, event *event) {
+void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
   switch (sdl_event->type) {
   case SDL_QUIT:
     event->type = EVT_QUIT;

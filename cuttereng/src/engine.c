@@ -2,16 +2,16 @@
 #include "src/log.h"
 #include "src/memory.h"
 
-void engine_init(engine *engine, const configuration *configuration) {
+void engine_init(Engine *engine, const Configuration *configuration) {
   engine->application_title = configuration->application_title;
   engine->running = true;
 }
 
-void engine_deinit(engine *engine) {
+void engine_deinit(Engine *engine) {
   memory_free((void *)engine->application_title);
 }
 
-void engine_handle_events(engine *engine, event *event) {
+void engine_handle_events(Engine *engine, Event *event) {
   switch (event->type) {
   case EVT_QUIT:
     engine->running = false;
@@ -20,19 +20,19 @@ void engine_handle_events(engine *engine, event *event) {
     break;
   }
 }
-void engine_update(engine *engine) { LOG_INFO("update"); }
-void engine_render(engine *engine) { LOG_INFO("render"); }
-bool engine_is_running(engine *engine) { return engine->running; }
+void engine_update(Engine *engine) { LOG_INFO("update"); }
+void engine_render(Engine *engine) { LOG_INFO("render"); }
+bool engine_is_running(Engine *engine) { return engine->running; }
 
-bool configuration_from_json(json *configuration_json,
-                             configuration *output_configuration) {
+bool configuration_from_json(Json *configuration_json,
+                             Configuration *output_configuration) {
 
   if (configuration_json->type != JSON_OBJECT) {
     LOG_ERROR("project_configuration.json's root should be an object");
     return false;
   }
-  json_object *configuration_json_object = configuration_json->object;
-  json *title_json = json_object_get(configuration_json_object, "title");
+  JsonObject *configuration_json_object = configuration_json->object;
+  Json *title_json = json_object_get(configuration_json_object, "title");
   if (!title_json) {
     LOG_ERROR("no property title found in project_configuration.json");
     return false;
@@ -47,7 +47,7 @@ bool configuration_from_json(json *configuration_json,
   json_object_steal(configuration_json_object, "title");
   json_destroy_without_cleanup(title_json);
 
-  json *window_size_json =
+  Json *window_size_json =
       json_object_get(configuration_json->object, "window_size");
   if (!window_size_json) {
     LOG_ERROR("no window_size property found in project_configuration.json");
@@ -62,14 +62,14 @@ bool configuration_from_json(json *configuration_json,
   return true;
 }
 
-bool window_size_from_json(json *json_value, window_size *window_size) {
+bool window_size_from_json(Json *json_value, WindowSize *window_size) {
 
   if (json_value->type != JSON_OBJECT) {
     LOG_ERROR("window_size property is not an object");
     return false;
   }
 
-  json *width = json_object_get(json_value->object, "width");
+  Json *width = json_object_get(json_value->object, "width");
   if (!width) {
     LOG_ERROR("window_size.width not found");
     return false;
@@ -81,7 +81,7 @@ bool window_size_from_json(json *json_value, window_size *window_size) {
   }
   window_size->width = width->number;
 
-  json *height = json_object_get(json_value->object, "height");
+  Json *height = json_object_get(json_value->object, "height");
   if (!height) {
     LOG_ERROR("window_size.height not found");
     return false;
@@ -94,11 +94,11 @@ bool window_size_from_json(json *json_value, window_size *window_size) {
   return true;
 }
 
-void configuration_debug_print(configuration *configuration) {
+void configuration_debug_print(Configuration *configuration) {
   LOG_DEBUG("Configuration");
   LOG_DEBUG("title: %s", configuration->application_title);
   window_size_debug_print(&configuration->window_size);
 }
-void window_size_debug_print(window_size *window_size) {
+void window_size_debug_print(WindowSize *window_size) {
   LOG_DEBUG("window size: (%d, %d)", window_size->width, window_size->height);
 }

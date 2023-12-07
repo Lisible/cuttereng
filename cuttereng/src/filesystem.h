@@ -6,6 +6,6 @@
 ///
 /// The user is responsible for freeing the returned string
 /// @return The file content
-char *read_file_to_string(char *path);
+char *read_file_to_string(const char *path);
 
 #endif // CUTTERENG_FILESYSTEM_H

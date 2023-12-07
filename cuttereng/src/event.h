@@ -1,15 +1,13 @@
 #ifndef CUTTERENG_EVENT_H
 #define CUTTERENG_EVENT_H
 
-typedef enum event_type event_type;
-enum event_type {
+typedef enum {
   EVT_QUIT,
   EVT_UNKNOWN,
-};
+} EventType;
 
-typedef struct event event;
-struct event {
-  event_type type;
-};
+typedef struct {
+  EventType type;
+} Event;
 
 #endif // CUTTERENG_EVENT_H

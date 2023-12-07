@@ -7,15 +7,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef void (*test_fn)(void);
+typedef void (*TestFn)(void);
 
-struct test {
-  char *name;
-  test_fn fn;
-};
-typedef struct test test;
+typedef struct {
+  const char *name;
+  TestFn fn;
+} Test;
 
-extern test tests[];
+extern Test tests[];
 extern size_t test_count;
 
 inline static void assert(int boolean, const char *fmt, ...) {
@@ -51,11 +50,11 @@ inline static void assert(int boolean, const char *fmt, ...) {
 #define ASSERT_STR_EQ(a, b, length)                                            \
   ASSERT_MSG((strncmp(a, b, length) == 0), #a " != " #b)
 
-#define ARG_COUNT(...) (sizeof((test[]){__VA_ARGS__}) / sizeof(test))
+#define ARG_COUNT(...) (sizeof((Test[]){__VA_ARGS__}) / sizeof(Test))
 #define TEST_SUITE(...)                                                        \
-  test tests[] = {__VA_ARGS__};                                                \
+  Test tests[] = {__VA_ARGS__};                                                \
   size_t test_count = ARG_COUNT(__VA_ARGS__);
 #define TEST(x)                                                                \
-  (test) { .name = #x, .fn = x }
+  (Test) { .name = #x, .fn = x }
 
 #endif // TEST_H

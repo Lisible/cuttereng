@@ -9,7 +9,7 @@ void log_message(const char *format_str, ...) {
   va_end(args);
 }
 
-const char *log_level_to_string(log_level_t log_level) {
+const char *log_level_to_string(LogLevel log_level) {
   switch (log_level) {
   case TRACE:
     return "TRACE";

@@ -5,38 +5,36 @@
 #include "event.h"
 #include "json.h"
 
-typedef struct configuration configuration;
-typedef struct engine engine;
-struct engine {
-  const char *application_title;
-  bool running;
-};
-void engine_init(engine *engine, const configuration *config);
-void engine_deinit(engine *engine);
-void engine_handle_events(engine *engine, event *event);
-void engine_update(engine *engine);
-void engine_render(engine *engine);
-bool engine_is_running(engine *engine);
-
-typedef struct window_size window_size;
-struct window_size {
+typedef struct {
   unsigned int width;
   unsigned int height;
-};
-bool window_size_from_json(json *json, window_size *window_size);
-void window_size_debug_print(window_size *window_size);
+} WindowSize;
 
-struct configuration {
+typedef struct {
   char *application_title;
-  window_size window_size;
-};
+  WindowSize window_size;
+} Configuration;
+
+typedef struct {
+  const char *application_title;
+  bool running;
+} Engine;
+void engine_init(Engine *engine, const Configuration *config);
+void engine_deinit(Engine *engine);
+void engine_handle_events(Engine *engine, Event *event);
+void engine_update(Engine *engine);
+void engine_render(Engine *engine);
+bool engine_is_running(Engine *engine);
+
+bool window_size_from_json(Json *json, WindowSize *window_size);
+void window_size_debug_print(WindowSize *window_size);
 
 /// Creates a configuration struct from a configuration json value
 ///
 /// Note: This takes ownership of `configuration_json`
 /// @return true in case of success, false otherwise
-bool configuration_from_json(json *configuration_json,
-                             configuration *output_configuration);
-void configuration_debug_print(configuration *configuration);
+bool configuration_from_json(Json *configuration_json,
+                             Configuration *output_configuration);
+void configuration_debug_print(Configuration *configuration);
 
 #endif // CUTTERENG_ENGINE_H

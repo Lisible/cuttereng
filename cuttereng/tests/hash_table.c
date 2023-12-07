@@ -2,13 +2,13 @@
 #include <hash.h>
 
 void t_hash_table_new() {
-  hash_table *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(NULL);
   ASSERT_EQ(hash_table_length(hash_table), 0);
   hash_table_destroy(hash_table);
 }
 
 void t_hash_table_set() {
-  hash_table *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(NULL);
   int *i = malloc(sizeof(int));
   *i = 0;
   hash_table_set(hash_table, "some_key", i);
@@ -17,7 +17,7 @@ void t_hash_table_set() {
 }
 
 void t_hash_table_has() {
-  hash_table *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(NULL);
   int *i = malloc(sizeof(int));
   *i = 532;
   hash_table_set(hash_table, "some_key", i);
@@ -26,7 +26,7 @@ void t_hash_table_has() {
 }
 
 void t_hash_table_get() {
-  hash_table *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(NULL);
   int *i = malloc(sizeof(int));
   *i = 532;
   hash_table_set(hash_table, "some_key", i);

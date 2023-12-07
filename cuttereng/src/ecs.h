@@ -4,26 +4,28 @@
 #include "common.h"
 #include "hash.h"
 
-typedef size_t ecs_id;
-typedef struct ecs ecs;
-struct ecs {
-  hash_table *component_stores;
+typedef size_t EcsId;
+typedef struct Ecs Ecs;
+struct Ecs {
+  HashTable *component_stores;
   size_t entity_count;
 };
 
 typedef struct {
   char **components;
-} ecs_query;
+} EcsQuery;
 
-void ecs_init(ecs *ecs);
-void ecs_deinit(ecs *ecs);
-ecs_id ecs_create_entity(ecs *ecs);
-size_t ecs_get_entity_count(ecs *ecs);
-void ecs_insert_component(ecs *ecs, ecs_id entity_id, char *component_name,
-                          size_t component_size, void *data);
-bool ecs_has_component(ecs *ecs, ecs_id entity_id, char *component_name);
-void *ecs_get_component(ecs *ecs, ecs_id entity_id, char *component_name);
-size_t ecs_count_matching(ecs *ecs, ecs_query *query);
+void ecs_init(Ecs *ecs);
+void ecs_deinit(Ecs *ecs);
+EcsId ecs_create_entity(Ecs *ecs);
+size_t ecs_get_entity_count(const Ecs *ecs);
+void ecs_insert_component(Ecs *ecs, EcsId entity_id, const char *component_name,
+                          size_t component_size, const void *data);
+bool ecs_has_component(const Ecs *ecs, EcsId entity_id,
+                       const char *component_name);
+void *ecs_get_component(const Ecs *ecs, EcsId entity_id,
+                        const char *component_name);
+size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query);
 
 #define ecs_insert(ecs, entity_id, component_type, ...)                        \
   ecs_insert_component(ecs, entity_id, #component_type,                        \
