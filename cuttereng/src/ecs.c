@@ -93,8 +93,9 @@ size_t ecs_get_entity_count(const Ecs *ecs) {
   return ecs->entity_count;
 }
 
-void ecs_insert_component(Ecs *ecs, EcsId entity_id, const char *component_name,
-                          size_t component_size, const void *data) {
+void ecs_insert_component_(Ecs *ecs, EcsId entity_id,
+                           const char *component_name, size_t component_size,
+                           const void *data) {
   ASSERT(ecs != NULL);
   ASSERT(data != NULL);
 
@@ -112,8 +113,8 @@ err:
   return;
 }
 
-bool ecs_has_component(const Ecs *ecs, EcsId entity_id,
-                       const char *component_name) {
+bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
+                        const char *component_name) {
   ASSERT(ecs != NULL);
 
   ComponentStore *store = hash_table_get(ecs->component_stores, component_name);
@@ -123,8 +124,8 @@ bool ecs_has_component(const Ecs *ecs, EcsId entity_id,
   return component_store_get(store, entity_id) != NULL;
 }
 
-void *ecs_get_component(const Ecs *ecs, EcsId entity_id,
-                        const char *component_name) {
+void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
+                         const char *component_name) {
   ASSERT(ecs != NULL);
 
   ComponentStore *store = hash_table_get(ecs->component_stores, component_name);
@@ -232,7 +233,7 @@ void ecs_query_it_deinit(EcsQueryIt *it) {
 
   free(it->state);
 }
-void *ecs_query_it_get(const EcsQueryIt *it, size_t component) {
+void *ecs_query_it_get_(const EcsQueryIt *it, size_t component) {
   ASSERT(it != NULL);
   ASSERT(it->state != NULL);
 
