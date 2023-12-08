@@ -28,11 +28,11 @@ void cutter_bootstrap() {
     goto cleanup_2;
 
   Engine engine;
-  engine_init(&engine, &config);
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window = SDL_CreateWindow(
       config.application_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       config.window_size.width, config.window_size.height, 0);
+  engine_init(&engine, &config, window);
 
   while (engine_is_running(&engine)) {
     SDL_Event sdl_event;

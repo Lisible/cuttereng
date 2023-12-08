@@ -1,13 +1,18 @@
 #include "engine.h"
-#include "src/log.h"
-#include "src/memory.h"
+#include "assert.h"
+#include "log.h"
+#include "memory.h"
+#include "src/renderer.h"
 
-void engine_init(Engine *engine, const Configuration *configuration) {
+void engine_init(Engine *engine, const Configuration *configuration,
+                 SDL_Window *window) {
+  engine->renderer = renderer_new(window);
   engine->application_title = configuration->application_title;
   engine->running = true;
 }
 
 void engine_deinit(Engine *engine) {
+  renderer_destroy(engine->renderer);
   memory_free((void *)engine->application_title);
 }
 
@@ -21,11 +26,16 @@ void engine_handle_events(Engine *engine, Event *event) {
   }
 }
 void engine_update(Engine *engine) { LOG_INFO("update"); }
-void engine_render(Engine *engine) { LOG_INFO("render"); }
+void engine_render(Engine *engine) {
+  LOG_INFO("render");
+  renderer_render(engine->renderer);
+}
 bool engine_is_running(Engine *engine) { return engine->running; }
 
 bool configuration_from_json(Json *configuration_json,
                              Configuration *output_configuration) {
+  ASSERT(configuration_json != NULL);
+  ASSERT(output_configuration != NULL);
 
   if (configuration_json->type != JSON_OBJECT) {
     LOG_ERROR("project_configuration.json's root should be an object");
@@ -63,6 +73,8 @@ bool configuration_from_json(Json *configuration_json,
 }
 
 bool window_size_from_json(Json *json_value, WindowSize *window_size) {
+  ASSERT(json_value != NULL);
+  ASSERT(window_size != NULL);
 
   if (json_value->type != JSON_OBJECT) {
     LOG_ERROR("window_size property is not an object");

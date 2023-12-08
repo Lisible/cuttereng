@@ -4,6 +4,8 @@
 #include "common.h"
 #include "event.h"
 #include "json.h"
+#include "renderer.h"
+#include <SDL.h>
 
 typedef struct {
   unsigned int width;
@@ -16,10 +18,13 @@ typedef struct {
 } Configuration;
 
 typedef struct {
+  Renderer *renderer;
   const char *application_title;
   bool running;
 } Engine;
-void engine_init(Engine *engine, const Configuration *config);
+
+void engine_init(Engine *engine, const Configuration *config,
+                 SDL_Window *window);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
 void engine_update(Engine *engine);

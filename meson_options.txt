@@ -1,0 +1,1 @@
+option('opt_wgpu_native_path', type: 'string', value: '/home/clements/dev/wgpu-native-0.18.1.3')
