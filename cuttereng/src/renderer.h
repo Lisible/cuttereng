@@ -9,6 +9,7 @@ typedef struct {
   WGPUAdapter wgpu_adapter;
   WGPUSurface wgpu_surface;
   WGPUDevice wgpu_device;
+  WGPURenderPipeline pipeline;
 } Renderer;
 
 Renderer *renderer_new(SDL_Window *window);
