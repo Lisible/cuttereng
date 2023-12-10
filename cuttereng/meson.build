@@ -1,13 +1,25 @@
 cc = meson.get_compiler('c')
-m_dep = cc.find_library('m', required: true)
 
-
-sdl2_dep = dependency('sdl2')
+cuttereng_deps = []
+if host_machine.cpu() == 'wasm32'
 cc = meson.get_compiler('c')
 wgpu_native_dir = get_option('opt_wgpu_native_path')
 wgpu_native_lib = cc.find_library('wgpu_native', dirs: [wgpu_native_dir])
 wgpu_native_dep = declare_dependency(dependencies: wgpu_native_lib, include_directories: wgpu_native_dir)
+cuttereng_deps += wgpu_native_dep
+else
+m_dep = cc.find_library('m', required: true)
+cuttereng_deps += m_dep
 
+sdl2_dep = dependency('sdl2')
+cuttereng_deps += sdl2_dep
+
+cc = meson.get_compiler('c')
+wgpu_native_dir = get_option('opt_wgpu_native_path')
+wgpu_native_lib = cc.find_library('wgpu_native', dirs: [wgpu_native_dir])
+wgpu_native_dep = declare_dependency(dependencies: wgpu_native_lib, include_directories: wgpu_native_dir)
+cuttereng_deps += wgpu_native_dep
+endif
 cuttereng_incdir = include_directories('src/')
 cuttereng_lib = library(
   'cuttereng',
@@ -21,7 +33,7 @@ cuttereng_lib = library(
   'src/engine.c',
   'src/ecs.c',
   'src/renderer.c',
-  dependencies: [m_dep, sdl2_dep, wgpu_native_dep]
+  dependencies: cuttereng_deps,
 )
 
 cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: cuttereng_lib)

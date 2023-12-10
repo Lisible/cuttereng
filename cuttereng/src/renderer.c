@@ -6,23 +6,26 @@
 #include <SDL2/SDL_syswm.h>
 
 const char *SHADER_SOURCE =
+    "struct VertexInput { "
+    "@location(0) position: vec2<f32>,"
+    "@location(1) color: vec3<f32>,"
+    "}; "
+    "struct VertexOutput{ "
+    "@builtin(position) position: vec4<f32>,"
+    "@location(0) color: vec3<f32>,"
+    "}; "
     "@vertex "
-    "fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> "
-    "@builtin(position) vec4<f32> {"
-    "    var p = vec2<f32>(0.0, 0.0);"
-    "    if (in_vertex_index == 0u) {"
-    "        p = vec2<f32>(-0.5, -0.5);"
-    "    } else if (in_vertex_index == 1u) {"
-    "        p = vec2<f32>(0.5, -0.5);"
-    "    } else {"
-    "        p = vec2<f32>(0.0, 0.5);"
-    "    }"
-    "    return vec4<f32>(p, 0.0, 1.0);"
+    "fn vs_main(in: VertexInput) -> "
+    "VertexOutput {"
+    "    var out: VertexOutput;"
+    "    out.position = vec4<f32>(in.position, 0.0, 1.0);"
+    "    out.color = in.color;"
+    "    return out;"
     "}"
     ""
     "@fragment "
-    "fn fs_main() -> @location(0) vec4<f32> {"
-    "    return vec4<f32>(0.0, 0.4, 1.0, 1.0);"
+    "fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {"
+    "    return vec4<f32>(in.color, 1.0);"
     "}";
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
@@ -100,8 +103,7 @@ Renderer *renderer_new(SDL_Window *window) {
   if (!renderer)
     goto err;
 
-  WGPUInstanceDescriptor wgpu_instance_descriptor = {};
-  wgpu_instance_descriptor.nextInChain = NULL;
+  WGPUInstanceDescriptor wgpu_instance_descriptor = {.nextInChain = NULL};
 
   renderer->wgpu_instance = wgpuCreateInstance(&wgpu_instance_descriptor);
   if (!renderer->wgpu_instance) {
@@ -111,7 +113,7 @@ Renderer *renderer_new(SDL_Window *window) {
 
   renderer->wgpu_adapter = request_adapter(renderer->wgpu_instance);
   if (!renderer->wgpu_adapter)
-    goto cleanup2;
+    goto cleanup_instance;
 
   size_t adapter_feature_count =
       wgpuAdapterEnumerateFeatures(renderer->wgpu_adapter, NULL);
@@ -128,14 +130,28 @@ Renderer *renderer_new(SDL_Window *window) {
   renderer->wgpu_surface = NULL;
   renderer_initialize_for_window(renderer, window);
   if (!renderer->wgpu_surface) {
-    goto cleanup3;
+    goto cleanup_adapter;
   }
+
+  WGPUSupportedLimits supported_limits = {.nextInChain = NULL};
+  wgpuAdapterGetLimits(renderer->wgpu_adapter, &supported_limits);
+
+  WGPURequiredLimits required_limits = {0};
+  required_limits.limits.maxVertexAttributes = 2;
+  required_limits.limits.maxVertexBuffers = 1;
+  required_limits.limits.maxBufferSize = 6 * 5 * sizeof(float);
+  required_limits.limits.maxVertexBufferArrayStride = 5 * sizeof(float);
+  required_limits.limits.maxInterStageShaderComponents = 3;
+  required_limits.limits.minStorageBufferOffsetAlignment =
+      supported_limits.limits.minStorageBufferOffsetAlignment;
+  required_limits.limits.minUniformBufferOffsetAlignment =
+      supported_limits.limits.minUniformBufferOffsetAlignment;
 
   WGPUDeviceDescriptor wgpu_device_descriptor = {
       .nextInChain = NULL,
       .label = "device",
       .requiredFeatureCount = 0,
-      .requiredLimits = NULL,
+      .requiredLimits = &required_limits,
       .defaultQueue.nextInChain = NULL,
       .defaultQueue.label = "default_queue",
       .requiredFeatures = NULL,
@@ -145,9 +161,11 @@ Renderer *renderer_new(SDL_Window *window) {
   renderer->wgpu_device =
       request_device(renderer->wgpu_adapter, &wgpu_device_descriptor);
   if (!renderer->wgpu_device) {
-    goto cleanup4;
+    goto cleanup_surface;
   }
 
+  wgpuAdapterGetLimits(renderer->wgpu_adapter, &supported_limits);
+  wgpuDeviceGetLimits(renderer->wgpu_device, &supported_limits);
   wgpuDeviceSetUncapturedErrorCallback(renderer->wgpu_device, on_device_error,
                                        NULL);
 
@@ -181,6 +199,17 @@ Renderer *renderer_new(SDL_Window *window) {
           .hintCount = 0,
           .hints = NULL});
 
+  WGPUVertexAttribute vertex_attributes[] = {
+      {.format = WGPUVertexFormat_Float32x2, .offset = 0, .shaderLocation = 0},
+      {.format = WGPUVertexFormat_Float32x3,
+       .offset = 2 * sizeof(float),
+       .shaderLocation = 1}};
+  WGPUVertexBufferLayout vertex_buffer_layout = {
+      .attributeCount = 2,
+      .attributes = vertex_attributes,
+      .arrayStride = 5 * sizeof(float),
+      .stepMode = WGPUVertexStepMode_Vertex};
+
   renderer->pipeline = wgpuDeviceCreateRenderPipeline(
       renderer->wgpu_device,
       &(WGPURenderPipelineDescriptor){
@@ -188,8 +217,8 @@ Renderer *renderer_new(SDL_Window *window) {
           .nextInChain = NULL,
           .layout = NULL,
           .vertex = (WGPUVertexState){.nextInChain = NULL,
-                                      .bufferCount = 0,
-                                      .buffers = NULL,
+                                      .bufferCount = 1,
+                                      .buffers = &vertex_buffer_layout,
                                       .constantCount = 0,
                                       .constants = NULL,
                                       .entryPoint = "vs_main",
@@ -238,12 +267,28 @@ Renderer *renderer_new(SDL_Window *window) {
 
       });
 
+  float vertex_data[] = {-0.5, -0.5,  1.0, 0.0, 0.0,   0.5, -0.5, 0.0,
+                         1.0,  0.0,   0.0, 0.5, 1.0,   1.0, 0.0,  -0.55,
+                         -0.5, 1.0,   1.0, 0.0, -0.05, 0.5, 1.0,  0.0,
+                         1.0,  -0.55, 0.5, 0.0, 1.0,   1.0};
+  renderer->vertex_buffer_length = sizeof(vertex_data) / sizeof(float);
+  renderer->vertex_buffer = wgpuDeviceCreateBuffer(
+      renderer->wgpu_device,
+      &(const WGPUBufferDescriptor){
+          .label = "vertex buffer",
+          .mappedAtCreation = false,
+          .nextInChain = NULL,
+          .size = renderer->vertex_buffer_length * sizeof(float),
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex});
+  wgpuQueueWriteBuffer(queue, renderer->vertex_buffer, 0, vertex_data,
+                       renderer->vertex_buffer_length * sizeof(float));
+
   return renderer;
-cleanup4:
+cleanup_surface:
   wgpuSurfaceRelease(renderer->wgpu_surface);
-cleanup3:
+cleanup_adapter:
   wgpuAdapterRelease(renderer->wgpu_adapter);
-cleanup2:
+cleanup_instance:
   wgpuInstanceRelease(renderer->wgpu_instance);
 cleanup:
   memory_free(renderer);
@@ -324,7 +369,11 @@ void renderer_render(Renderer *renderer) {
       });
 
   wgpuRenderPassEncoderSetPipeline(render_pass_encoder, renderer->pipeline);
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
+  wgpuRenderPassEncoderSetVertexBuffer(
+      render_pass_encoder, 0, renderer->vertex_buffer, 0,
+      renderer->vertex_buffer_length * sizeof(float));
+  wgpuRenderPassEncoderDraw(render_pass_encoder,
+                            renderer->vertex_buffer_length / 5, 1, 0, 0);
   wgpuRenderPassEncoderEnd(render_pass_encoder);
 
   WGPUCommandBufferDescriptor command_buffer_descriptor = {

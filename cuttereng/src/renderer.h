@@ -1,7 +1,7 @@
 #ifndef CUTTERENG_RENDERER_H
 #define CUTTERENG_RENDERER_H
 
-#include "wgpu.h"
+#include "webgpu.h"
 #include <SDL.h>
 
 typedef struct {
@@ -10,6 +10,8 @@ typedef struct {
   WGPUSurface wgpu_surface;
   WGPUDevice wgpu_device;
   WGPURenderPipeline pipeline;
+  WGPUBuffer vertex_buffer;
+  size_t vertex_buffer_length;
 } Renderer;
 
 Renderer *renderer_new(SDL_Window *window);
