@@ -1,10 +1,17 @@
 #ifndef CUTTERENG_COMMON_H
 #define CUTTERENG_COMMON_H
 
+#include "log.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#define UNIMPLEMENTED                                                          \
+  do {                                                                         \
+    LOG_ERROR("Reached unimplemented code in function %s()", __func__);        \
+    exit(1);                                                                   \
+  } while (0)
 
 typedef int32_t i32;
 typedef uint32_t u32;

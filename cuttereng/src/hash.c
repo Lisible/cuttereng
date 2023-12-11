@@ -18,9 +18,6 @@ HashTable *hash_table_new(ItemDestructorFn item_destructor) {
   table->capacity = INITIAL_CAPACITY;
   table->length = 0;
   table->item_destructor = item_destructor;
-  if (table->item_destructor == NULL) {
-    table->item_destructor = memory_free;
-  }
   table->items = memory_allocate_array(table->capacity, sizeof(HashTableKV));
   return table;
 }
@@ -29,7 +26,7 @@ void hash_table_destroy(HashTable *table) {
   for (size_t i = 0; i < table->capacity; i++) {
     memory_free((void *)table->items[i].key);
 
-    if (table->items[i].value != NULL)
+    if (table->items[i].value != NULL && table->item_destructor != NULL)
       table->item_destructor(table->items[i].value);
   }
 

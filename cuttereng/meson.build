@@ -32,6 +32,7 @@ cuttereng_lib = library(
   'src/memory.c',
   'src/engine.c',
   'src/ecs.c',
+  'src/asset.c',
   'src/renderer.c',
   dependencies: cuttereng_deps,
 )
@@ -44,3 +45,5 @@ test_hash_table = executable('test_hash_table', 'tests/test_runner.c', 'tests/ha
 test('test_hash_table', test_hash_table)
 test_ecs = executable('test_ecs', 'tests/test_runner.c', 'tests/ecs.c', dependencies: [cuttereng_dep])
 test('test_ecs', test_ecs)
+test_asset = executable('test_asset', 'tests/test_runner.c', 'tests/asset.c', dependencies: [cuttereng_dep])
+test('test_asset', test_asset)

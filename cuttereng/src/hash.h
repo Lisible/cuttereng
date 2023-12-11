@@ -43,6 +43,35 @@ bool hash_table_has(const HashTable *table, const char *key);
 /// @return the hash table length
 size_t hash_table_length(const HashTable *table);
 
+#define HashTableOf(T) HashTable_##T
+#define DefineHashTableOf(T, item_destructor)                                  \
+  typedef struct HashTableOf(T) { HashTable *internal_table; }                 \
+  HashTable_##T;                                                               \
+  void hash_table_##T##_item_destructor(void *item) { item_destructor(item); } \
+                                                                               \
+  void hash_table_##T##_init(HashTableOf(T) * table) {                         \
+    table->internal_table = hash_table_new(hash_table_##T##_item_destructor);  \
+  }                                                                            \
+  void hash_table_##T##_deinit(HashTableOf(T) * table) {                       \
+    hash_table_destroy(table->internal_table);                                 \
+  }                                                                            \
+  const char *hash_table_##T##_set(HashTableOf(T) * table, const char *key,    \
+                                   T *value) {                                 \
+    return hash_table_set(table->internal_table, key, value);                  \
+  }                                                                            \
+  T *hash_table_##T##_get(const HashTableOf(T) * table, const char *key) {     \
+    return hash_table_get(table->internal_table, key);                         \
+  }                                                                            \
+  void hash_table_##T##_steal(HashTableOf(T) * table, const char *key) {       \
+    hash_table_steal(table->internal_table, key);                              \
+  }                                                                            \
+  bool hash_table_##T##_has(const HashTableOf(T) * table, const char *key) {   \
+    return hash_table_has(table->internal_table, key);                         \
+  }                                                                            \
+  size_t hash_table_##T##_length(const HashTableOf(T) * table) {               \
+    return hash_table_length(table->internal_table);                           \
+  }
+
 uint64_t hash_fnv_1a(const char *bytes);
 
 #endif // CUTTERENG_HASH_H

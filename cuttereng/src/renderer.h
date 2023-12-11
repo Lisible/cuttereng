@@ -1,7 +1,7 @@
 #ifndef CUTTERENG_RENDERER_H
 #define CUTTERENG_RENDERER_H
 
-#include "webgpu.h"
+#include "webgpu/webgpu.h"
 #include <SDL.h>
 
 typedef struct {

@@ -2,7 +2,6 @@
 #include "assert.h"
 #include "log.h"
 #include "memory.h"
-#include "webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
 const char *SHADER_SOURCE =
