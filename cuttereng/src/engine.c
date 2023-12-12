@@ -1,9 +1,9 @@
 #include "engine.h"
 #include "assert.h"
+#include "asset.h"
 #include "log.h"
 #include "memory.h"
-#include "src/asset.h"
-#include "src/renderer.h"
+#include "renderer/renderer.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  SDL_Window *window) {

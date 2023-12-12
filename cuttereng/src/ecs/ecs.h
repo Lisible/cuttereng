@@ -1,8 +1,8 @@
-#ifndef CUTTERENG_ECS_H
-#define CUTTERENG_ECS_H
+#ifndef CUTTERENG_ECS_ECS_H
+#define CUTTERENG_ECS_ECS_H
 
-#include "common.h"
-#include "hash.h"
+#include "../common.h"
+#include "../hash.h"
 
 typedef size_t EcsId;
 typedef struct Ecs Ecs;
@@ -55,4 +55,4 @@ void ecs_query_it_deinit(EcsQueryIt *it);
 #define ecs_query_it_get(it, component_type, index)                            \
   (component_type *)ecs_query_it_get_(it, index)
 
-#endif
+#endif // CUTTERENG_ECS_ECS_H

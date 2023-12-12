@@ -31,9 +31,9 @@ cuttereng_lib = library(
   'src/hash.c',
   'src/memory.c',
   'src/engine.c',
-  'src/ecs.c',
+  'src/ecs/ecs.c',
   'src/asset.c',
-  'src/renderer.c',
+  'src/renderer/renderer.c',
   dependencies: cuttereng_deps,
 )
 

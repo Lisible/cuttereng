@@ -1,4 +1,4 @@
-#include "../environment.h"
+#include "environment.h"
 #include "src/log.h"
 #include <errno.h>
 #include <stdlib.h>

@@ -1,9 +1,8 @@
 #include "renderer.h"
-#include "assert.h"
-#include "asset.h"
-#include "log.h"
-#include "memory.h"
-#include "webgpu/webgpu.h"
+#include "../assert.h"
+#include "../asset.h"
+#include "../log.h"
+#include "../memory.h"
 #include <SDL2/SDL_syswm.h>
 
 typedef struct {

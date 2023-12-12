@@ -5,7 +5,7 @@
 #include "common.h"
 #include "event.h"
 #include "json.h"
-#include "renderer.h"
+#include "renderer/renderer.h"
 #include <SDL.h>
 
 typedef struct {

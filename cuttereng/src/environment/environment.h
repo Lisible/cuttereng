@@ -1,5 +1,5 @@
-#ifndef CUTTERENG_ENVIRONMENT_H
-#define CUTTERENG_ENVIRONMENT_H
+#ifndef CUTTERENG_ENVIRONMENT_ENVIRONMENT_H
+#define CUTTERENG_ENVIRONMENT_ENVIRONMENT_H
 /// @file
 
 /// Get the configuration file path.
@@ -8,4 +8,4 @@
 /// @returns The process executable path
 char *env_get_configuration_file_path();
 
-#endif // CUTTERENG_ENVIRONMENT_H
+#endif // CUTTERENG_ENVIRONMENT_ENVIRONMENT_H

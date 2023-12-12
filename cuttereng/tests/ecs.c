@@ -1,6 +1,6 @@
 #include "log.h"
 #include "test.h"
-#include <ecs.h>
+#include <ecs/ecs.h>
 
 typedef struct {
   int x;

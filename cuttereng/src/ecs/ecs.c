@@ -1,10 +1,8 @@
 #include "ecs.h"
-#include "assert.h"
-#include "bitset.h"
-#include "common.h"
-#include "hash.h"
-#include "log.h"
-#include "memory.h"
+#include "../assert.h"
+#include "../bitset.h"
+#include "../log.h"
+#include "../memory.h"
 #include <string.h>
 
 typedef struct {

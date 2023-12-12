@@ -1,9 +1,9 @@
-#ifndef CUTTERENG_RENDERER_H
-#define CUTTERENG_RENDERER_H
+#ifndef CUTTERENG_RENDERER_RENDERER_H
+#define CUTTERENG_RENDERER_RENDERER_H
 
-#include "asset.h"
-#include "webgpu/webgpu.h"
+#include "../asset.h"
 #include <SDL.h>
+#include <webgpu/webgpu.h>
 
 typedef struct {
   WGPUInstance wgpu_instance;
@@ -23,4 +23,4 @@ void renderer_render(Renderer *renderer);
 
 void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window);
 
-#endif // CUTTERENG_RENDERER_H
+#endif // CUTTERENG_RENDERER_RENDERER_H
