@@ -23,17 +23,23 @@ HashTable *hash_table_new(ItemDestructorFn item_destructor) {
 }
 
 void hash_table_destroy(HashTable *table) {
-  for (size_t i = 0; i < table->capacity; i++) {
-    memory_free((void *)table->items[i].key);
-
-    if (table->items[i].value != NULL && table->item_destructor != NULL)
-      table->item_destructor(table->items[i].value);
-  }
-
+  hash_table_clear(table);
   memory_free(table->items);
   memory_free(table);
 }
 
+void hash_table_clear(HashTable *table) {
+  for (size_t i = 0; i < table->capacity; i++) {
+    if (table->items[i].key != NULL) {
+      if (table->item_destructor != NULL) {
+        table->item_destructor(table->items[i].value);
+      }
+
+      memory_free((char *)table->items[i].key);
+      table->items[i].key = NULL;
+    }
+  }
+}
 const char *hash_table_set_kv(HashTableKV *items, size_t capacity,
                               const char *key, void *value, size_t *length) {
 
@@ -135,20 +141,30 @@ bool hash_table_has(const HashTable *table, const char *key) {
   return false;
 }
 
-void hash_table_remove_at_index(HashTable *table, size_t index) {
+void hash_table_remove_at_index(HashTable *table, size_t index,
+                                bool execute_destructor) {
   if (!table->items[index].key) {
     return;
   }
 
-  memory_free((void *)table->items[index].key);
+  if (execute_destructor && table->item_destructor) {
+    table->item_destructor(table->items[index].value);
+  }
+
+  memory_free((char *)table->items[index].key);
   table->items[index].key = NULL;
   table->items[index].value = NULL;
   table->length--;
 }
 
+void hash_table_remove(HashTable *table, const char *key) {
+  size_t index = hash_table_index_for_key(table, key);
+  hash_table_remove_at_index(table, index, true);
+}
+
 void hash_table_steal(HashTable *table, const char *key) {
   size_t index = hash_table_index_for_key(table, key);
-  hash_table_remove_at_index(table, index);
+  hash_table_remove_at_index(table, index, false);
 }
 
 size_t hash_table_index_for_key(HashTable *table, const char *key) {

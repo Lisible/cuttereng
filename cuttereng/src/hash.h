@@ -34,8 +34,14 @@ const char *hash_table_set(HashTable *table, const char *key, void *value);
 /// @return The item or NULL if it is not found
 void *hash_table_get(const HashTable *table, const char *key);
 
+/// Removes an item from the hash table
+void hash_table_remove(HashTable *table, const char *key);
+
 /// Removes an item without calling the item destructor
 void hash_table_steal(HashTable *table, const char *key);
+
+/// Clears the hash table
+void hash_table_clear(HashTable *table);
 
 /// @return true if an item is present for the given key
 bool hash_table_has(const HashTable *table, const char *key);
@@ -52,6 +58,9 @@ size_t hash_table_length(const HashTable *table);
   void hash_table_##T##_init(HashTableOf(T) * table) {                         \
     table->internal_table = hash_table_new(hash_table_##T##_item_destructor);  \
   }                                                                            \
+  void hash_table_##T##_clear(HashTableOf(T) * table) {                        \
+    hash_table_clear(table->internal_table);                                   \
+  }                                                                            \
   void hash_table_##T##_deinit(HashTableOf(T) * table) {                       \
     hash_table_destroy(table->internal_table);                                 \
   }                                                                            \
@@ -64,6 +73,9 @@ size_t hash_table_length(const HashTable *table);
   }                                                                            \
   void hash_table_##T##_steal(HashTableOf(T) * table, const char *key) {       \
     hash_table_steal(table->internal_table, key);                              \
+  }                                                                            \
+  void hash_table_##T##_remove(HashTableOf(T) * table, const char *key) {      \
+    hash_table_remove(table->internal_table, key);                             \
   }                                                                            \
   bool hash_table_##T##_has(const HashTableOf(T) * table, const char *key) {   \
     return hash_table_has(table->internal_table, key);                         \

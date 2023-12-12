@@ -3,6 +3,7 @@
 #include "asset.h"
 #include "log.h"
 #include "memory.h"
+#include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
 typedef struct {
@@ -89,6 +90,10 @@ WGPUDevice request_device(WGPUAdapter adapter,
   return user_data.device;
 }
 
+WGPURenderPipeline
+create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
+                       WGPUTextureFormat color_target_format);
+
 Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   LOG_INFO("Initializing renderer...");
   Renderer *renderer = memory_allocate(sizeof(Renderer));
@@ -167,12 +172,14 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(renderer->wgpu_surface, renderer->wgpu_adapter,
                              &surface_capabilities);
+  renderer->wgpu_render_surface_texture_format =
+      surface_capabilities.formats[0];
   WGPUSurfaceConfiguration wgpu_surface_configuration = {
       .width = 800,
       .height = 600,
       .device = renderer->wgpu_device,
       .usage = WGPUTextureUsage_RenderAttachment,
-      .format = surface_capabilities.formats[0],
+      .format = renderer->wgpu_render_surface_texture_format,
       .presentMode = WGPUPresentMode_Fifo,
       .alphaMode = surface_capabilities.alphaModes[0]};
   wgpuSurfaceConfigure(renderer->wgpu_surface, &wgpu_surface_configuration);
@@ -196,6 +203,42 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
           .hintCount = 0,
           .hints = NULL});
 
+  renderer->pipeline = create_render_pipeline(
+      renderer->wgpu_device, shader_module, surface_capabilities.formats[0]);
+
+  float vertex_data[] = {-0.5, -0.5,  1.0, 0.0, 0.0,   0.5, -0.5, 0.0,
+                         1.0,  0.0,   0.0, 0.5, 1.0,   1.0, 0.0,  -0.55,
+                         -0.5, 1.0,   1.0, 0.0, -0.05, 0.5, 1.0,  0.0,
+                         1.0,  -0.55, 0.5, 0.0, 1.0,   1.0};
+  renderer->vertex_buffer_length = sizeof(vertex_data) / sizeof(float);
+  renderer->vertex_buffer = wgpuDeviceCreateBuffer(
+      renderer->wgpu_device,
+      &(const WGPUBufferDescriptor){
+          .label = "vertex buffer",
+          .mappedAtCreation = false,
+          .nextInChain = NULL,
+          .size = renderer->vertex_buffer_length * sizeof(float),
+          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex});
+  wgpuQueueWriteBuffer(queue, renderer->vertex_buffer, 0, vertex_data,
+                       renderer->vertex_buffer_length * sizeof(float));
+
+  return renderer;
+cleanup_surface:
+  wgpuSurfaceRelease(renderer->wgpu_surface);
+cleanup_adapter:
+  wgpuAdapterRelease(renderer->wgpu_adapter);
+cleanup_instance:
+  wgpuInstanceRelease(renderer->wgpu_instance);
+cleanup:
+  memory_free(renderer);
+err:
+  return NULL;
+}
+
+WGPURenderPipeline
+create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
+                       WGPUTextureFormat color_target_format) {
+
   WGPUVertexAttribute vertex_attributes[] = {
       {.format = WGPUVertexFormat_Float32x2, .offset = 0, .shaderLocation = 0},
       {.format = WGPUVertexFormat_Float32x3,
@@ -207,8 +250,8 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
       .arrayStride = 5 * sizeof(float),
       .stepMode = WGPUVertexStepMode_Vertex};
 
-  renderer->pipeline = wgpuDeviceCreateRenderPipeline(
-      renderer->wgpu_device,
+  return wgpuDeviceCreateRenderPipeline(
+      device,
       &(WGPURenderPipelineDescriptor){
           .label = "pipeline",
           .nextInChain = NULL,
@@ -228,7 +271,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
                   .targets =
                       &(WGPUColorTargetState){
                           .nextInChain = NULL,
-                          .format = surface_capabilities.formats[0],
+                          .format = color_target_format,
                           .blend =
                               &(const WGPUBlendState){
                                   .color =
@@ -263,34 +306,30 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
                   .stripIndexFormat = WGPUIndexFormat_Undefined}
 
       });
+}
+void renderer_recreate_pipeline(Assets *assets, Renderer *renderer) {
+  assets_remove(assets, ShaderAsset, "shader/shader.wgsl");
+  ShaderAsset *shader_asset =
+      assets_fetch(assets, ShaderAsset, "shader/shader.wgsl");
 
-  float vertex_data[] = {-0.5, -0.5,  1.0, 0.0, 0.0,   0.5, -0.5, 0.0,
-                         1.0,  0.0,   0.0, 0.5, 1.0,   1.0, 0.0,  -0.55,
-                         -0.5, 1.0,   1.0, 0.0, -0.05, 0.5, 1.0,  0.0,
-                         1.0,  -0.55, 0.5, 0.0, 1.0,   1.0};
-  renderer->vertex_buffer_length = sizeof(vertex_data) / sizeof(float);
-  renderer->vertex_buffer = wgpuDeviceCreateBuffer(
+  WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
+      .chain =
+          (WGPUChainedStruct){.next = NULL,
+                              .sType = WGPUSType_ShaderModuleWGSLDescriptor},
+      .code = shader_asset->source};
+
+  WGPUShaderModule shader_module = wgpuDeviceCreateShaderModule(
       renderer->wgpu_device,
-      &(const WGPUBufferDescriptor){
-          .label = "vertex buffer",
-          .mappedAtCreation = false,
-          .nextInChain = NULL,
-          .size = renderer->vertex_buffer_length * sizeof(float),
-          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Vertex});
-  wgpuQueueWriteBuffer(queue, renderer->vertex_buffer, 0, vertex_data,
-                       renderer->vertex_buffer_length * sizeof(float));
+      &(const WGPUShaderModuleDescriptor){
+          .label = "shader_module",
+          .nextInChain = &shader_module_wgsl_descriptor.chain,
+          .hintCount = 0,
+          .hints = NULL});
 
-  return renderer;
-cleanup_surface:
-  wgpuSurfaceRelease(renderer->wgpu_surface);
-cleanup_adapter:
-  wgpuAdapterRelease(renderer->wgpu_adapter);
-cleanup_instance:
-  wgpuInstanceRelease(renderer->wgpu_instance);
-cleanup:
-  memory_free(renderer);
-err:
-  return NULL;
+  wgpuRenderPipelineRelease(renderer->pipeline);
+  renderer->pipeline =
+      create_render_pipeline(renderer->wgpu_device, shader_module,
+                             renderer->wgpu_render_surface_texture_format);
 }
 
 void renderer_destroy(Renderer *renderer) {

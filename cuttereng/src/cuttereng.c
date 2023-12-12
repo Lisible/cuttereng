@@ -61,6 +61,9 @@ void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
   case SDL_QUIT:
     event->type = EVT_QUIT;
     break;
+  case SDL_KEYDOWN:
+    event->type = EVT_KEYDOWN;
+    break;
   default:
     event->type = EVT_UNKNOWN;
     break;

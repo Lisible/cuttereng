@@ -24,6 +24,9 @@ void engine_handle_events(Engine *engine, Event *event) {
   case EVT_QUIT:
     engine->running = false;
     break;
+  case EVT_KEYDOWN:
+    renderer_recreate_pipeline(engine->assets, engine->renderer);
+    break;
   default:
     break;
   }

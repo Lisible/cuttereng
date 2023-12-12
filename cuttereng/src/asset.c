@@ -17,6 +17,18 @@ AssetStore *asset_store_new(AssetDestructor asset_destructor) {
   return asset_store;
 }
 
+void asset_store_set(AssetStore *asset_store, const char *key, void *asset) {
+  hash_table_set(asset_store->assets, key, asset);
+}
+
+void *asset_store_get(AssetStore *asset_store, const char *key) {
+  return hash_table_get(asset_store->assets, key);
+}
+
+void asset_store_remove(AssetStore *asset_store, const char *key) {
+  hash_table_remove(asset_store->assets, key);
+}
+
 void asset_store_destroy(AssetStore *asset_store) {
   hash_table_destroy(asset_store->assets);
   memory_free(asset_store);
@@ -63,10 +75,15 @@ void *assets_load_asset(Assets *assets, const char *asset_type,
     asset_store = hash_table_AssetStore_get(&assets->asset_stores, asset_type);
   }
 
-  hash_table_set(asset_store->assets, asset_path, asset);
+  asset_store_set(asset_store, asset_path, asset);
 
   LOG_DEBUG("Asset %s of type %s successfully loaded", asset_path, asset_type);
   return asset;
+}
+
+void assets_clear(Assets *assets) {
+  LOG_DEBUG("Clearing assets...");
+  hash_table_AssetStore_clear(&assets->asset_stores);
 }
 
 void *assets_fetch_(Assets *assets, const char *asset_type,
@@ -77,7 +94,7 @@ void *assets_fetch_(Assets *assets, const char *asset_type,
 
   void *asset = NULL;
   if (asset_store != NULL) {
-    asset = hash_table_get(asset_store->assets, asset_path);
+    asset = asset_store_get(asset_store, asset_path);
   }
 
   if (!asset) {
@@ -98,6 +115,14 @@ void assets_register_loader_(Assets *assets, const char *asset_type,
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type) {
   return hash_table_has(assets->loaders, asset_type);
+}
+
+void assets_remove_(Assets *assets, const char *asset_type,
+                    const char *asset_path) {
+  LOG_DEBUG("Removing asset %s of type %s", asset_path, asset_type);
+  AssetStore *asset_store =
+      hash_table_AssetStore_get(&assets->asset_stores, asset_type);
+  asset_store_remove(asset_store, asset_path);
 }
 
 void assets_destroy(Assets *assets) {

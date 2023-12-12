@@ -16,8 +16,13 @@ bool assets_is_loader_registered_for_type_(const Assets *assets,
 void *assets_fetch_(Assets *assets, const char *asset_type,
                     const char *asset_path);
 void assets_destroy(Assets *assets);
+void assets_remove_(Assets *assets, const char *asset_type,
+                    const char *asset_path);
+void assets_clear(Assets *assets);
 char *asset_read_file_to_string(const char *path);
 
+#define assets_remove(assets, asset_type, asset_path)                          \
+  assets_remove_(assets, #asset_type, asset_path)
 #define assets_fetch(assets, asset_type, asset_path)                           \
   (asset_type *)assets_fetch_(assets, #asset_type, asset_path)
 #define assets_register_loader(assets, asset_type, asset_loader,               \

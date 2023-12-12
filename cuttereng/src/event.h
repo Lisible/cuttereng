@@ -3,6 +3,7 @@
 
 typedef enum {
   EVT_QUIT,
+  EVT_KEYDOWN,
   EVT_UNKNOWN,
 } EventType;
 
