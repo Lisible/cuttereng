@@ -47,3 +47,5 @@ test_ecs = executable('test_ecs', 'tests/test_runner.c', 'tests/ecs.c', dependen
 test('test_ecs', test_ecs)
 test_asset = executable('test_asset', 'tests/test_runner.c', 'tests/asset.c', dependencies: [cuttereng_dep])
 test('test_asset', test_asset)
+test_vector= executable('test_vector', 'tests/test_runner.c', 'tests/math/vector.c', dependencies: [cuttereng_dep])
+test('test_vector', test_vector)
