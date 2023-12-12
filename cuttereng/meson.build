@@ -34,6 +34,7 @@ cuttereng_lib = library(
   'src/ecs/ecs.c',
   'src/asset.c',
   'src/renderer/renderer.c',
+  'src/renderer/shader.c',
   dependencies: cuttereng_deps,
 )
 

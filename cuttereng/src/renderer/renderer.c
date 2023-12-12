@@ -3,22 +3,8 @@
 #include "../asset.h"
 #include "../log.h"
 #include "../memory.h"
+#include "shader.h"
 #include <SDL2/SDL_syswm.h>
-
-typedef struct {
-  char *source;
-} ShaderAsset;
-
-void *shader_asset_loader(const char *path) {
-  ShaderAsset *shader_asset = memory_allocate(sizeof(ShaderAsset));
-  shader_asset->source = asset_read_file_to_string(path);
-  return shader_asset;
-}
-void shader_asset_destructor(void *asset) {
-  ShaderAsset *shader_asset = asset;
-  memory_free(shader_asset->source);
-  memory_free(shader_asset);
-}
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
                                   void *user_data) {
@@ -188,20 +174,8 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   ShaderAsset *shader_asset =
       assets_fetch(assets, ShaderAsset, "shader/shader.wgsl");
 
-  WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
-      .chain =
-          (WGPUChainedStruct){.next = NULL,
-                              .sType = WGPUSType_ShaderModuleWGSLDescriptor},
-      .code = shader_asset->source};
-
-  WGPUShaderModule shader_module = wgpuDeviceCreateShaderModule(
-      renderer->wgpu_device,
-      &(const WGPUShaderModuleDescriptor){
-          .label = "shader_module",
-          .nextInChain = &shader_module_wgsl_descriptor.chain,
-          .hintCount = 0,
-          .hints = NULL});
-
+  WGPUShaderModule shader_module = shader_create_wgpu_shader_module(
+      renderer->wgpu_device, "shader", shader_asset->source);
   renderer->pipeline = create_render_pipeline(
       renderer->wgpu_device, shader_module, surface_capabilities.formats[0]);
 
