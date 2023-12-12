@@ -1,31 +1,24 @@
 #include "renderer.h"
 #include "assert.h"
+#include "asset.h"
 #include "log.h"
 #include "memory.h"
 #include <SDL2/SDL_syswm.h>
 
-const char *SHADER_SOURCE =
-    "struct VertexInput { "
-    "@location(0) position: vec2<f32>,"
-    "@location(1) color: vec3<f32>,"
-    "}; "
-    "struct VertexOutput{ "
-    "@builtin(position) position: vec4<f32>,"
-    "@location(0) color: vec3<f32>,"
-    "}; "
-    "@vertex "
-    "fn vs_main(in: VertexInput) -> "
-    "VertexOutput {"
-    "    var out: VertexOutput;"
-    "    out.position = vec4<f32>(in.position, 0.0, 1.0);"
-    "    out.color = in.color;"
-    "    return out;"
-    "}"
-    ""
-    "@fragment "
-    "fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {"
-    "    return vec4<f32>(in.color, 1.0);"
-    "}";
+typedef struct {
+  char *source;
+} ShaderAsset;
+
+void *shader_asset_loader(const char *path) {
+  ShaderAsset *shader_asset = memory_allocate(sizeof(ShaderAsset));
+  shader_asset->source = asset_read_file_to_string(path);
+  return shader_asset;
+}
+void shader_asset_destructor(void *asset) {
+  ShaderAsset *shader_asset = asset;
+  memory_free(shader_asset->source);
+  memory_free(shader_asset);
+}
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
                                   void *user_data) {
@@ -96,7 +89,7 @@ WGPUDevice request_device(WGPUAdapter adapter,
   return user_data.device;
 }
 
-Renderer *renderer_new(SDL_Window *window) {
+Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   LOG_INFO("Initializing renderer...");
   Renderer *renderer = memory_allocate(sizeof(Renderer));
   if (!renderer)
@@ -184,11 +177,16 @@ Renderer *renderer_new(SDL_Window *window) {
       .alphaMode = surface_capabilities.alphaModes[0]};
   wgpuSurfaceConfigure(renderer->wgpu_surface, &wgpu_surface_configuration);
 
+  assets_register_loader(assets, ShaderAsset, shader_asset_loader,
+                         shader_asset_destructor);
+  ShaderAsset *shader_asset =
+      assets_fetch(assets, ShaderAsset, "shader/shader.wgsl");
+
   WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
       .chain =
           (WGPUChainedStruct){.next = NULL,
                               .sType = WGPUSType_ShaderModuleWGSLDescriptor},
-      .code = SHADER_SOURCE};
+      .code = shader_asset->source};
 
   WGPUShaderModule shader_module = wgpuDeviceCreateShaderModule(
       renderer->wgpu_device,

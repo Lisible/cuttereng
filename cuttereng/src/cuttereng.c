@@ -17,7 +17,7 @@ void cutter_bootstrap() {
   char *configuration_file_path = env_get_configuration_file_path();
   LOG_DEBUG("Configuration file path: %s", configuration_file_path);
   char *configuration_file_content =
-      read_file_to_string(configuration_file_path);
+      filesystem_read_file_to_string(configuration_file_path);
 
   Json *configuration_json = json_parse_from_str(configuration_file_content);
   if (!configuration_json)

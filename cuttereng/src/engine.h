@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_ENGINE_H
 #define CUTTERENG_ENGINE_H
 
+#include "asset.h"
 #include "common.h"
 #include "event.h"
 #include "json.h"
@@ -19,6 +20,7 @@ typedef struct {
 
 typedef struct {
   Renderer *renderer;
+  Assets *assets;
   const char *application_title;
   bool running;
 } Engine;

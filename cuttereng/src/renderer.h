@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_RENDERER_H
 #define CUTTERENG_RENDERER_H
 
+#include "asset.h"
 #include "webgpu/webgpu.h"
 #include <SDL.h>
 
@@ -14,7 +15,7 @@ typedef struct {
   size_t vertex_buffer_length;
 } Renderer;
 
-Renderer *renderer_new(SDL_Window *window);
+Renderer *renderer_new(SDL_Window *window, Assets *assets);
 void renderer_destroy(Renderer *renderer);
 void renderer_render(Renderer *renderer);
 

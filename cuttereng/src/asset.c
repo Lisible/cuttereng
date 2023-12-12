@@ -1,6 +1,11 @@
 #include "asset.h"
+#include "filesystem.h"
 #include "hash.h"
+#include "log.h"
 #include "memory.h"
+#include <string.h>
+
+#define ASSETS_BASE_PATH "assets/"
 
 typedef struct {
   HashTable *assets;
@@ -34,16 +39,24 @@ Assets *assets_new() {
 
 void *assets_load_asset(Assets *assets, const char *asset_type,
                         const char *asset_path) {
+  LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
   AssetLoader loader = hash_table_get(assets->loaders, asset_type);
   if (!loader) {
-    LOG_ERROR("No asset loader registered for asset type %s\n", asset_type);
+    LOG_ERROR("No asset loader registered for asset type %s", asset_type);
     return NULL;
   }
 
   void *asset = loader(asset_path);
+  if (!asset) {
+    LOG_ERROR("Could not load asset %s of type %s", asset_path, asset_type);
+    return NULL;
+  }
+
   AssetStore *asset_store =
       hash_table_AssetStore_get(&assets->asset_stores, asset_type);
   if (!asset_store) {
+    LOG_DEBUG("No asset store found for assets of type %s, creating it",
+              asset_type);
     hash_table_AssetStore_set(
         &assets->asset_stores, asset_type,
         asset_store_new(hash_table_get(assets->destructors, asset_type)));
@@ -51,20 +64,26 @@ void *assets_load_asset(Assets *assets, const char *asset_type,
   }
 
   hash_table_set(asset_store->assets, asset_path, asset);
+
+  LOG_DEBUG("Asset %s of type %s successfully loaded", asset_path, asset_type);
   return asset;
 }
 
 void *assets_fetch_(Assets *assets, const char *asset_type,
-                    const char *asset_name) {
+                    const char *asset_path) {
+  LOG_DEBUG("Fetching asset %s of type %s", asset_path, asset_type);
   AssetStore *asset_store =
       hash_table_AssetStore_get(&assets->asset_stores, asset_type);
 
   void *asset = NULL;
   if (asset_store != NULL) {
-    asset = hash_table_get(asset_store->assets, asset_name);
+    asset = hash_table_get(asset_store->assets, asset_path);
   }
+
   if (!asset) {
-    asset = assets_load_asset(assets, asset_type, asset_name);
+    LOG_DEBUG("Asset %s of type %s not found in Assets, trying to load it",
+              asset_path, asset_type);
+    asset = assets_load_asset(assets, asset_type, asset_path);
   }
 
   return asset;
@@ -86,4 +105,12 @@ void assets_destroy(Assets *assets) {
   hash_table_destroy(assets->loaders);
   hash_table_destroy(assets->destructors);
   memory_free(assets);
+}
+char *asset_read_file_to_string(const char *path) {
+  size_t effective_path_length = strlen(ASSETS_BASE_PATH) + strlen(path) + 1;
+  char *effective_path = memory_allocate(effective_path_length);
+  memset(effective_path, 0, effective_path_length);
+  strcat(effective_path, ASSETS_BASE_PATH);
+  strcat(effective_path, path);
+  return filesystem_read_file_to_string(effective_path);
 }

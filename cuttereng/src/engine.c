@@ -2,18 +2,21 @@
 #include "assert.h"
 #include "log.h"
 #include "memory.h"
+#include "src/asset.h"
 #include "src/renderer.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  SDL_Window *window) {
-  engine->renderer = renderer_new(window);
+  engine->assets = assets_new();
+  engine->renderer = renderer_new(window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
 }
 
 void engine_deinit(Engine *engine) {
+  assets_destroy(engine->assets);
   renderer_destroy(engine->renderer);
-  memory_free((void *)engine->application_title);
+  memory_free((char *)engine->application_title);
 }
 
 void engine_handle_events(Engine *engine, Event *event) {
@@ -25,9 +28,9 @@ void engine_handle_events(Engine *engine, Event *event) {
     break;
   }
 }
-void engine_update(Engine *engine) { LOG_INFO("update"); }
+void engine_update(Engine *engine) { LOG_TRACE("update"); }
 void engine_render(Engine *engine) {
-  LOG_INFO("render");
+  LOG_TRACE("render");
   renderer_render(engine->renderer);
 }
 bool engine_is_running(Engine *engine) { return engine->running; }
