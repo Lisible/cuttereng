@@ -16,8 +16,23 @@
     }                                                                          \
   }
 
-DEFINE_MAT4(int, mat4i)
-DEFINE_MAT4(float, mat4f)
-DEFINE_MAT4(double, mat4d)
+DEFINE_MAT4(int, mat4i);
+DEFINE_MAT4(float, mat4f);
+DEFINE_MAT4(double, mat4d);
+
+typedef mat4f mat4;
+typedef float mat4_value_type;
+
+// clang-format off
+static const mat4 OPENGL_TO_WGPU_MATRIX = {
+  1.0, 0.0, 0.0, 0.0,
+  0.0, 1.0, 0.0, 0.0,
+  0.0, 0.0, 0.5, 0.0,
+  0.0, 0.0, 0.5, 1.0
+};
+// clang-format on
+
+void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
+                             float near, float far);
 
 #endif // CUTTERENG_MATH_MATRIX_H
