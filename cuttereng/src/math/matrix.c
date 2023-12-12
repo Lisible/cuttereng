@@ -1,6 +1,10 @@
 #include "matrix.h"
 #include "radians.h"
 
+IMPL_MAT4(int, mat4i)
+IMPL_MAT4(float, mat4)
+IMPL_MAT4(double, mat4d)
+
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
   float top = near * tan((rad_from_degrees(fov_y_deg) / 2.0));

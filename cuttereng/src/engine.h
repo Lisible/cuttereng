@@ -21,12 +21,14 @@ typedef struct {
 typedef struct {
   Renderer *renderer;
   Assets *assets;
+  float current_time_secs;
   const char *application_title;
   bool running;
 } Engine;
 
 void engine_init(Engine *engine, const Configuration *config,
                  SDL_Window *window);
+void engine_set_current_time(Engine *engine, float current_time_secs);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
 void engine_update(Engine *engine);

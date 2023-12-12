@@ -1,9 +1,11 @@
 #include "renderer.h"
 #include "../assert.h"
 #include "../asset.h"
+#include "../camera.h"
 #include "../log.h"
 #include "../memory.h"
 #include "shader.h"
+#include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
@@ -77,9 +79,11 @@ WGPUDevice request_device(WGPUAdapter adapter,
 
 WGPURenderPipeline
 create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
-                       WGPUTextureFormat color_target_format);
+                       WGPUTextureFormat color_target_format,
+                       WGPUBindGroupLayout bind_group_layout);
 
-Renderer *renderer_new(SDL_Window *window, Assets *assets) {
+Renderer *renderer_new(SDL_Window *window, Assets *assets,
+                       float current_time_secs) {
   LOG_INFO("Initializing renderer...");
   Renderer *renderer = memory_allocate(sizeof(Renderer));
   if (!renderer)
@@ -121,7 +125,11 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   WGPURequiredLimits required_limits = {0};
   required_limits.limits.maxVertexAttributes = 2;
   required_limits.limits.maxVertexBuffers = 1;
-  required_limits.limits.maxBufferSize = 6 * 5 * sizeof(float);
+  required_limits.limits.maxBindGroups = 1;
+  required_limits.limits.maxUniformBuffersPerShaderStage = 1;
+  required_limits.limits.maxBindingsPerBindGroup = 1;
+  required_limits.limits.maxUniformBufferBindingSize = sizeof(CommonUniforms);
+  required_limits.limits.maxBufferSize = 128;
   required_limits.limits.maxVertexBufferArrayStride = 5 * sizeof(float);
   required_limits.limits.maxInterStageShaderComponents = 3;
   required_limits.limits.minStorageBufferOffsetAlignment =
@@ -176,8 +184,67 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
 
   WGPUShaderModule shader_module = shader_create_wgpu_shader_module(
       renderer->wgpu_device, "shader", shader_asset->source);
+
+  Camera camera;
+  camera_init_perspective(&camera, 45.0, 800.0 / 600.0, 0.1, 100.0);
+  memcpy(renderer->common_uniforms.projection_matrix, camera.projection_matrix,
+         16 * sizeof(mat4_value_type));
+  renderer->common_uniforms.current_time_secs = current_time_secs;
+
+  renderer->common_uniforms_buffer = wgpuDeviceCreateBuffer(
+      renderer->wgpu_device,
+      &(const WGPUBufferDescriptor){.label = "common_uniforms_buffer",
+                                    .size = sizeof(CommonUniforms),
+                                    .usage = WGPUBufferUsage_CopyDst |
+                                             WGPUBufferUsage_Uniform,
+                                    .mappedAtCreation = false});
+  wgpuQueueWriteBuffer(queue, renderer->common_uniforms_buffer, 0,
+                       &renderer->common_uniforms, sizeof(CommonUniforms));
+  renderer->common_uniforms_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
+      renderer->wgpu_device,
+      &(const WGPUBindGroupLayoutDescriptor){
+          .label = "common_uniforms_bind_group_layout",
+          .entryCount = 1,
+          .entries = &(const WGPUBindGroupLayoutEntry){
+              .binding = 0,
+              .buffer =
+                  (WGPUBufferBindingLayout){
+                      .type = WGPUBufferBindingType_Uniform,
+                      .minBindingSize = sizeof(CommonUniforms),
+                      .hasDynamicOffset = false},
+              .sampler =
+                  (WGPUSamplerBindingLayout){
+                      .type = WGPUSamplerBindingType_Undefined},
+              .storageTexture =
+                  (WGPUStorageTextureBindingLayout){
+                      .access = WGPUStorageTextureAccess_Undefined,
+                      .format = WGPUTextureFormat_Undefined,
+                      .viewDimension = WGPUTextureViewDimension_Undefined,
+                  },
+              .texture =
+                  (WGPUTextureBindingLayout){
+                      .multisampled = false,
+                      .sampleType = WGPUTextureSampleType_Undefined,
+                      .viewDimension = WGPUTextureViewDimension_Undefined},
+              .visibility = WGPUShaderStage_Vertex}});
+  renderer->common_uniforms_bind_group = wgpuDeviceCreateBindGroup(
+      renderer->wgpu_device,
+      &(const WGPUBindGroupDescriptor){
+          .label = "common_uniforms_bind_group",
+          .layout = renderer->common_uniforms_bind_group_layout,
+          .entryCount = 1,
+          .entries =
+              &(const WGPUBindGroupEntry){.binding = 0,
+                                          .buffer =
+                                              renderer->common_uniforms_buffer,
+                                          .offset = 0,
+                                          .size = sizeof(CommonUniforms)}
+
+      });
+
   renderer->pipeline = create_render_pipeline(
-      renderer->wgpu_device, shader_module, surface_capabilities.formats[0]);
+      renderer->wgpu_device, shader_module, surface_capabilities.formats[0],
+      renderer->common_uniforms_bind_group_layout);
 
   float vertex_data[] = {-0.5, -0.5,  1.0, 0.0, 0.0,   0.5, -0.5, 0.0,
                          1.0,  0.0,   0.0, 0.5, 1.0,   1.0, 0.0,  -0.55,
@@ -187,7 +254,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets) {
   renderer->vertex_buffer = wgpuDeviceCreateBuffer(
       renderer->wgpu_device,
       &(const WGPUBufferDescriptor){
-          .label = "vertex buffer",
+          .label = "vertex_buffer",
           .mappedAtCreation = false,
           .nextInChain = NULL,
           .size = renderer->vertex_buffer_length * sizeof(float),
@@ -210,7 +277,8 @@ err:
 
 WGPURenderPipeline
 create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
-                       WGPUTextureFormat color_target_format) {
+                       WGPUTextureFormat color_target_format,
+                       WGPUBindGroupLayout common_uniforms_bind_group_layout) {
 
   WGPUVertexAttribute vertex_attributes[] = {
       {.format = WGPUVertexFormat_Float32x2, .offset = 0, .shaderLocation = 0},
@@ -223,12 +291,18 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
       .arrayStride = 5 * sizeof(float),
       .stepMode = WGPUVertexStepMode_Vertex};
 
+  WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
+      device, &(const WGPUPipelineLayoutDescriptor){
+                  .label = "pipeline_layout",
+                  .bindGroupLayouts = &common_uniforms_bind_group_layout,
+                  .bindGroupLayoutCount = 1});
+
   return wgpuDeviceCreateRenderPipeline(
       device,
       &(WGPURenderPipelineDescriptor){
           .label = "pipeline",
           .nextInChain = NULL,
-          .layout = NULL,
+          .layout = pipeline_layout,
           .vertex = (WGPUVertexState){.nextInChain = NULL,
                                       .bufferCount = 1,
                                       .buffers = &vertex_buffer_layout,
@@ -302,12 +376,15 @@ void renderer_recreate_pipeline(Assets *assets, Renderer *renderer) {
   wgpuRenderPipelineRelease(renderer->pipeline);
   renderer->pipeline =
       create_render_pipeline(renderer->wgpu_device, shader_module,
-                             renderer->wgpu_render_surface_texture_format);
+                             renderer->wgpu_render_surface_texture_format,
+                             renderer->common_uniforms_bind_group_layout);
 }
 
 void renderer_destroy(Renderer *renderer) {
   ASSERT(renderer != NULL);
 
+  wgpuBufferDestroy(renderer->vertex_buffer);
+  wgpuBufferRelease(renderer->vertex_buffer);
   wgpuDeviceRelease(renderer->wgpu_device);
   wgpuSurfaceRelease(renderer->wgpu_surface);
   wgpuAdapterRelease(renderer->wgpu_adapter);
@@ -337,7 +414,7 @@ void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window) {
   renderer->wgpu_surface = wgpu_surface;
 }
 
-void renderer_render(Renderer *renderer) {
+void renderer_render(Renderer *renderer, float current_time_secs) {
   WGPUSurfaceTexture surface_texture;
   wgpuSurfaceGetCurrentTexture(renderer->wgpu_surface, &surface_texture);
   switch (surface_texture.status) {
@@ -357,6 +434,11 @@ void renderer_render(Renderer *renderer) {
   }
   WGPUTextureView surface_texture_view =
       wgpuTextureCreateView(surface_texture.texture, NULL);
+
+  WGPUQueue queue = wgpuDeviceGetQueue(renderer->wgpu_device);
+  renderer->common_uniforms.current_time_secs = current_time_secs;
+  wgpuQueueWriteBuffer(queue, renderer->common_uniforms_buffer, 0,
+                       &renderer->common_uniforms, sizeof(CommonUniforms));
 
   WGPUCommandEncoderDescriptor command_encoder_descriptor = {
       .nextInChain = NULL, .label = "command_encoder"};
@@ -381,6 +463,8 @@ void renderer_render(Renderer *renderer) {
   wgpuRenderPassEncoderSetVertexBuffer(
       render_pass_encoder, 0, renderer->vertex_buffer, 0,
       renderer->vertex_buffer_length * sizeof(float));
+  wgpuRenderPassEncoderSetBindGroup(
+      render_pass_encoder, 0, renderer->common_uniforms_bind_group, 0, NULL);
   wgpuRenderPassEncoderDraw(render_pass_encoder,
                             renderer->vertex_buffer_length / 5, 1, 0, 0);
   wgpuRenderPassEncoderEnd(render_pass_encoder);
@@ -390,7 +474,6 @@ void renderer_render(Renderer *renderer) {
   WGPUCommandBuffer command_buffer =
       wgpuCommandEncoderFinish(command_encoder, &command_buffer_descriptor);
 
-  WGPUQueue queue = wgpuDeviceGetQueue(renderer->wgpu_device);
   wgpuQueueSubmit(queue, 1, &command_buffer);
   wgpuSurfacePresent(renderer->wgpu_surface);
 

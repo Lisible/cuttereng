@@ -41,6 +41,7 @@ void cutter_bootstrap() {
       event_from_sdl_event(&sdl_event, &event);
       engine_handle_events(&engine, &event);
     }
+    engine_set_current_time(&engine, SDL_GetTicks() / 1000.f);
     engine_update(&engine);
     engine_render(&engine);
   }

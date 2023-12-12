@@ -35,6 +35,7 @@ void asset_store_destroy(AssetStore *asset_store) {
 }
 
 DefineHashTableOf(AssetStore, asset_store_destroy);
+
 struct Assets {
   HashTable *loaders;
   HashTable *destructors;

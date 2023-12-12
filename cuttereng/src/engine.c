@@ -8,7 +8,8 @@
 void engine_init(Engine *engine, const Configuration *configuration,
                  SDL_Window *window) {
   engine->assets = assets_new();
-  engine->renderer = renderer_new(window, engine->assets);
+  engine->renderer =
+      renderer_new(window, engine->assets, engine->current_time_secs);
   engine->application_title = configuration->application_title;
   engine->running = true;
 }
@@ -31,11 +32,17 @@ void engine_handle_events(Engine *engine, Event *event) {
     break;
   }
 }
+void engine_set_current_time(Engine *engine, float current_time_secs) {
+  engine->current_time_secs = current_time_secs;
+}
+
 void engine_update(Engine *engine) { LOG_TRACE("update"); }
+
 void engine_render(Engine *engine) {
   LOG_TRACE("render");
-  renderer_render(engine->renderer);
+  renderer_render(engine->renderer, engine->current_time_secs);
 }
+
 bool engine_is_running(Engine *engine) { return engine->running; }
 
 bool configuration_from_json(Json *configuration_json,

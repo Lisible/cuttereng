@@ -2,8 +2,15 @@
 #define CUTTERENG_RENDERER_RENDERER_H
 
 #include "../asset.h"
+#include "../camera.h"
 #include <SDL.h>
 #include <webgpu/webgpu.h>
+
+typedef struct {
+  mat4 projection_matrix;
+  float current_time_secs;
+  float _pad[15];
+} CommonUniforms;
 
 typedef struct {
   WGPUInstance wgpu_instance;
@@ -14,12 +21,18 @@ typedef struct {
   WGPURenderPipeline pipeline;
   WGPUBuffer vertex_buffer;
   size_t vertex_buffer_length;
+
+  CommonUniforms common_uniforms;
+  WGPUBuffer common_uniforms_buffer;
+  WGPUBindGroupLayout common_uniforms_bind_group_layout;
+  WGPUBindGroup common_uniforms_bind_group;
 } Renderer;
 
-Renderer *renderer_new(SDL_Window *window, Assets *assets);
+Renderer *renderer_new(SDL_Window *window, Assets *assets,
+                       float current_time_secs);
 void renderer_recreate_pipeline(Assets *assets, Renderer *renderer);
 void renderer_destroy(Renderer *renderer);
-void renderer_render(Renderer *renderer);
+void renderer_render(Renderer *renderer, float current_time_secs);
 
 void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window);
 

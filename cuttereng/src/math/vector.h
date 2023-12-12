@@ -8,6 +8,13 @@
     T z;                                                                       \
   } name;                                                                      \
                                                                                \
+  void name##_add(name *lhs, const name *rhs);                                 \
+  void name##_sub(name *lhs, const name *rhs);                                 \
+  void name##_mul_scalar(name *lhs, T rhs);                                    \
+  void name##_div_scalar(name *lhs, T rhs);                                    \
+  void name##_neg(name *v);
+
+#define IMPL_V3(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \

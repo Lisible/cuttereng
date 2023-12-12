@@ -1,9 +1,13 @@
 #ifndef CUTTERENG_MATH_MATRIX_H
 #define CUTTERENG_MATH_MATRIX_H
+
 #include "../common.h"
 
 #define DEFINE_MAT4(T, name)                                                   \
   typedef T name[16];                                                          \
+  void name##_mul(name lhs, name rhs, name out);
+
+#define IMPL_MAT4(T, name)                                                     \
   void name##_mul(name lhs, name rhs, name out) {                              \
     static const size_t COLS = 4;                                              \
     for (int j = 0; j < 4; j++) {                                              \
@@ -16,11 +20,10 @@
     }                                                                          \
   }
 
-DEFINE_MAT4(int, mat4i);
-DEFINE_MAT4(float, mat4f);
-DEFINE_MAT4(double, mat4d);
+DEFINE_MAT4(int, mat4i)
+DEFINE_MAT4(float, mat4)
+DEFINE_MAT4(double, mat4d)
 
-typedef mat4f mat4;
 typedef float mat4_value_type;
 
 // clang-format off
