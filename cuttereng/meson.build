@@ -49,3 +49,5 @@ test_asset = executable('test_asset', 'tests/test_runner.c', 'tests/asset.c', de
 test('test_asset', test_asset)
 test_vector= executable('test_vector', 'tests/test_runner.c', 'tests/math/vector.c', dependencies: [cuttereng_dep])
 test('test_vector', test_vector)
+test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix.c', dependencies: [cuttereng_dep])
+test('test_matrix', test_matrix)
