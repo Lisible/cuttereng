@@ -36,12 +36,15 @@ cuttereng_lib = library(
   'src/camera.c',
   'src/math/vector.c',
   'src/math/matrix.c',
+  'src/math/quaternion.c',
   'src/renderer/renderer.c',
   'src/renderer/shader.c',
+  'src/renderer/mesh.c',
+  'src/renderer/transform.c',
   dependencies: cuttereng_deps,
 )
 
-cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: cuttereng_lib)
+cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: [cuttereng_lib], dependencies: [wgpu_native_dep])
 
 test_json = executable('test_json', 'tests/test_runner.c', 'tests/json.c', dependencies: [cuttereng_dep])
 test('test_json', test_json)
@@ -55,3 +58,5 @@ test_vector= executable('test_vector', 'tests/test_runner.c', 'tests/math/vector
 test('test_vector', test_vector)
 test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix.c', dependencies: [cuttereng_dep])
 test('test_matrix', test_matrix)
+test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
+test('test_mesh', test_mesh)

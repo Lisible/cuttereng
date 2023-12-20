@@ -25,4 +25,25 @@ void t_mat_mul() {
   ASSERT_EQ(c[15], 596);
 }
 
-TEST_SUITE(TEST(t_mat_mul));
+void t_mat4_transpose() {
+  mat4i a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  mat4i_transpose(a);
+  ASSERT_EQ(a[0], 1);
+  ASSERT_EQ(a[1], 5);
+  ASSERT_EQ(a[2], 9);
+  ASSERT_EQ(a[3], 13);
+  ASSERT_EQ(a[4], 2);
+  ASSERT_EQ(a[5], 6);
+  ASSERT_EQ(a[6], 10);
+  ASSERT_EQ(a[7], 14);
+  ASSERT_EQ(a[8], 3);
+  ASSERT_EQ(a[9], 7);
+  ASSERT_EQ(a[10], 11);
+  ASSERT_EQ(a[11], 15);
+  ASSERT_EQ(a[12], 4);
+  ASSERT_EQ(a[13], 8);
+  ASSERT_EQ(a[14], 12);
+  ASSERT_EQ(a[15], 16);
+}
+
+TEST_SUITE(TEST(t_mat_mul), TEST(t_mat4_transpose));
