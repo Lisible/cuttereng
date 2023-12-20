@@ -1,11 +1,11 @@
 #include "renderer.h"
 #include "../assert.h"
 #include "../log.h"
+#include "../math/matrix.h"
 #include "../math/quaternion.h"
 #include "../memory.h"
+#include "../transform.h"
 #include "shader.h"
-#include "src/math/matrix.h"
-#include "src/renderer/transform.h"
 #include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 #include <math.h>

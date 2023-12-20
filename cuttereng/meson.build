@@ -40,7 +40,7 @@ cuttereng_lib = library(
   'src/renderer/renderer.c',
   'src/renderer/shader.c',
   'src/renderer/mesh.c',
-  'src/renderer/transform.c',
+  'src/transform.c',
   dependencies: cuttereng_deps,
 )
 

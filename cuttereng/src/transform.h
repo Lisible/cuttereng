@@ -1,8 +1,8 @@
 #ifndef CUTTERENG_RENDERER_TRANSFORM_H
 #define CUTTERENG_RENDERER_TRANSFORM_H
 
-#include "../math/quaternion.h"
-#include "../math/vector.h"
+#include "math/quaternion.h"
+#include "math/vector.h"
 
 typedef struct {
   v3f position;
