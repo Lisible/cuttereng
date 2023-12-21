@@ -60,3 +60,5 @@ test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix
 test('test_matrix', test_matrix)
 test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
 test('test_mesh', test_mesh)
+test_vec = executable('test_vec', 'tests/test_runner.c', 'tests/vec.c', dependencies: [cuttereng_dep])
+test('test_vec', test_vec)
