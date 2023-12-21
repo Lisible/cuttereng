@@ -51,12 +51,12 @@
     vec->capacity = new_capacity;                                              \
   }                                                                            \
   void name##_push_back(name *vec, T value) {                                  \
-    intvec_reserve(vec, vec->length + 1);                                      \
+    name##_reserve(vec, vec->length + 1);                                      \
     vec->data[vec->length] = value;                                            \
     vec->length++;                                                             \
   }                                                                            \
   void name##_append(name *vec, T *values, size_t count) {                     \
-    intvec_reserve(vec, vec->length + count);                                  \
+    name##_reserve(vec, vec->length + count);                                  \
     memcpy(vec->data + vec->length, values, count * sizeof(T));                \
     vec->length += count;                                                      \
   }                                                                            \
