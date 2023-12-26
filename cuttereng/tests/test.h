@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TEST_DATA_PATH "../cuttereng/tests/tests_data/"
+
 typedef void (*TestFn)(void);
 
 typedef struct {

@@ -15,7 +15,7 @@
   void name##_deinit(name *vec);                                               \
   void name##_reserve(name *vec, size_t length_to_reserve);                    \
   void name##_push_back(name *vec, T value);                                   \
-  void name##_append(name *vec, T *values, size_t count);                      \
+  void name##_append(name *vec, const T *values, size_t count);                \
   size_t name##_length(name *vec);                                             \
   size_t name##_capacity(name *vec);
 
@@ -55,7 +55,7 @@
     vec->data[vec->length] = value;                                            \
     vec->length++;                                                             \
   }                                                                            \
-  void name##_append(name *vec, T *values, size_t count) {                     \
+  void name##_append(name *vec, const T *values, size_t count) {               \
     name##_reserve(vec, vec->length + count);                                  \
     memcpy(vec->data + vec->length, values, count * sizeof(T));                \
     vec->length += count;                                                      \

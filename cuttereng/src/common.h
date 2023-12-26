@@ -7,9 +7,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define UNIMPLEMENTED                                                          \
+#define MAX(x, y) (((x) > (y)) ? (x) : (y))
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+#define UNIMPLEMENTED(msg)                                                     \
   do {                                                                         \
-    LOG_ERROR("Reached unimplemented code in function %s()", __func__);        \
+    LOG_ERROR("Reached unimplemented code in function %s:%d %s()\n" msg,       \
+              __FILE__, __LINE__, __func__);                                   \
     exit(1);                                                                   \
   } while (0)
 

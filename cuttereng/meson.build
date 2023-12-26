@@ -34,12 +34,17 @@ cuttereng_lib = library(
   'src/ecs/ecs.c',
   'src/asset.c',
   'src/camera.c',
+  'src/bytes.c',
   'src/math/vector.c',
   'src/math/matrix.c',
   'src/math/quaternion.c',
   'src/renderer/renderer.c',
   'src/renderer/shader.c',
   'src/renderer/mesh.c',
+  'src/zlib.c',
+  'src/deflate.c',
+  'src/bitstream.c',
+  'src/png.c',
   'src/transform.c',
   dependencies: cuttereng_deps,
 )
@@ -60,5 +65,9 @@ test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix
 test('test_matrix', test_matrix)
 test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
 test('test_mesh', test_mesh)
+test_png = executable('test_png', 'tests/test_runner.c', 'tests/png.c', dependencies: [cuttereng_dep])
+test('test_png', test_png)
 test_vec = executable('test_vec', 'tests/test_runner.c', 'tests/vec.c', dependencies: [cuttereng_dep])
 test('test_vec', test_vec)
+test_bitstream = executable('test_bitstream', 'tests/test_runner.c', 'tests/bitstream.c', dependencies: [cuttereng_dep])
+test('test_bitstream', test_bitstream)
