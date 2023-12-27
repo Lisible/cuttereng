@@ -7,8 +7,9 @@
 #include "memory.h"
 #include "vec.h"
 #include "zlib.h"
-
+#include <math.h>
 #include <string.h>
+
 static const int CHUNK_LENGTH_SIZE = 4;
 static const int CHUNK_TYPE_SIZE = 4;
 static const int CHUNK_CRC_SIZE = 4;
@@ -27,7 +28,34 @@ typedef enum {
   ChunkType_Unknown
 } ChunkType;
 
-typedef enum { ColourType_Truecolour = 2, ColourType_Unknown } ColourType;
+typedef enum {
+  ColourType_Truecolour = 2,
+  ColourType_TruecolourWithAlpha = 3,
+  ColourType_Unknown
+} ColourType;
+
+int colour_type_sample_count(ColourType colour_type) {
+  switch (colour_type) {
+  case ColourType_TruecolourWithAlpha:
+    return 4;
+  case ColourType_Truecolour:
+  default:
+    return 3;
+  }
+}
+
+PixelFormat pixel_format_from_colour_type_and_bit_depth(ColourType colour_type,
+                                                        u8 bit_depth) {
+  if (bit_depth != 8) {
+    return PixelFormat_Unknown;
+  }
+
+  if (colour_type == ColourType_TruecolourWithAlpha) {
+    return PixelFormat_R8G8B8A8;
+  }
+
+  return PixelFormat_R8G8B8;
+}
 
 typedef struct {
   size_t length;
@@ -162,9 +190,19 @@ bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
 
   image->width = width;
   image->height = height;
-  image->bit_depth = bit_depth;
+  image->pixel_format =
+      pixel_format_from_colour_type_and_bit_depth(colour_type, bit_depth);
+  if (image->pixel_format == PixelFormat_Unknown) {
+    LOG_PNG_DECODER_ERROR(
+        "Unsupported pixel format, colour_type: %d, bit_depth: %d", colour_type,
+        bit_depth);
+    return false;
+  }
+  image->bytes_per_pixel =
+      bit_depth / 8 * colour_type_sample_count(colour_type);
 
-  // TODO compute chunk crc and check it (maybe behind an option/build flag?)
+  // TODO compute chunk crc and check it (maybe behind
+  // an option/build flag?)
   skip_u32(context);
 
   return true;
@@ -198,6 +236,72 @@ void parse_idat_chunk(ParsingContext *context, u8vec *compressed_data) {
   skip_u32(context);
 }
 
+u8 none_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  return x;
+}
+u8 sub_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  return x + recon_a;
+}
+u8 up_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  return x + recon_b;
+}
+u8 average_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  return x + floor((recon_a + recon_b) / 2.f);
+}
+int paeth_predictor(int a, int b, int c) {
+  int p = a + b - c;
+  int pa = abs(p - a);
+  int pb = abs(p - b);
+  int pc = abs(p - c);
+  int pr;
+  if (pa <= pb && pa <= pc) {
+    pr = a;
+  } else if (pb <= pc) {
+    pr = b;
+  } else {
+    pr = c;
+  }
+
+  return pr;
+}
+u8 paeth_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  return x + paeth_predictor(recon_a, recon_b, recon_c);
+}
+typedef u8 (*ReconstructionFn)(u8, u8, u8, u8);
+static const ReconstructionFn reconstruction_functions[] = {
+    none_reconstruction_function, sub_reconstruction_function,
+    up_reconstruction_function, average_reconstruction_function,
+    paeth_reconstruction_function};
+
+void apply_reconstruction_functions(Image *image,
+                                    const u8 *decompressed_data_buffer) {
+  size_t bytes_per_pixel = image->bytes_per_pixel;
+  for (int scanline = 0; scanline < image->height; scanline++) {
+    int scanline_start_offset = scanline * (1 + image->width * bytes_per_pixel);
+    u8 filter_type = decompressed_data_buffer[scanline_start_offset];
+    int scanline_data_offset = scanline_start_offset + 1;
+    for (int byte = 0; byte < image->width * bytes_per_pixel; byte++) {
+      int a = 0;
+      if (byte >= bytes_per_pixel) {
+        a = image->data[scanline * image->width * bytes_per_pixel + byte -
+                        bytes_per_pixel];
+      }
+      int b = 0;
+      if (scanline > 0) {
+        b = image->data[(scanline - 1) * image->width * bytes_per_pixel + byte];
+      }
+      int c = 0;
+      if (scanline > 0 && byte >= bytes_per_pixel) {
+        c = image->data[(scanline - 1) * image->width * bytes_per_pixel + byte -
+                        bytes_per_pixel];
+      }
+      int x = decompressed_data_buffer[scanline_data_offset + byte];
+      image->data[scanline * image->width * bytes_per_pixel + byte] =
+          reconstruction_functions[filter_type](a, b, c, x);
+    }
+  }
+}
+
 Image *png_load(const u8 *datastream) {
   ASSERT(datastream);
 
@@ -218,9 +322,8 @@ Image *png_load(const u8 *datastream) {
   }
 
   // NOTE: Bit depth might not be equal to the size of a pixel
-  size_t image_data_size = image->width * image->height * image->bit_depth;
-  image->data =
-      memory_allocate_array(image->width * image->height, image->bit_depth);
+  image->data = memory_allocate_array(image->width * image->height,
+                                      image->bytes_per_pixel);
   if (!image->data) {
     goto cleanup_image;
   }
@@ -235,12 +338,20 @@ Image *png_load(const u8 *datastream) {
     next_chunk_type = peek_next_chunk_type(&context);
   }
 
-  if (read_zlib_compressed_data(compressed_data.data, image->data,
-                                image_data_size) != ZlibResult_Success) {
+  u8 *decompressed_data_buffer = memory_allocate_array(
+      image->width * image->height, image->bytes_per_pixel);
+  u8 decompressed_data_buffer_size =
+      image->width * image->height * image->bytes_per_pixel;
+  if (read_zlib_compressed_data(compressed_data.data, decompressed_data_buffer,
+                                decompressed_data_buffer_size) !=
+      ZlibResult_Success) {
     LOG_PNG_DECODER_ERROR("Couldn't read zlib compressed data");
     goto cleanup_image_data;
   }
 
+  apply_reconstruction_functions(image, decompressed_data_buffer);
+
+  memory_free(decompressed_data_buffer);
   u8vec_deinit(&compressed_data);
   skip_unsupported_chunks(&context);
   next_chunk_type = peek_next_chunk_type(&context);

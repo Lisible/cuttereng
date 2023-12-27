@@ -134,7 +134,7 @@ void deflate_decompress_(Bitstream *bitstream,
 size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
                           const size_t output_buffer_size) {
   ASSERT(compressed_data_set != NULL);
-  LOG_DEBUG("Decompressing deflate data");
+  LOG_TRACE("Decompressing deflate data");
 
   Bitstream bitstream;
   bitstream_init(&bitstream, compressed_data_set, 0);

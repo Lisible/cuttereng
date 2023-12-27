@@ -9,7 +9,7 @@ ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
   ASSERT(zlib_compressed_data != NULL);
   ASSERT(out_decompressed_data != NULL);
 
-  LOG_DEBUG("Reading zlib compressed data...");
+  LOG_TRACE("Reading zlib compressed data...");
   u8 cmf = zlib_compressed_data[0];
   u8 cm = cmf & 0x0f;
   LOG_TRACE("cm: %x", cm);
@@ -37,7 +37,7 @@ ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
 
   u32 adler_checksum = u32_from_bytes(zlib_compressed_data +
                                       COMPRESSED_DATA_OFFSET + byte_offset + 1);
-  LOG_DEBUG("Adler checksum: %d", adler_checksum);
+  LOG_TRACE("Adler checksum: %d", adler_checksum);
 
-  return true;
+  return ZlibResult_Success;
 }

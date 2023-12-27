@@ -2,13 +2,7 @@
 #define CUTTERENG_PNG_H
 
 #include "common.h"
-
-typedef struct {
-  u32 width;
-  u32 height;
-  u8 bit_depth;
-  u8 *data;
-} Image;
+#include "image.h"
 
 Image *png_load(const u8 *datastream);
 
