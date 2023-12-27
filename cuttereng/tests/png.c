@@ -3,8 +3,8 @@
 #include <filesystem.h>
 #include <png.h>
 
-void load_simple_png() {
-  const char *file_content =
+void t_load_simple_png() {
+  char *file_content =
       filesystem_read_file_to_string(TEST_DATA_PATH "png/1.png");
 
   Image *img = png_load((u8 *)file_content);
@@ -36,6 +36,9 @@ void load_simple_png() {
       ASSERT_EQ(img->data[i + 2], 0xFF);
     }
   }
+
+  image_destroy(img);
+  free(file_content);
 }
 
-TEST_SUITE(TEST(load_simple_png))
+TEST_SUITE(TEST(t_load_simple_png))

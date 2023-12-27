@@ -17,4 +17,6 @@ typedef struct {
   u8 *data;
 } Image;
 
+void image_destroy(Image *image);
+
 #endif // CUTTERENG_IMAGE_H
