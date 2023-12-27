@@ -25,6 +25,9 @@ typedef struct {
   WGPUSurface wgpu_surface;
   WGPUDevice wgpu_device;
   WGPUTextureFormat wgpu_render_surface_texture_format;
+  WGPUTextureFormat depth_texture_format;
+  WGPUTexture depth_texture;
+  WGPUTextureView depth_texture_view;
   WGPURenderPipeline pipeline;
 
   CommonUniforms common_uniforms;

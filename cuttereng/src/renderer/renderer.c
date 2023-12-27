@@ -137,7 +137,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
   required_limits.limits.maxBufferSize = 160;
   required_limits.limits.maxVertexBufferArrayStride = sizeof(Vertex);
   required_limits.limits.maxInterStageShaderComponents = 3;
-  required_limits.limits.maxTextureDimension2D = 16;
+  required_limits.limits.maxTextureDimension2D = 800;
   required_limits.limits.maxTextureArrayLayers = 1;
   required_limits.limits.maxSampledTexturesPerShaderStage = 1;
   required_limits.limits.maxSamplersPerShaderStage = 1;
@@ -435,6 +435,27 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
 
       });
 
+  renderer->depth_texture_format = WGPUTextureFormat_Depth24Plus;
+  renderer->depth_texture = wgpuDeviceCreateTexture(
+      renderer->wgpu_device, &(const WGPUTextureDescriptor){
+                                 .dimension = WGPUTextureDimension_2D,
+                                 .format = renderer->depth_texture_format,
+                                 .mipLevelCount = 1,
+                                 .sampleCount = 1,
+                                 .size = {800, 600, 1},
+                                 .usage = WGPUTextureUsage_RenderAttachment,
+                                 .viewFormatCount = 1,
+                                 .viewFormats = &renderer->depth_texture_format,
+                             });
+  renderer->depth_texture_view = wgpuTextureCreateView(
+      renderer->depth_texture, &(const WGPUTextureViewDescriptor){
+                                   .aspect = WGPUTextureAspect_DepthOnly,
+                                   .baseArrayLayer = 0,
+                                   .arrayLayerCount = 1,
+                                   .baseMipLevel = 0,
+                                   .mipLevelCount = 1,
+                                   .dimension = WGPUTextureViewDimension_2D,
+                                   .format = renderer->depth_texture_format});
   renderer->pipeline = create_render_pipeline(
       renderer->wgpu_device, shader_module, surface_capabilities.formats[0],
       renderer->common_uniforms_bind_group_layout,
@@ -526,7 +547,21 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
                   .targetCount = 1,
                   .entryPoint = "fs_main",
                   .module = shader_module},
-          .depthStencil = NULL,
+          .depthStencil =
+              &(const WGPUDepthStencilState){
+                  .depthCompare = WGPUCompareFunction_Less,
+                  .depthWriteEnabled = true,
+                  .format = WGPUTextureFormat_Depth24Plus,
+                  .stencilWriteMask = 0,
+                  .stencilReadMask = 0,
+                  .stencilBack = {.compare = WGPUCompareFunction_Always,
+                                  .failOp = WGPUStencilOperation_Keep,
+                                  .depthFailOp = WGPUStencilOperation_Keep,
+                                  .passOp = WGPUStencilOperation_Keep},
+                  .stencilFront = {.compare = WGPUCompareFunction_Always,
+                                   .failOp = WGPUStencilOperation_Keep,
+                                   .depthFailOp = WGPUStencilOperation_Keep,
+                                   .passOp = WGPUStencilOperation_Keep}},
           .multisample =
               (WGPUMultisampleState){.nextInChain = NULL,
                                      .count = 1,
@@ -572,6 +607,9 @@ void renderer_recreate_pipeline(Assets *assets, Renderer *renderer) {
 void renderer_destroy(Renderer *renderer) {
   ASSERT(renderer != NULL);
 
+  wgpuTextureViewRelease(renderer->depth_texture_view);
+  wgpuTextureDestroy(renderer->depth_texture);
+  wgpuTextureRelease(renderer->depth_texture);
   wgpuDeviceRelease(renderer->wgpu_device);
   wgpuSurfaceRelease(renderer->wgpu_surface);
   wgpuAdapterRelease(renderer->wgpu_adapter);
@@ -654,7 +692,17 @@ void renderer_render(Renderer *renderer, float current_time_secs) {
                   .clearValue =
                       (WGPUColor){.r = 0.1, .g = 0.2, .b = 0.5, .a = 1.0},
               },
-      });
+          .depthStencilAttachment =
+              &(const WGPURenderPassDepthStencilAttachment){
+                  .view = renderer->depth_texture_view,
+                  .depthClearValue = 1.0f,
+                  .depthLoadOp = WGPULoadOp_Clear,
+                  .depthStoreOp = WGPUStoreOp_Store,
+                  .depthReadOnly = false,
+                  .stencilClearValue = 0,
+                  .stencilLoadOp = WGPULoadOp_Clear,
+                  .stencilStoreOp = WGPUStoreOp_Store,
+                  .stencilReadOnly = true}});
 
   wgpuRenderPassEncoderSetPipeline(render_pass_encoder, renderer->pipeline);
   gpu_mesh_bind(render_pass_encoder, &renderer->mesh);
