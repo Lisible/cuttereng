@@ -38,6 +38,10 @@ typedef struct {
   WGPUBindGroupLayout mesh_uniforms_bind_group_layout;
   WGPUBindGroup mesh_uniforms_bind_group;
   GPUMesh mesh;
+
+  WGPUTexture sand_texture;
+  WGPUBindGroupLayout sand_texture_bind_group_layout;
+  WGPUBindGroup sand_texture_bind_group;
 } Renderer;
 
 Renderer *renderer_new(SDL_Window *window, Assets *assets,

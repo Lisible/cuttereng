@@ -3,12 +3,12 @@
 #include "../memory.h"
 
 void *shader_asset_loader(const char *path) {
-  ShaderAsset *shader_asset = memory_allocate(sizeof(ShaderAsset));
+  Shader *shader_asset = memory_allocate(sizeof(Shader));
   shader_asset->source = asset_read_file_to_string(path);
   return shader_asset;
 }
 void shader_asset_destructor(void *asset) {
-  ShaderAsset *shader_asset = asset;
+  Shader *shader_asset = asset;
   memory_free(shader_asset->source);
   memory_free(shader_asset);
 }

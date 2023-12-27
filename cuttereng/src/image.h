@@ -19,4 +19,7 @@ typedef struct {
 
 void image_destroy(Image *image);
 
+void *image_loader(const char *path);
+void image_destructor(void *asset);
+
 #endif // CUTTERENG_IMAGE_H

@@ -81,6 +81,7 @@ typedef struct {
   const size_t output_buffer_size;
 } DeflateOutputState;
 
+// FIXME return result status and add bound checkings on the output buffer
 void deflate_decompress_(Bitstream *bitstream,
                          const HuffmanTable *length_literal_table,
                          const HuffmanTable *dist_table,

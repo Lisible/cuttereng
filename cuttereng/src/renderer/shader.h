@@ -6,7 +6,7 @@
 
 typedef struct {
   char *source;
-} ShaderAsset;
+} Shader;
 
 void *shader_asset_loader(const char *path);
 void shader_asset_destructor(void *asset);

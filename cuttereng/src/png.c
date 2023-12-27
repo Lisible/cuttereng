@@ -30,7 +30,7 @@ typedef enum {
 
 typedef enum {
   ColourType_Truecolour = 2,
-  ColourType_TruecolourWithAlpha = 3,
+  ColourType_TruecolourWithAlpha = 4,
   ColourType_Unknown
 } ColourType;
 
@@ -129,9 +129,12 @@ u8 parse_u8(ParsingContext *context) {
 
 ColourType parse_colour_type(ParsingContext *context) {
   u8 colour_type = parse_u8(context);
+  LOG_DEBUG("T %d", colour_type);
   switch (colour_type) {
   case 2:
     return ColourType_Truecolour;
+  case 6:
+    return ColourType_TruecolourWithAlpha;
   default:
     break;
   }
@@ -321,7 +324,6 @@ Image *png_load(const u8 *datastream) {
     goto cleanup_image;
   }
 
-  // NOTE: Bit depth might not be equal to the size of a pixel
   image->data = memory_allocate_array(image->width * image->height,
                                       image->bytes_per_pixel);
   if (!image->data) {
@@ -339,9 +341,9 @@ Image *png_load(const u8 *datastream) {
   }
 
   u8 *decompressed_data_buffer = memory_allocate_array(
-      image->width * image->height, image->bytes_per_pixel);
+      image->width * image->height * 2, image->bytes_per_pixel);
   u8 decompressed_data_buffer_size =
-      image->width * image->height * image->bytes_per_pixel;
+      image->width * image->height * image->bytes_per_pixel * 2;
   if (read_zlib_compressed_data(compressed_data.data, decompressed_data_buffer,
                                 decompressed_data_buffer_size) !=
       ZlibResult_Success) {

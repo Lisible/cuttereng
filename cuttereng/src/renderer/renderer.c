@@ -1,5 +1,6 @@
 #include "renderer.h"
 #include "../assert.h"
+#include "../image.h"
 #include "../log.h"
 #include "../math/matrix.h"
 #include "../math/quaternion.h"
@@ -83,7 +84,8 @@ WGPURenderPipeline
 create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
                        WGPUTextureFormat color_target_format,
                        WGPUBindGroupLayout common_uniforms_bind_group_layout,
-                       WGPUBindGroupLayout mesh_uniforms_bind_group_layout);
+                       WGPUBindGroupLayout mesh_uniforms_bind_group_layout,
+                       WGPUBindGroupLayout texture_bind_group_layout);
 
 Renderer *renderer_new(SDL_Window *window, Assets *assets,
                        float current_time_secs) {
@@ -128,13 +130,17 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
   WGPURequiredLimits required_limits = {0};
   required_limits.limits.maxVertexAttributes = 3;
   required_limits.limits.maxVertexBuffers = 1;
-  required_limits.limits.maxBindGroups = 2;
+  required_limits.limits.maxBindGroups = 3;
   required_limits.limits.maxUniformBuffersPerShaderStage = 2;
   required_limits.limits.maxBindingsPerBindGroup = 1;
   required_limits.limits.maxUniformBufferBindingSize = sizeof(CommonUniforms);
   required_limits.limits.maxBufferSize = 160;
   required_limits.limits.maxVertexBufferArrayStride = sizeof(Vertex);
   required_limits.limits.maxInterStageShaderComponents = 3;
+  required_limits.limits.maxTextureDimension2D = 16;
+  required_limits.limits.maxTextureArrayLayers = 1;
+  required_limits.limits.maxSampledTexturesPerShaderStage = 1;
+  required_limits.limits.maxSamplersPerShaderStage = 1;
   required_limits.limits.minStorageBufferOffsetAlignment =
       supported_limits.limits.minStorageBufferOffsetAlignment;
   required_limits.limits.minUniformBufferOffsetAlignment =
@@ -180,20 +186,102 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
       .alphaMode = surface_capabilities.alphaModes[0]};
   wgpuSurfaceConfigure(renderer->wgpu_surface, &wgpu_surface_configuration);
 
-  assets_register_loader(assets, ShaderAsset, shader_asset_loader,
+  assets_register_loader(assets, Shader, shader_asset_loader,
                          shader_asset_destructor);
-  ShaderAsset *shader_asset =
-      assets_fetch(assets, ShaderAsset, "shader/shader.wgsl");
+  Shader *shader_asset = assets_fetch(assets, Shader, "shader/shader.wgsl");
 
   WGPUShaderModule shader_module = shader_create_wgpu_shader_module(
       renderer->wgpu_device, "shader", shader_asset->source);
 
+  Image *image = assets_fetch(assets, Image, "sand_texture.png");
+  renderer->sand_texture = wgpuDeviceCreateTexture(
+      renderer->wgpu_device,
+      &(const WGPUTextureDescriptor){.label = "sand_texture",
+                                     .dimension = WGPUTextureDimension_2D,
+                                     .format = WGPUTextureFormat_RGBA8UnormSrgb,
+                                     .viewFormatCount = 0,
+                                     .mipLevelCount = 1,
+                                     .sampleCount = 1,
+                                     .usage = WGPUTextureUsage_TextureBinding |
+                                              WGPUTextureUsage_CopyDst,
+                                     .size = {16, 16, 1}});
+  wgpuQueueWriteTexture(
+      queue,
+      &(const WGPUImageCopyTexture){.texture = renderer->sand_texture,
+                                    .aspect = WGPUTextureAspect_All,
+                                    .mipLevel = 0,
+                                    .origin = {0, 0, 0}},
+      image->data, image->width * image->height * image->bytes_per_pixel,
+      &(const WGPUTextureDataLayout){.offset = 0,
+                                     .bytesPerRow =
+                                         image->bytes_per_pixel * image->width,
+                                     .rowsPerImage = image->height},
+      &(const WGPUExtent3D){16, 16, 1});
+  renderer->sand_texture_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
+      renderer->wgpu_device,
+      &(const WGPUBindGroupLayoutDescriptor){
+          .label = "sand_texture_bind_group_layout",
+          .entryCount = 2,
+          .entries = (const WGPUBindGroupLayoutEntry[]){
+              (WGPUBindGroupLayoutEntry){
+                  .binding = 0,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .texture = {.sampleType = WGPUTextureSampleType_Float,
+                              .viewDimension = WGPUTextureViewDimension_2D}},
+              (WGPUBindGroupLayoutEntry){
+                  .binding = 1,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .sampler = {.type = WGPUSamplerBindingType_Filtering}}}});
+
+  WGPUTextureView sand_texture_view = wgpuTextureCreateView(
+      renderer->sand_texture, &(const WGPUTextureViewDescriptor){
+                                  .aspect = WGPUTextureAspect_All,
+                                  .baseArrayLayer = 0,
+                                  .arrayLayerCount = 1,
+                                  .baseMipLevel = 0,
+                                  .mipLevelCount = 1,
+                                  .dimension = WGPUTextureViewDimension_2D,
+                                  .format = WGPUTextureFormat_RGBA8UnormSrgb,
+                              });
+
+  WGPUSampler sand_texture_sampler = wgpuDeviceCreateSampler(
+      renderer->wgpu_device, &(const WGPUSamplerDescriptor){
+                                 .addressModeU = WGPUAddressMode_ClampToEdge,
+                                 .addressModeV = WGPUAddressMode_ClampToEdge,
+                                 .addressModeW = WGPUAddressMode_ClampToEdge,
+                                 .magFilter = WGPUFilterMode_Nearest,
+                                 .minFilter = WGPUFilterMode_Nearest,
+                                 .mipmapFilter = WGPUMipmapFilterMode_Nearest,
+                                 .lodMinClamp = 0.0f,
+                                 .lodMaxClamp = 1.0f,
+                                 .compare = WGPUCompareFunction_Undefined,
+                                 .maxAnisotropy = 1
+
+                             });
+  renderer->sand_texture_bind_group = wgpuDeviceCreateBindGroup(
+      renderer->wgpu_device,
+      &(const WGPUBindGroupDescriptor){
+          .label = "sand_texture_bind_group",
+          .layout = renderer->sand_texture_bind_group_layout,
+          .entryCount = 2,
+          .entries = (const WGPUBindGroupEntry[]){
+              (WGPUBindGroupEntry){.binding = 0,
+                                   .textureView = sand_texture_view},
+              (WGPUBindGroupEntry){.binding = 1,
+                                   .sampler = sand_texture_sampler}}});
+
   Vertex *vertices = memory_allocate_array(5, sizeof(Vertex));
-  vertices[0] = (Vertex){.position = {-0.5, -0.5, -0.3}};
-  vertices[1] = (Vertex){.position = {0.5, -0.5, -0.3}};
-  vertices[2] = (Vertex){.position = {0.5, 0.5, -0.3}};
-  vertices[3] = (Vertex){.position = {-0.5, 0.5, -0.3}};
-  vertices[4] = (Vertex){.position = {0.0, 0.0, 0.5}};
+  vertices[0] = (Vertex){.position = {-0.5, -0.5, -0.3},
+                         .texture_coordinates = {0.0, 0.0}};
+  vertices[1] = (Vertex){.position = {0.5, -0.5, -0.3},
+                         .texture_coordinates = {1.0, 1.0}};
+  vertices[2] =
+      (Vertex){.position = {0.5, 0.5, -0.3}, .texture_coordinates = {0.0, 0.0}};
+  vertices[3] = (Vertex){.position = {-0.5, 0.5, -0.3},
+                         .texture_coordinates = {0.0, 0.0}};
+
+  vertices[4] =
+      (Vertex){.position = {0.0, 0.0, 0.5}, .texture_coordinates = {0.5, 1.0}};
 
   Index *indices = memory_allocate_array(18, sizeof(Index));
   indices[0] = 0;
@@ -350,7 +438,8 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
   renderer->pipeline = create_render_pipeline(
       renderer->wgpu_device, shader_module, surface_capabilities.formats[0],
       renderer->common_uniforms_bind_group_layout,
-      renderer->mesh_uniforms_bind_group_layout);
+      renderer->mesh_uniforms_bind_group_layout,
+      renderer->sand_texture_bind_group_layout);
 
   return renderer;
 cleanup_surface:
@@ -369,7 +458,8 @@ WGPURenderPipeline
 create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
                        WGPUTextureFormat color_target_format,
                        WGPUBindGroupLayout common_uniforms_bind_group_layout,
-                       WGPUBindGroupLayout mesh_uniforms_bind_group_layout) {
+                       WGPUBindGroupLayout mesh_uniforms_bind_group_layout,
+                       WGPUBindGroupLayout texture_bind_group_layout) {
 
   WGPUVertexAttribute vertex_attributes[] = {
       {.format = WGPUVertexFormat_Float32x3, .offset = 0, .shaderLocation = 0},
@@ -387,12 +477,13 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
       .stepMode = WGPUVertexStepMode_Vertex};
 
   WGPUBindGroupLayout bind_group_layouts[] = {common_uniforms_bind_group_layout,
-                                              mesh_uniforms_bind_group_layout};
+                                              mesh_uniforms_bind_group_layout,
+                                              texture_bind_group_layout};
   WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       device, &(const WGPUPipelineLayoutDescriptor){.label = "pipeline_layout",
                                                     .bindGroupLayouts =
                                                         bind_group_layouts,
-                                                    .bindGroupLayoutCount = 2});
+                                                    .bindGroupLayoutCount = 3});
 
   return wgpuDeviceCreateRenderPipeline(
       device,
@@ -452,9 +543,8 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
       });
 }
 void renderer_recreate_pipeline(Assets *assets, Renderer *renderer) {
-  assets_remove(assets, ShaderAsset, "shader/shader.wgsl");
-  ShaderAsset *shader_asset =
-      assets_fetch(assets, ShaderAsset, "shader/shader.wgsl");
+  assets_remove(assets, Shader, "shader/shader.wgsl");
+  Shader *shader_asset = assets_fetch(assets, Shader, "shader/shader.wgsl");
 
   WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
       .chain =
@@ -475,7 +565,8 @@ void renderer_recreate_pipeline(Assets *assets, Renderer *renderer) {
       create_render_pipeline(renderer->wgpu_device, shader_module,
                              renderer->wgpu_render_surface_texture_format,
                              renderer->common_uniforms_bind_group_layout,
-                             renderer->mesh_uniforms_bind_group_layout);
+                             renderer->mesh_uniforms_bind_group_layout,
+                             renderer->sand_texture_bind_group_layout);
 }
 
 void renderer_destroy(Renderer *renderer) {
@@ -571,6 +662,8 @@ void renderer_render(Renderer *renderer, float current_time_secs) {
       render_pass_encoder, 0, renderer->common_uniforms_bind_group, 0, NULL);
   wgpuRenderPassEncoderSetBindGroup(
       render_pass_encoder, 1, renderer->mesh_uniforms_bind_group, 0, NULL);
+  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 2,
+                                    renderer->sand_texture_bind_group, 0, NULL);
   wgpuRenderPassEncoderDrawIndexed(render_pass_encoder,
                                    renderer->mesh.index_count, 1, 0, 0, 0);
   wgpuRenderPassEncoderEnd(render_pass_encoder);
