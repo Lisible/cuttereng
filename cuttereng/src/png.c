@@ -135,7 +135,16 @@ bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
   ColourType colour_type = parse_colour_type(context);
   u8 compression_method = parse_u8(context);
   u8 filter_method = parse_u8(context);
+  if (filter_method != 0) {
+    LOG_PNG_DECODER_ERROR("Unknown filter method: %d", filter_method);
+    return false;
+  }
+
   u8 interlace_method = parse_u8(context);
+  if (interlace_method != 0) {
+    LOG_PNG_DECODER_ERROR("Interlaced PNG (e.g. Adam7) are not supported");
+    return false;
+  }
 
   LOG_PNG_DECODER("\nwidth: %u\nheight %u\nbit_depth: %u\ncolour_type: %u",
                   width, height, bit_depth, colour_type);
@@ -155,7 +164,8 @@ bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
   image->height = height;
   image->bit_depth = bit_depth;
 
-  u32 crc = parse_u32(context);
+  // TODO compute chunk crc and check it (maybe behind an option/build flag?)
+  skip_u32(context);
 
   return true;
 }
@@ -231,11 +241,7 @@ Image *png_load(const u8 *datastream) {
     goto cleanup_image_data;
   }
 
-  for (size_t i = 0; i < image_data_size; i++) {
-    LOG_DEBUG("%x", image->data[i]);
-  }
   u8vec_deinit(&compressed_data);
-
   skip_unsupported_chunks(&context);
   next_chunk_type = peek_next_chunk_type(&context);
   if (next_chunk_type != ChunkType_IEND) {

@@ -131,8 +131,8 @@ void deflate_decompress_(Bitstream *bitstream,
   }
 }
 
-void deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
-                        const size_t output_buffer_size) {
+size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
+                          const size_t output_buffer_size) {
   ASSERT(compressed_data_set != NULL);
   LOG_DEBUG("Decompressing deflate data");
 
@@ -141,10 +141,8 @@ void deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
   DeflateOutputState output_state = {.current_output_buffer_index = 0,
                                      .output_buffer = output_buffer,
                                      .output_buffer_size = output_buffer_size};
-
   u8 bfinal = 0;
   while (!bfinal) {
-
     bfinal = bitstream_next_bits(&bitstream, 1);
     u8 btype = bitstream_next_bits(&bitstream, 2);
     u16 hlit = bitstream_next_bits(&bitstream, 5) + 257;
@@ -223,5 +221,7 @@ void deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
                             &output_state);
       }
     }
+
+    return bitstream.current_byte_index;
   }
 }
