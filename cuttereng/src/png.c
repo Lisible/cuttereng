@@ -225,7 +225,11 @@ Image *png_load(const u8 *datastream) {
     next_chunk_type = peek_next_chunk_type(&context);
   }
 
-  read_zlib_compressed_data(compressed_data.data, image->data, image_data_size);
+  if (read_zlib_compressed_data(compressed_data.data, image->data,
+                                image_data_size) != ZlibResult_Success) {
+    LOG_PNG_DECODER_ERROR("Couldn't read zlib compressed data");
+    goto cleanup_image_data;
+  }
 
   for (size_t i = 0; i < image_data_size; i++) {
     LOG_DEBUG("%x", image->data[i]);
