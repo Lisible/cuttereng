@@ -270,46 +270,27 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
               (WGPUBindGroupEntry){.binding = 1,
                                    .sampler = sand_texture_sampler}}});
 
-  Vertex *vertices = memory_allocate_array(5, sizeof(Vertex));
+  Vertex *vertices = memory_allocate_array(4, sizeof(Vertex));
   vertices[0] = (Vertex){.position = {-0.5, -0.5, -0.3},
-                         .texture_coordinates = {0.0, 0.0}};
+                         .texture_coordinates = {0.0, 1.0}};
   vertices[1] = (Vertex){.position = {0.5, -0.5, -0.3},
                          .texture_coordinates = {1.0, 1.0}};
   vertices[2] =
-      (Vertex){.position = {0.5, 0.5, -0.3}, .texture_coordinates = {0.0, 0.0}};
+      (Vertex){.position = {0.5, 0.5, -0.3}, .texture_coordinates = {1.0, 0.0}};
   vertices[3] = (Vertex){.position = {-0.5, 0.5, -0.3},
                          .texture_coordinates = {0.0, 0.0}};
 
-  vertices[4] =
-      (Vertex){.position = {0.0, 0.0, 0.5}, .texture_coordinates = {0.5, 1.0}};
-
-  Index *indices = memory_allocate_array(18, sizeof(Index));
+  Index *indices = memory_allocate_array(6, sizeof(Index));
   indices[0] = 0;
   indices[1] = 1;
-  indices[2] = 2;
+  indices[2] = 3;
 
-  indices[3] = 0;
-  indices[4] = 2;
-  indices[5] = 3;
-
-  indices[6] = 0;
-  indices[7] = 1;
-  indices[8] = 4;
-
-  indices[9] = 1;
-  indices[10] = 2;
-  indices[11] = 4;
-
-  indices[12] = 2;
-  indices[13] = 3;
-  indices[14] = 4;
-
-  indices[15] = 3;
-  indices[16] = 0;
-  indices[17] = 4;
+  indices[3] = 3;
+  indices[4] = 1;
+  indices[5] = 2;
 
   Mesh mesh = {0};
-  mesh_init(&mesh, vertices, 5, indices, 18);
+  mesh_init(&mesh, vertices, 4, indices, 6);
   GPUMesh gpu_mesh = {0};
   gpu_mesh_init(renderer->wgpu_device, queue, &gpu_mesh, &mesh);
   renderer->mesh = gpu_mesh;
@@ -488,7 +469,7 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
        .offset = 3 * sizeof(float),
        .shaderLocation = 1},
       {.format = WGPUVertexFormat_Float32x2,
-       .offset = 2 * sizeof(float),
+       .offset = 6 * sizeof(float),
        .shaderLocation = 2},
   };
   WGPUVertexBufferLayout vertex_buffer_layout = {
@@ -571,7 +552,7 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
               (WGPUPrimitiveState){
                   .nextInChain = NULL,
                   .topology = WGPUPrimitiveTopology_TriangleList,
-                  .cullMode = WGPUCullMode_None,
+                  .cullMode = WGPUCullMode_Back,
                   .frontFace = WGPUFrontFace_CCW,
                   .stripIndexFormat = WGPUIndexFormat_Undefined}
 

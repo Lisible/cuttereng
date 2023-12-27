@@ -225,4 +225,6 @@ size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
 
     return bitstream.current_byte_index;
   }
+
+  return 0;
 }
