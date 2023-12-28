@@ -1,11 +1,13 @@
 #include "hash.h"
-#include "src/log.h"
-#include "src/memory.h"
+#include "assert.h"
+#include "log.h"
+#include "memory.h"
 #include <stddef.h>
 #include <string.h>
 
 void HashTable_noop_destructor(void *value) {}
 uint64_t hash_fnv_1a(const char *bytes) {
+  ASSERT(bytes != NULL);
   static const uint64_t FNV_OFFSET_BASIS = 14695981039346656037u;
   static const uint64_t FNV_PRIME = 1099511628211u;
 

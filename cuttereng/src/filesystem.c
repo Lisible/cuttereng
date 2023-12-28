@@ -6,6 +6,9 @@
 #include <string.h>
 
 char *filesystem_read_file_to_string(const char *path) {
+  if (!path)
+    goto err;
+
   FILE *file = fopen(path, "r");
   if (file == NULL)
     goto err;

@@ -1,4 +1,5 @@
 #include "cuttereng.h"
+#include "assert.h"
 #include "engine.h"
 #include "environment/environment.h"
 #include "event.h"
@@ -58,6 +59,9 @@ cleanup:
 }
 
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
+  ASSERT(sdl_event != NULL);
+  ASSERT(event != NULL);
+
   switch (sdl_event->type) {
   case SDL_QUIT:
     event->type = EVT_QUIT;

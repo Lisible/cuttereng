@@ -15,25 +15,33 @@ typedef struct {
   HashTableAsset *assets;
 } AssetStore;
 
-AssetStore *asset_store_new(AssetDestructorFn asset_destructor) {
+AssetStore *asset_store_new() {
   AssetStore *asset_store = memory_allocate(sizeof(AssetStore));
   asset_store->assets = HashTableAsset_create(16);
   return asset_store;
 }
 
 void asset_store_set(AssetStore *asset_store, char *key, void *asset) {
+  ASSERT(asset_store != NULL);
+  ASSERT(key != NULL);
+  ASSERT(asset != NULL);
   HashTableAsset_set(asset_store->assets, key, asset);
 }
 
 void *asset_store_get(AssetStore *asset_store, const char *key) {
+  ASSERT(asset_store != NULL);
+  ASSERT(key != NULL);
   return HashTableAsset_get(asset_store->assets, key);
 }
 
 void asset_store_remove(AssetStore *asset_store, const char *key) {
+  ASSERT(asset_store != NULL);
+  ASSERT(key != NULL);
   HashTableAsset_remove(asset_store->assets, key);
 }
 
 void asset_store_destroy(AssetStore *asset_store) {
+  ASSERT(asset_store != NULL);
   HashTableAsset_destroy(asset_store->assets);
   memory_free(asset_store);
 }
@@ -61,6 +69,9 @@ Assets *assets_new() {
 }
 
 void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_path != NULL);
   LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
   AssetLoader *loader = HashTableAssetLoader_get(assets->loaders, asset_type);
   if (!loader) {
@@ -79,10 +90,8 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
   if (!asset_store) {
     LOG_DEBUG("No asset store found for assets of type %s, creating it",
               asset_type);
-    HashTableAssetStore_set(
-        assets->asset_stores, asset_type,
-        asset_store_new(
-            HashTableAssetDestructor_get(assets->destructors, asset_type)->fn));
+    HashTableAssetStore_set(assets->asset_stores, asset_type,
+                            asset_store_new());
     asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type);
   }
 
@@ -93,11 +102,15 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
 }
 
 void assets_clear(Assets *assets) {
+  ASSERT(assets != NULL);
   LOG_DEBUG("Clearing assets...");
   HashTableAssetStore_clear(assets->asset_stores);
 }
 
 void *assets_fetch_(Assets *assets, char *asset_type, char *asset_path) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_path != NULL);
   LOG_DEBUG("Fetching asset %s of type %s", asset_path, asset_type);
   AssetStore *asset_store =
       HashTableAssetStore_get(assets->asset_stores, asset_type);
@@ -119,17 +132,26 @@ void *assets_fetch_(Assets *assets, char *asset_type, char *asset_path) {
 void assets_register_loader_(Assets *assets, char *asset_type,
                              AssetLoader *asset_loader,
                              AssetDestructor *asset_destructor) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_loader != NULL);
+  ASSERT(asset_destructor != NULL);
   HashTableAssetLoader_set(assets->loaders, asset_type, asset_loader);
   HashTableAssetDestructor_set(assets->destructors, asset_type,
                                asset_destructor);
 }
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
   return HashTableAssetLoader_has(assets->loaders, asset_type);
 }
 
 void assets_remove_(Assets *assets, const char *asset_type,
                     const char *asset_path) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_path != NULL);
   LOG_DEBUG("Removing asset %s of type %s", asset_path, asset_type);
   AssetStore *asset_store =
       HashTableAssetStore_get(assets->asset_stores, asset_type);
@@ -137,6 +159,7 @@ void assets_remove_(Assets *assets, const char *asset_type,
 }
 
 void assets_destroy(Assets *assets) {
+  ASSERT(assets != NULL);
 
   for (size_t asset_store_index = 0;
        asset_store_index < assets->asset_stores->capacity;
@@ -167,6 +190,7 @@ void assets_destroy(Assets *assets) {
   memory_free(assets);
 }
 char *asset_read_file_to_string(const char *path) {
+  ASSERT(path != NULL);
   size_t effective_path_length = strlen(ASSETS_BASE_PATH) + strlen(path) + 1;
   char *effective_path = memory_allocate(effective_path_length);
   memset(effective_path, 0, effective_path_length);

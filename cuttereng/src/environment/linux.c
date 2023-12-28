@@ -1,5 +1,6 @@
+#include "../assert.h"
+#include "../log.h"
 #include "environment.h"
-#include "src/log.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@ char *env_get_configuration_file_path() {
 }
 
 char *get_symlink_target(char *symlink_path) {
+  ASSERT(symlink_path != NULL);
   size_t buffer_size = 512;
   ssize_t result;
 

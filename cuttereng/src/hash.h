@@ -43,11 +43,15 @@ void HashTable_noop_destructor(void *value);
     memory_free(table);                                                        \
   }                                                                            \
   size_t name##_index_for_key(name *table, const char *key) {                  \
+    ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
     uint64_t hash = hash_fnv_1a(key);                                          \
     return hash & (table->capacity - 1);                                       \
   }                                                                            \
   char *name##_set(name *table, char *key, V *value) {                         \
     ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
+    ASSERT(value != NULL);                                                     \
     if (value == NULL) {                                                       \
       return NULL;                                                             \
     }                                                                          \
@@ -81,6 +85,7 @@ void HashTable_noop_destructor(void *value);
   }                                                                            \
   V *name##_get(const name *table, const char *key) {                          \
     ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
     if (!key)                                                                  \
       return NULL;                                                             \
                                                                                \
@@ -98,6 +103,7 @@ void HashTable_noop_destructor(void *value);
   }                                                                            \
   bool name##_has(const name *table, const char *key) {                        \
     ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
     if (!key)                                                                  \
       return false;                                                            \
     uint64_t hash = hash_fnv_1a(key);                                          \
@@ -112,9 +118,13 @@ void HashTable_noop_destructor(void *value);
                                                                                \
     return false;                                                              \
   }                                                                            \
-  size_t name##_length(const name *table) { return table->length; }            \
+  size_t name##_length(const name *table) {                                    \
+    ASSERT(table != NULL);                                                     \
+    return table->length;                                                      \
+  }                                                                            \
   void name##_remove_at_index(name *table, size_t index,                       \
                               bool execute_item_dctor) {                       \
+    ASSERT(table != NULL);                                                     \
     if (!table->items[index].key) {                                            \
       return;                                                                  \
     }                                                                          \
@@ -128,14 +138,19 @@ void HashTable_noop_destructor(void *value);
   }                                                                            \
                                                                                \
   void name##_remove(name *table, const char *key) {                           \
+    ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
     size_t index = name##_index_for_key(table, key);                           \
     name##_remove_at_index(table, index, true);                                \
   }                                                                            \
   void name##_steal(name *table, const char *key) {                            \
+    ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
     size_t index = name##_index_for_key(table, key);                           \
     name##_remove_at_index(table, index, false);                               \
   }                                                                            \
   void name##_clear(name *table) {                                             \
+    ASSERT(table != NULL);                                                     \
     for (size_t i = 0; i < table->capacity; i++) {                             \
       if (table->items[i].key != NULL) {                                       \
         name##_remove_at_index(table, i, true);                                \
@@ -143,6 +158,7 @@ void HashTable_noop_destructor(void *value);
     }                                                                          \
   }                                                                            \
   bool name##_expand(name *table) {                                            \
+    ASSERT(table != NULL);                                                     \
     size_t new_capacity = table->capacity * 2;                                 \
     if (new_capacity < table->capacity) {                                      \
       return false;                                                            \

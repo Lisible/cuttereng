@@ -1,7 +1,10 @@
 #include "quaternion.h"
+#include "../assert.h"
 
 void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
                                   float angle) {
+  ASSERT(quaternion != NULL);
+  ASSERT(axis != NULL);
   float half_angle = angle / 2.0;
   float half_angle_sin = sin(half_angle);
   float x = axis->x * half_angle_sin;
@@ -16,6 +19,8 @@ void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
 }
 
 void quaternion_mul(Quaternion *lhs, const Quaternion *rhs) {
+  ASSERT(lhs != NULL);
+  ASSERT(rhs != NULL);
   float x1 = lhs->vector_part.x;
   float y1 = lhs->vector_part.y;
   float z1 = lhs->vector_part.z;
@@ -34,6 +39,8 @@ void quaternion_mul(Quaternion *lhs, const Quaternion *rhs) {
 
 void quaternion_rotation_matrix(const Quaternion *quaternion,
                                 mat4 rotation_matrix) {
+  ASSERT(quaternion != NULL);
+  ASSERT(rotation_matrix != NULL);
   float w = quaternion->scalar_part;
   float x = quaternion->vector_part.x;
   float y = quaternion->vector_part.y;

@@ -1,4 +1,5 @@
 #include "matrix.h"
+#include "../assert.h"
 #include "radians.h"
 #include <string.h>
 
@@ -8,6 +9,7 @@ IMPL_MAT4(double, mat4d)
 
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
+  ASSERT(mat != NULL);
   float fov_y_rad = fov_y_deg * 2.0f * M_PI / 360.0f;
   mat[0] = (1.0f / tan(fov_y_rad / 2.0f)) / aspect;
   mat[1] = 0.0;
@@ -27,6 +29,8 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
   mat[15] = 0.0;
 }
 void mat4_set_to_translation(mat4 mat, const v3f *translation) {
+  ASSERT(mat != NULL);
+  ASSERT(translation != NULL);
   mat[0] = 1.0;
   mat[1] = 0.0;
   mat[2] = 0.0;
@@ -46,6 +50,8 @@ void mat4_set_to_translation(mat4 mat, const v3f *translation) {
 }
 
 void mat4_set_to_scale(mat4 mat, const v3f *scale) {
+  ASSERT(mat != NULL);
+  ASSERT(scale != NULL);
   mat[0] = scale->x;
   mat[1] = 0.0;
   mat[2] = 0.0;

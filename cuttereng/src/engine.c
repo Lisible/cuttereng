@@ -8,6 +8,9 @@
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  SDL_Window *window) {
+  ASSERT(engine != NULL);
+  ASSERT(configuration != NULL);
+  ASSERT(window != NULL);
   engine->assets = assets_new();
   assets_register_loader(engine->assets, Image, &image_loader,
                          &image_destructor);
@@ -19,12 +22,15 @@ void engine_init(Engine *engine, const Configuration *configuration,
 }
 
 void engine_deinit(Engine *engine) {
+  ASSERT(engine != NULL);
   assets_destroy(engine->assets);
   renderer_destroy(engine->renderer);
   memory_free((char *)engine->application_title);
 }
 
 void engine_handle_events(Engine *engine, Event *event) {
+  ASSERT(engine != NULL);
+  ASSERT(event != NULL);
   switch (event->type) {
   case EVT_QUIT:
     engine->running = false;
@@ -37,17 +43,25 @@ void engine_handle_events(Engine *engine, Event *event) {
   }
 }
 void engine_set_current_time(Engine *engine, float current_time_secs) {
+  ASSERT(engine != NULL);
   engine->current_time_secs = current_time_secs;
 }
 
-void engine_update(Engine *engine) { LOG_TRACE("update"); }
+void engine_update(Engine *engine) {
+  ASSERT(engine != NULL);
+  LOG_TRACE("update");
+}
 
 void engine_render(Engine *engine) {
+  ASSERT(engine != NULL);
   LOG_TRACE("render");
   renderer_render(engine->renderer, engine->current_time_secs);
 }
 
-bool engine_is_running(Engine *engine) { return engine->running; }
+bool engine_is_running(Engine *engine) {
+  ASSERT(engine != NULL);
+  return engine->running;
+}
 
 bool configuration_from_json(Json *configuration_json,
                              Configuration *output_configuration) {
@@ -124,10 +138,12 @@ bool window_size_from_json(Json *json_value, WindowSize *window_size) {
 }
 
 void configuration_debug_print(Configuration *configuration) {
+  ASSERT(configuration != NULL);
   LOG_DEBUG("Configuration");
   LOG_DEBUG("title: %s", configuration->application_title);
   window_size_debug_print(&configuration->window_size);
 }
 void window_size_debug_print(WindowSize *window_size) {
+  ASSERT(window_size != NULL);
   LOG_DEBUG("window size: (%d, %d)", window_size->width, window_size->height);
 }

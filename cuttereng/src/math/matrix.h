@@ -11,6 +11,7 @@
 
 #define IMPL_MAT4(T, name)                                                     \
   void name##_transpose(name mat) {                                            \
+    ASSERT(mat != NULL);                                                       \
     for (int row = 0; row < 4; row++) {                                        \
       for (int col = 0; col < row; col++) {                                    \
         T tmp = mat[row * 4 + col];                                            \
@@ -21,6 +22,8 @@
   }                                                                            \
   void name##_mul(name lhs, name rhs, name out) {                              \
     static const size_t COLS = 4;                                              \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
     for (int j = 0; j < 4; j++) {                                              \
       for (int i = 0; i < 4; i++) {                                            \
         out[j * COLS + i] = lhs[j * COLS] * rhs[i] +                           \

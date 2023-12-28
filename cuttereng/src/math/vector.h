@@ -16,30 +16,37 @@
 
 #define IMPL_V3(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \
     lhs->z += rhs->z;                                                          \
   }                                                                            \
                                                                                \
   void name##_sub(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
     lhs->x -= rhs->x;                                                          \
     lhs->y -= rhs->y;                                                          \
     lhs->z -= rhs->z;                                                          \
   }                                                                            \
                                                                                \
   void name##_mul_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
     lhs->x *= rhs;                                                             \
     lhs->y *= rhs;                                                             \
     lhs->z *= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_div_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
     lhs->z /= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_neg(name *v) {                                                   \
+    ASSERT(v != NULL);                                                         \
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
     v->z = -v->z;                                                              \
@@ -65,26 +72,33 @@ typedef float v3_value_type;
 
 #define IMPL_V2(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \
   }                                                                            \
                                                                                \
   void name##_sub(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
     lhs->x -= rhs->x;                                                          \
     lhs->y -= rhs->y;                                                          \
   }                                                                            \
                                                                                \
   void name##_mul_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
     lhs->x *= rhs;                                                             \
     lhs->y *= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_div_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_neg(name *v) {                                                   \
+    ASSERT(v != NULL);                                                         \
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
   }

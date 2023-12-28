@@ -2,6 +2,8 @@
 #include "assert.h"
 
 void bitstream_init(Bitstream *bitstream, const u8 *data, size_t data_size) {
+  ASSERT(bitstream != NULL);
+  ASSERT(data != NULL);
   bitstream->data = data;
   bitstream->data_size = data_size;
   bitstream->current_byte_index = 0;

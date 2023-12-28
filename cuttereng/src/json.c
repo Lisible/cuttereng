@@ -52,12 +52,14 @@ Json *json_create();
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
 Json *json_parse_from_str(const char *str) {
+  ASSERT(str != NULL);
   ParsingContext ctx = {
       .str = str, .len = strlen(str), .index = 0, .line = 0, .column = 0};
   return parse_element(&ctx);
 }
 
 Json *parse_element(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
   eat_whitespaces(ctx);
   Json *value = parse_value(ctx);
   eat_whitespaces(ctx);
@@ -65,8 +67,8 @@ Json *parse_element(ParsingContext *ctx) {
 }
 
 Json *parse_value(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
   Json *value = json_create();
-
   if (!value) {
     LOG_ERROR("json allocation failed");
     goto err;
@@ -146,13 +148,22 @@ err:
 }
 
 bool parse_object(ParsingContext *ctx, Json *output_value) {
+  ASSERT(ctx != NULL);
+  ASSERT(output_value != NULL);
   JsonObject *object = json_object_create();
+  if (!object) {
+    return false;
+  }
+
   eat_character(ctx, TOKEN_OBJECT_BEGIN);
 
   while (current_character(ctx) != TOKEN_OBJECT_END) {
     eat_whitespaces(ctx);
 
     Json *name = json_create();
+    if (!name) {
+      return false;
+    }
     parse_string(ctx, name);
 
     eat_whitespaces(ctx);
@@ -160,6 +171,9 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
     eat_whitespaces(ctx);
 
     Json *value = parse_value(ctx);
+    if (!value) {
+      return false;
+    }
     json_object_set(object, name->string, value);
     json_destroy(name);
 
@@ -172,10 +186,12 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
   eat_character(ctx, TOKEN_OBJECT_END);
   output_value->type = JSON_OBJECT;
   output_value->object = object;
-  return output_value;
+  return true;
 }
 
 bool parse_array(ParsingContext *ctx, Json *output_value) {
+  ASSERT(ctx != NULL);
+  ASSERT(output_value != NULL);
   static const size_t MINIMUM_ARRAY_CAPACITY = 16;
 
   eat_character(ctx, TOKEN_ARRAY_BEGIN);
@@ -238,6 +254,8 @@ bool is_utf16_leading_surrogate(uint32_t code_point);
 uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
                                     uint16_t trailing_surrogate);
 bool parse_string(ParsingContext *ctx, Json *output_value) {
+  ASSERT(ctx != NULL);
+  ASSERT(output_value != NULL);
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
   size_t estimated_string_size = estimate_string_size(&ctx->str[ctx->index]);
   char *string = malloc(estimated_string_size * sizeof(char));
@@ -310,6 +328,7 @@ uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
 }
 size_t write_utf8_from_code_point(char *string, size_t current_index,
                                   uint32_t code_point) {
+  ASSERT(string != NULL);
   if (code_point <= 0x7f) {
     string[current_index] = code_point;
     return 1;
@@ -336,6 +355,7 @@ size_t write_utf8_from_code_point(char *string, size_t current_index,
 }
 
 uint16_t parse_unicode_hex(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
   uint16_t parsed_codepoint = 0;
   for (int i = 3; i >= 0; i--) {
     char v = current_character(ctx);
@@ -356,6 +376,7 @@ uint16_t parse_unicode_hex(ParsingContext *ctx) {
 }
 
 size_t estimate_string_size(const char *str) {
+  ASSERT(str != NULL);
   size_t i = 0;
   size_t estimated_str_length = 0;
   while (str[i] != TOKEN_DOUBLE_QUOTE) {
@@ -378,6 +399,8 @@ size_t estimate_string_size(const char *str) {
 }
 
 void parse_number(ParsingContext *ctx, Json *output_value) {
+  ASSERT(ctx != NULL);
+  ASSERT(output_value != NULL);
   int sign = 1;
   if (current_character(ctx) == TOKEN_MINUS) {
     sign = -1;
@@ -420,6 +443,7 @@ void parse_number(ParsingContext *ctx, Json *output_value) {
 }
 
 void json_cleanup(Json *value) {
+  ASSERT(value != NULL);
   if (value->type == JSON_STRING) {
     free(value->string);
     value->string = NULL;
@@ -455,6 +479,7 @@ void json_destroy_without_cleanup(Json *value) {
 }
 
 void eat_character(ParsingContext *ctx, char expected) {
+  ASSERT(ctx != NULL);
   ASSERT(current_character(ctx) == expected);
   advance(ctx, 1);
 }
@@ -465,6 +490,7 @@ bool is_whitespace(char c) {
 }
 
 void eat_whitespaces(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
   while (ctx->index < ctx->len && is_whitespace(current_character(ctx))) {
 
     if (current_character(ctx) == CODEPOINT_LINE_FEED) {
@@ -477,12 +503,19 @@ void eat_whitespaces(ParsingContext *ctx) {
 }
 
 void advance(ParsingContext *ctx, size_t count) {
+  ASSERT(ctx != NULL);
   ctx->index += count;
   ctx->column += count;
 }
 
-char current_character(ParsingContext *ctx) { return ctx->str[ctx->index]; }
-char next_character(ParsingContext *ctx) { return ctx->str[ctx->index + 1]; }
+char current_character(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
+  return ctx->str[ctx->index];
+}
+char next_character(ParsingContext *ctx) {
+  ASSERT(ctx != NULL);
+  return ctx->str[ctx->index + 1];
+}
 
 bool is_character(char c) { return !is_escapable_character(c); }
 
@@ -496,13 +529,20 @@ bool is_non_zero_digit(char c) { return is_digit(c) && c != '0'; }
 Json *json_create() { return malloc(sizeof(Json)); }
 
 Json *json_object_get(const JsonObject *object, const char *key) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
   return HashTableJson_get(object->hash_table, key);
 }
 
 const char *json_object_set(JsonObject *object, char *key, Json *value) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
+  ASSERT(value != NULL);
   return HashTableJson_set(object->hash_table, key, value);
 }
 
 void json_object_steal(JsonObject *object, const char *key) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
   HashTableJson_steal(object->hash_table, key);
 }

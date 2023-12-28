@@ -25,6 +25,8 @@ typedef struct {
 void build_huffman_table_from_codelengths(HuffmanTable *table,
                                           const u16 *codelengths,
                                           u16 codelength_count) {
+  ASSERT(table != NULL);
+  ASSERT(codelengths != NULL);
   for (int i = 0; i < codelength_count; i++) {
     table->counts[codelengths[i]]++;
   }
@@ -47,6 +49,8 @@ void build_huffman_table_from_codelengths(HuffmanTable *table,
 // assumes the huffman table has been zeroed
 void build_codelength_table(HuffmanTable *codelength_table,
                             u16 *codelengths_codelengths, u16 hclen) {
+  ASSERT(codelength_table != NULL);
+  ASSERT(codelengths_codelengths != NULL);
   static const u8 CODELENGTH_MAPPING[] = {16, 17, 18, 0, 8,  7, 9,  6, 10, 5,
                                           11, 4,  12, 3, 13, 2, 14, 1, 15};
   u16 codelengths[CODE_LENGTH_ALPHABET_MAX_SYMBOL_COUNT] = {0};
@@ -58,6 +62,8 @@ void build_codelength_table(HuffmanTable *codelength_table,
 }
 
 int huffman_table_decode(const HuffmanTable *table, Bitstream *bitstream) {
+  ASSERT(table != NULL);
+  ASSERT(bitstream != NULL);
   int code = 0;
   int index = 0;
   int first = 0;
@@ -99,6 +105,11 @@ DeflateStatus deflate_decompress_(Bitstream *bitstream,
       0, 0, 0, 0, 1, 1, 2, 2,  3,  3,  4,  4,  5,  5,  6,
       6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13};
 
+  ASSERT(bitstream != NULL);
+  ASSERT(length_literal_table != NULL);
+  ASSERT(dist_table != NULL);
+  ASSERT(output_state != NULL);
+
   int symbol = 0;
   while (symbol != 256) {
     symbol = huffman_table_decode(length_literal_table, bitstream);
@@ -134,6 +145,7 @@ DeflateStatus deflate_decompress_(Bitstream *bitstream,
 DeflateStatus deflate_decompress(const u8 *compressed_data_set,
                                  u8vec *output_buffer) {
   ASSERT(compressed_data_set != NULL);
+  ASSERT(output_buffer != NULL);
   LOG_TRACE("Decompressing deflate data");
 
   Bitstream bitstream;

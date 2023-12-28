@@ -62,7 +62,7 @@ typedef struct {
 } Chunk;
 
 bool parse_signature(ParsingContext *context) {
-  ASSERT(context);
+  ASSERT(context != NULL);
   static const u8 PNG_SIGNATURE[8] = {0x89, 0x50, 0x4e, 0x47,
                                       0x0d, 0x0a, 0x1a, 0x0a};
   if (memcmp(context->datastream, PNG_SIGNATURE, 8) != 0) {
@@ -74,16 +74,19 @@ bool parse_signature(ParsingContext *context) {
 }
 
 u32 peek_next_chunk_length(ParsingContext *context) {
+  ASSERT(context != NULL);
   return u32_from_bytes(context->datastream + context->current_index);
 }
 
 u32 parse_chunk_length(ParsingContext *context) {
+  ASSERT(context != NULL);
   u32 length = u32_from_bytes(context->datastream + context->current_index);
   context->current_index += CHUNK_TYPE_SIZE;
   return length;
 }
 
 ChunkType chunk_type_from_str(const char *str) {
+  ASSERT(str != NULL);
   if (strncmp(str, "IHDR", CHUNK_TYPE_SIZE) == 0) {
     return ChunkType_IHDR;
   } else if (strncmp(str, "IDAT", CHUNK_TYPE_SIZE) == 0) {
@@ -97,21 +100,27 @@ ChunkType chunk_type_from_str(const char *str) {
 // This function assumes the current parsing context is at the beginning of a
 // new chunk
 ChunkType peek_next_chunk_type(ParsingContext *context) {
+  ASSERT(context != NULL);
   const char *type_str = (const char *)context->datastream +
                          context->current_index + CHUNK_LENGTH_SIZE;
   return chunk_type_from_str(type_str);
 }
 
 ChunkType parse_chunk_type(ParsingContext *context) {
+  ASSERT(context != NULL);
   const char *datastream =
       (const char *)context->datastream + context->current_index;
   context->current_index += CHUNK_TYPE_SIZE;
   return chunk_type_from_str(datastream);
 }
 
-void skip_u32(ParsingContext *context) { context->current_index += 4; }
+void skip_u32(ParsingContext *context) {
+  ASSERT(context != NULL);
+  context->current_index += 4;
+}
 
 u32 parse_u32(ParsingContext *context) {
+  ASSERT(context != NULL);
   const u32 value =
       u32_from_bytes(context->datastream + context->current_index);
   context->current_index += 4;
@@ -119,12 +128,14 @@ u32 parse_u32(ParsingContext *context) {
 }
 
 u8 parse_u8(ParsingContext *context) {
+  ASSERT(context != NULL);
   const u8 value = (u8)context->datastream[context->current_index];
   context->current_index++;
   return value;
 }
 
 ColourType parse_colour_type(ParsingContext *context) {
+  ASSERT(context != NULL);
   u8 colour_type = parse_u8(context);
   LOG_DEBUG("T %d", colour_type);
   switch (colour_type) {
@@ -141,6 +152,8 @@ ColourType parse_colour_type(ParsingContext *context) {
 
 bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
   static const u32 IHDR_CHUNK_LENGTH = 13;
+  ASSERT(context != NULL);
+  ASSERT(image != NULL);
 
   LOG_PNG_DECODER("Parsing IHDR chunk...");
   u32 length = parse_chunk_length(context);
@@ -210,6 +223,7 @@ bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
 
 // This function assumes the current index is at the start of a chunk
 void skip_chunk(ParsingContext *context) {
+  ASSERT(context != NULL);
   u32 data_length = peek_next_chunk_length(context);
   context->current_index +=
       CHUNK_LENGTH_SIZE + CHUNK_TYPE_SIZE + data_length + CHUNK_CRC_SIZE;
@@ -217,6 +231,7 @@ void skip_chunk(ParsingContext *context) {
 
 // This function assumes the current index is at the start of a chunk
 void skip_unsupported_chunks(ParsingContext *context) {
+  ASSERT(context != NULL);
   // Assuming we are at a start of a chunk, we peek at the type
   ChunkType type = peek_next_chunk_type(context);
   while (type == ChunkType_Unknown) {
@@ -226,6 +241,8 @@ void skip_unsupported_chunks(ParsingContext *context) {
 }
 
 void parse_idat_chunk(ParsingContext *context, u8vec *compressed_data) {
+  ASSERT(context != NULL);
+  ASSERT(compressed_data != NULL);
   u32 length = parse_chunk_length(context);
   ChunkType type = parse_chunk_type(context);
   ASSERT(type == ChunkType_IDAT);
@@ -275,6 +292,8 @@ static const ReconstructionFn reconstruction_functions[] = {
 
 void apply_reconstruction_functions(Image *image,
                                     const u8 *decompressed_data_buffer) {
+  ASSERT(image != NULL);
+  ASSERT(decompressed_data_buffer != NULL);
   size_t bytes_per_pixel = image->bytes_per_pixel;
   for (int scanline = 0; scanline < image->height; scanline++) {
     int scanline_start_offset = scanline * (1 + image->width * bytes_per_pixel);
@@ -303,7 +322,7 @@ void apply_reconstruction_functions(Image *image,
 }
 
 Image *png_load(const u8 *datastream) {
-  ASSERT(datastream);
+  ASSERT(datastream != NULL);
 
   Image *image = memory_allocate(sizeof(Image));
   if (!image) {

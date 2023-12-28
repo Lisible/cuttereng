@@ -6,6 +6,8 @@
 void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
                Index *indices, size_t index_count) {
   ASSERT(mesh != NULL);
+  ASSERT(vertices != NULL);
+  ASSERT(indices != NULL);
   mesh->vertices = vertices;
   mesh->vertex_count = vertex_count;
   mesh->indices = indices;
@@ -16,10 +18,22 @@ void mesh_deinit(Mesh *mesh) {
   memory_free(mesh->vertices);
   memory_free(mesh->indices);
 }
-Vertex *mesh_vertices(Mesh *mesh) { return mesh->vertices; }
-size_t mesh_vertex_count(Mesh *mesh) { return mesh->vertex_count; }
-Index *mesh_indices(Mesh *mesh) { return mesh->indices; }
-size_t mesh_index_count(Mesh *mesh) { return mesh->index_count; }
+Vertex *mesh_vertices(Mesh *mesh) {
+  ASSERT(mesh != NULL);
+  return mesh->vertices;
+}
+size_t mesh_vertex_count(Mesh *mesh) {
+  ASSERT(mesh != NULL);
+  return mesh->vertex_count;
+}
+Index *mesh_indices(Mesh *mesh) {
+  ASSERT(mesh != NULL);
+  return mesh->indices;
+}
+size_t mesh_index_count(Mesh *mesh) {
+  ASSERT(mesh != NULL);
+  return mesh->index_count;
+}
 
 bool gpu_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *gpu_mesh,
                    Mesh *mesh) {
@@ -64,6 +78,7 @@ err:
 }
 
 void gpu_mesh_deinit(GPUMesh *gpu_mesh) {
+  ASSERT(gpu_mesh != NULL);
   wgpuBufferDestroy(gpu_mesh->vertex_buffer);
   wgpuBufferRelease(gpu_mesh->vertex_buffer);
   wgpuBufferDestroy(gpu_mesh->index_buffer);
@@ -71,6 +86,7 @@ void gpu_mesh_deinit(GPUMesh *gpu_mesh) {
 }
 
 void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh) {
+  ASSERT(gpu_mesh != NULL);
   wgpuRenderPassEncoderSetVertexBuffer(rpe, 0, gpu_mesh->vertex_buffer, 0,
                                        gpu_mesh->vertex_count * sizeof(Vertex));
   wgpuRenderPassEncoderSetIndexBuffer(rpe, gpu_mesh->index_buffer,

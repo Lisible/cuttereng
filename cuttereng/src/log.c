@@ -3,6 +3,8 @@
 #include <stdio.h>
 
 void log_message(const char *format_str, ...) {
+  if (!format_str)
+    return;
   va_list args;
   va_start(args, format_str);
   vfprintf(stderr, format_str, args);

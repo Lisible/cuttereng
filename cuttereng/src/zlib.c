@@ -30,8 +30,11 @@ ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
 
   static const size_t COMPRESSED_DATA_OFFSET = 2;
   // The only currently supported compression method is deflate
-  deflate_decompress(zlib_compressed_data + COMPRESSED_DATA_OFFSET,
-                     out_decompressed_data);
+  if (deflate_decompress(zlib_compressed_data + COMPRESSED_DATA_OFFSET,
+                         out_decompressed_data) != DeflateStatus_Success) {
+    LOG_ERROR("Deflate decompression failed");
+    return ZlibResult_DeflateDecompressionFailed;
+  }
 
   // NOTE maybe compute the adler checkum
 
