@@ -5,7 +5,7 @@
 
 typedef struct HashTable HashTable;
 typedef struct {
-  const char *key;
+  char *key;
   void *value;
 } HashTableKV;
 
@@ -27,7 +27,7 @@ void hash_table_destroy(HashTable *table);
 /// @param key The key for the value
 /// @param value A non-null value
 /// @return The key of the newly inserted value, NULL if an error occured
-const char *hash_table_set(HashTable *table, const char *key, void *value);
+const char *hash_table_set(HashTable *table, char *key, void *value);
 
 /// Returns the item for the given key
 ///
@@ -64,7 +64,7 @@ size_t hash_table_length(const HashTable *table);
   void hash_table_##T##_deinit(HashTableOf(T) * table) {                       \
     hash_table_destroy(table->internal_table);                                 \
   }                                                                            \
-  const char *hash_table_##T##_set(HashTableOf(T) * table, const char *key,    \
+  const char *hash_table_##T##_set(HashTableOf(T) * table, char *key,          \
                                    T *value) {                                 \
     return hash_table_set(table->internal_table, key, value);                  \
   }                                                                            \

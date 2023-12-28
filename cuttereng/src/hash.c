@@ -35,13 +35,13 @@ void hash_table_clear(HashTable *table) {
         table->item_destructor(table->items[i].value);
       }
 
-      memory_free((char *)table->items[i].key);
+      memory_free(table->items[i].key);
       table->items[i].key = NULL;
     }
   }
 }
-const char *hash_table_set_kv(HashTableKV *items, size_t capacity,
-                              const char *key, void *value, size_t *length) {
+const char *hash_table_set_kv(HashTableKV *items, size_t capacity, char *key,
+                              void *value, size_t *length) {
 
   uint64_t hash = hash_fnv_1a(key);
   // Note: capacity is a power of two so we can get the modulo using &
@@ -85,7 +85,7 @@ bool hash_table_expand(HashTable *table) {
   for (size_t i = 0; i < table->capacity; i++) {
     HashTableKV kv = table->items[i];
     if (kv.key != NULL) {
-      hash_table_set_kv(table->items, table->capacity, kv.key, kv.value, NULL);
+      hash_table_set_kv(new_items, table->capacity, kv.key, kv.value, NULL);
     }
   }
   memory_free(table->items);
@@ -94,7 +94,7 @@ bool hash_table_expand(HashTable *table) {
   return true;
 }
 
-const char *hash_table_set(HashTable *table, const char *key, void *value) {
+const char *hash_table_set(HashTable *table, char *key, void *value) {
   if (value == NULL)
     return NULL;
 

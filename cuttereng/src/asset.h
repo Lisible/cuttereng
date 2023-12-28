@@ -8,13 +8,12 @@ typedef void (*AssetDestructor)(void *asset);
 
 typedef struct Assets Assets;
 Assets *assets_new();
-void assets_register_loader_(Assets *assets, const char *asset_type,
+void assets_register_loader_(Assets *assets, char *asset_type,
                              AssetLoader asset_loader,
                              AssetDestructor asset_destructor);
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type);
-void *assets_fetch_(Assets *assets, const char *asset_type,
-                    const char *asset_path);
+void *assets_fetch_(Assets *assets, char *asset_type, char *asset_path);
 void assets_destroy(Assets *assets);
 void assets_remove_(Assets *assets, const char *asset_type,
                     const char *asset_path);

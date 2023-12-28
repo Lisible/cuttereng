@@ -91,9 +91,8 @@ size_t ecs_get_entity_count(const Ecs *ecs) {
   return ecs->entity_count;
 }
 
-void ecs_insert_component_(Ecs *ecs, EcsId entity_id,
-                           const char *component_name, size_t component_size,
-                           const void *data) {
+void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
+                           size_t component_size, const void *data) {
   ASSERT(ecs != NULL);
   ASSERT(data != NULL);
 
@@ -228,8 +227,8 @@ bool ecs_query_it_next(EcsQueryIt *it) {
 }
 void ecs_query_it_deinit(EcsQueryIt *it) {
   ASSERT(it != NULL);
-
-  free(it->state);
+  memory_free(it->state->matching_entities);
+  memory_free(it->state);
 }
 void *ecs_query_it_get_(const EcsQueryIt *it, size_t component) {
   ASSERT(it != NULL);

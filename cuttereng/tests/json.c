@@ -211,6 +211,7 @@ static void parse_object_with_a_ton_of_attributes() {
   ASSERT_NOT_NULL(json_object_get(parsed_json->object, "property97"));
   ASSERT_FLOAT_EQ(json_object_get(parsed_json->object, "property97")->number,
                   97.0, 0.1);
+
   json_destroy(parsed_json);
 }
 

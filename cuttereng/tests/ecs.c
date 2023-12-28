@@ -85,6 +85,7 @@ void t_ecs_count_matching() {
       .components = (const char *[]){ecs_component_id(Position),
                                      ecs_component_id(Velocity), NULL}};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
+  ecs_deinit(&ecs);
 }
 
 void t_ecs_query() {
@@ -109,6 +110,8 @@ void t_ecs_query() {
   ASSERT_EQ(pos->x, 5);
   ASSERT_EQ(pos->y, 85);
   ASSERT_NULL(ecs_query_it_get(&query_iterator, Position, 1));
+  ecs_query_it_deinit(&query_iterator);
+  ecs_deinit(&ecs);
 }
 
 void t_ecs_query_two_components() {
@@ -143,6 +146,8 @@ void t_ecs_query_two_components() {
   vel = ecs_query_it_get(&query_iterator, Velocity, 1);
   ASSERT_EQ(vel->x, 121);
   ASSERT_EQ(vel->y, 300);
+  ecs_query_it_deinit(&query_iterator);
+  ecs_deinit(&ecs);
 }
 
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),

@@ -1,5 +1,6 @@
 #include "test.h"
 #include <hash.h>
+#include <memory.h>
 
 void t_hash_table_new() {
   HashTable *hash_table = hash_table_new(NULL);
@@ -8,7 +9,7 @@ void t_hash_table_new() {
 }
 
 void t_hash_table_set() {
-  HashTable *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(memory_free);
   int *i = malloc(sizeof(int));
   *i = 0;
   hash_table_set(hash_table, "some_key", i);
@@ -17,7 +18,7 @@ void t_hash_table_set() {
 }
 
 void t_hash_table_has() {
-  HashTable *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(memory_free);
   int *i = malloc(sizeof(int));
   *i = 532;
   hash_table_set(hash_table, "some_key", i);
@@ -26,7 +27,7 @@ void t_hash_table_has() {
 }
 
 void t_hash_table_get() {
-  HashTable *hash_table = hash_table_new(NULL);
+  HashTable *hash_table = hash_table_new(memory_free);
   int *i = malloc(sizeof(int));
   *i = 532;
   hash_table_set(hash_table, "some_key", i);

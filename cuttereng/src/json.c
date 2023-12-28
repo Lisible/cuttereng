@@ -159,7 +159,6 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
     eat_whitespaces(ctx);
 
     Json *value = parse_value(ctx);
-
     json_object_set(object, name->string, value);
     json_destroy(name);
 

@@ -24,9 +24,8 @@ void ecs_init(Ecs *ecs);
 void ecs_deinit(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);
-void ecs_insert_component_(Ecs *ecs, EcsId entity_id,
-                           const char *component_name, size_t component_size,
-                           const void *data);
+void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
+                           size_t component_size, const void *data);
 bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name);
 void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
