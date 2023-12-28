@@ -38,6 +38,7 @@ void HashTable_noop_destructor(void *value);
   }                                                                            \
   void name##_destroy(name *table) {                                           \
     ASSERT(table != NULL);                                                     \
+    name##_clear(table);                                                       \
     memory_free(table->items);                                                 \
     memory_free(table);                                                        \
   }                                                                            \

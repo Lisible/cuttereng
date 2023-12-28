@@ -9,8 +9,6 @@
 #define ASSETS_BASE_PATH "assets/"
 
 DECL_HASH_TABLE(void *, HashTableAsset)
-
-// TODO create wrapper type
 DEF_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
 
 typedef struct {
@@ -139,6 +137,30 @@ void assets_remove_(Assets *assets, const char *asset_type,
 }
 
 void assets_destroy(Assets *assets) {
+
+  for (size_t asset_store_index = 0;
+       asset_store_index < assets->asset_stores->capacity;
+       asset_store_index++) {
+    if (!assets->asset_stores->items[asset_store_index].key) {
+      continue;
+    }
+
+    char *asset_type = assets->asset_stores->items[asset_store_index].key;
+    AssetStore *asset_store =
+        assets->asset_stores->items[asset_store_index].value;
+
+    AssetDestructor *destructor =
+        HashTableAssetDestructor_get(assets->destructors, asset_type);
+    for (size_t asset_index = 0; asset_index < asset_store->assets->capacity;
+         asset_index++) {
+      if (!asset_store->assets->items[asset_index].key) {
+        continue;
+      }
+
+      destructor->fn(asset_store->assets->items[asset_index].value);
+    }
+  }
+
   HashTableAssetStore_destroy(assets->asset_stores);
   HashTableAssetLoader_destroy(assets->loaders);
   HashTableAssetDestructor_destroy(assets->destructors);
