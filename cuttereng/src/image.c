@@ -8,11 +8,13 @@ void image_destroy(Image *image) {
   memory_free(image);
 }
 
-void *image_loader(const char *path) {
+AssetLoader image_loader = {.fn = image_loader_fn};
+void *image_loader_fn(const char *path) {
   char *file_content = asset_read_file_to_string(path);
   Image *image = png_load((u8 *)file_content);
   memory_free(file_content);
   return image;
 }
 
-void image_destructor(void *asset) { image_destroy(asset); }
+AssetDestructor image_destructor = {.fn = image_destructor_fn};
+void image_destructor_fn(void *asset) { image_destroy(asset); }

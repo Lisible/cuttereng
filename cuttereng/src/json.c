@@ -119,11 +119,12 @@ typedef struct {
   Json *value;
 } JsonObjectProperty;
 
-struct JsonObject {
-  HashTable *hash_table;
-};
+DECL_HASH_TABLE(Json, HashTableJson)
+DEF_HASH_TABLE(Json, HashTableJson, json_destroy)
 
-void json_item_destructor(void *ptr) { json_destroy((Json *)ptr); }
+struct JsonObject {
+  HashTableJson *hash_table;
+};
 
 JsonObject *json_object_create() {
   JsonObject *object = malloc(sizeof(JsonObject));
@@ -132,7 +133,7 @@ JsonObject *json_object_create() {
     goto err;
   }
 
-  object->hash_table = hash_table_new(json_item_destructor);
+  object->hash_table = HashTableJson_create(16);
   if (!object->hash_table)
     goto cleanup;
 
@@ -432,7 +433,7 @@ void json_cleanup(Json *value) {
     free(value->array);
     value->array = NULL;
   } else if (value->type == JSON_OBJECT) {
-    hash_table_destroy(value->object->hash_table);
+    HashTableJson_destroy(value->object->hash_table);
     free(value->object);
     value->object = NULL;
   }
@@ -495,13 +496,13 @@ bool is_non_zero_digit(char c) { return is_digit(c) && c != '0'; }
 Json *json_create() { return malloc(sizeof(Json)); }
 
 Json *json_object_get(const JsonObject *object, const char *key) {
-  return hash_table_get(object->hash_table, key);
+  return HashTableJson_get(object->hash_table, key);
 }
 
 const char *json_object_set(JsonObject *object, char *key, Json *value) {
-  return hash_table_set(object->hash_table, key, value);
+  return HashTableJson_set(object->hash_table, key, value);
 }
 
 void json_object_steal(JsonObject *object, const char *key) {
-  hash_table_steal(object->hash_table, key);
+  HashTableJson_steal(object->hash_table, key);
 }

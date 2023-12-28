@@ -6,8 +6,12 @@
 
 typedef size_t EcsId;
 typedef struct Ecs Ecs;
+
+typedef struct ComponentStore ComponentStore;
+DECL_HASH_TABLE(ComponentStore, HashTableComponentStore)
+
 struct Ecs {
-  HashTable *component_stores;
+  HashTableComponentStore *component_stores;
   size_t entity_count;
 };
 

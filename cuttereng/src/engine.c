@@ -9,7 +9,8 @@
 void engine_init(Engine *engine, const Configuration *configuration,
                  SDL_Window *window) {
   engine->assets = assets_new();
-  assets_register_loader(engine->assets, Image, image_loader, image_destructor);
+  assets_register_loader(engine->assets, Image, &image_loader,
+                         &image_destructor);
 
   engine->renderer =
       renderer_new(window, engine->assets, engine->current_time_secs);

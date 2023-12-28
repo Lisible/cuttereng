@@ -3,14 +3,21 @@
 
 #include "common.h"
 
-typedef void *(*AssetLoader)(const char *path);
-typedef void (*AssetDestructor)(void *asset);
+typedef void *(*AssetLoaderFn)(const char *path);
+typedef struct {
+  AssetLoaderFn fn;
+} AssetLoader;
+
+typedef void (*AssetDestructorFn)(void *asset);
+typedef struct {
+  AssetDestructorFn fn;
+} AssetDestructor;
 
 typedef struct Assets Assets;
 Assets *assets_new();
 void assets_register_loader_(Assets *assets, char *asset_type,
-                             AssetLoader asset_loader,
-                             AssetDestructor asset_destructor);
+                             AssetLoader *asset_loader,
+                             AssetDestructor *asset_destructor);
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type);
 void *assets_fetch_(Assets *assets, char *asset_type, char *asset_path);

@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_IMAGE_H
 #define CUTTERENG_IMAGE_H
 
+#include "asset.h"
 #include "common.h"
 
 typedef enum {
@@ -19,7 +20,10 @@ typedef struct {
 
 void image_destroy(Image *image);
 
-void *image_loader(const char *path);
-void image_destructor(void *asset);
+void *image_loader_fn(const char *path);
+extern AssetLoader image_loader;
+
+void image_destructor_fn(void *asset);
+extern AssetDestructor image_destructor;
 
 #endif // CUTTERENG_IMAGE_H

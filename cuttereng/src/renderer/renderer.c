@@ -186,8 +186,8 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
       .alphaMode = surface_capabilities.alphaModes[0]};
   wgpuSurfaceConfigure(renderer->wgpu_surface, &wgpu_surface_configuration);
 
-  assets_register_loader(assets, Shader, shader_asset_loader,
-                         shader_asset_destructor);
+  assets_register_loader(assets, Shader, &shader_asset_loader,
+                         &shader_asset_destructor);
   Shader *shader_asset = assets_fetch(assets, Shader, "shader/shader.wgsl");
 
   WGPUShaderModule shader_module = shader_create_wgpu_shader_module(
