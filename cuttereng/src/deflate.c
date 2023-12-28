@@ -76,16 +76,15 @@ int huffman_table_decode(const HuffmanTable *table, Bitstream *bitstream) {
 }
 
 typedef struct {
-  u8 *output_buffer;
+  u8vec *output_buffer;
   size_t current_output_buffer_index;
-  const size_t output_buffer_size;
 } DeflateOutputState;
 
 // FIXME return result status and add bound checkings on the output buffer
-void deflate_decompress_(Bitstream *bitstream,
-                         const HuffmanTable *length_literal_table,
-                         const HuffmanTable *dist_table,
-                         DeflateOutputState *output_state) {
+DeflateStatus deflate_decompress_(Bitstream *bitstream,
+                                  const HuffmanTable *length_literal_table,
+                                  const HuffmanTable *dist_table,
+                                  DeflateOutputState *output_state) {
   static const u16 length_size_base[29] = {
       3,  4,  5,  6,  7,  8,  9,  10, 11,  13,  15,  17,  19,  23, 27,
       31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258};
@@ -104,44 +103,43 @@ void deflate_decompress_(Bitstream *bitstream,
   while (symbol != 256) {
     symbol = huffman_table_decode(length_literal_table, bitstream);
     if (symbol < 0) {
-      // TODO error
+      return DeflateStatus_UnknownSymbol;
     } else if (symbol < 256) {
-      // TODO bound check
-      output_state->output_buffer[output_state->current_output_buffer_index] =
-          symbol;
-      output_state->current_output_buffer_index++;
+      u8vec_append(output_state->output_buffer, (u8 *)&symbol, 1);
     } else if (symbol > 256) {
       symbol -= 257;
       int length = length_size_base[symbol] +
                    bitstream_next_bits(bitstream, length_extra_bits[symbol]);
       symbol = huffman_table_decode(dist_table, bitstream);
+      if (symbol < 0) {
+        return DeflateStatus_UnknownSymbol;
+      }
+
       int distance =
           distance_offset_base[symbol] +
           bitstream_next_bits(bitstream, distance_extra_bits[symbol]);
       while (length > 0) {
-        output_state->output_buffer[output_state->current_output_buffer_index] =
-            output_state
-                ->output_buffer[output_state->current_output_buffer_index -
-                                distance];
-        output_state->current_output_buffer_index++;
+        size_t output_buffer_length = u8vec_length(output_state->output_buffer);
+        u8vec_append(output_state->output_buffer,
+                     output_state->output_buffer->data + output_buffer_length -
+                         distance,
+                     1);
         length--;
       }
-    } else {
-      //
     }
   }
+  return DeflateStatus_Success;
 }
 
-size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
-                          const size_t output_buffer_size) {
+DeflateStatus deflate_decompress(const u8 *compressed_data_set,
+                                 u8vec *output_buffer) {
   ASSERT(compressed_data_set != NULL);
   LOG_TRACE("Decompressing deflate data");
 
   Bitstream bitstream;
   bitstream_init(&bitstream, compressed_data_set, 0);
   DeflateOutputState output_state = {.current_output_buffer_index = 0,
-                                     .output_buffer = output_buffer,
-                                     .output_buffer_size = output_buffer_size};
+                                     .output_buffer = output_buffer};
   u8 bfinal = 0;
   while (!bfinal) {
     bfinal = bitstream_next_bits(&bitstream, 1);
@@ -153,8 +151,9 @@ size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
     if (btype == DeflateCompressionType_NoCompression) {
       UNIMPLEMENTED("No compression deflate is not supported");
     } else {
-      if (btype == DeflateCompressionType_DynamicHuffmanCodes) {
-
+      if (btype == DeflateCompressionType_FixedHuffmanCodes) {
+        UNIMPLEMENTED("Fixed Huffman codes deflate is not supported");
+      } else {
         u16 codelengths_codelengths[CODE_LENGTH_ALPHABET_MAX_SYMBOL_COUNT] = {
             0};
         for (int i = 0; i < hclen; i++) {
@@ -175,7 +174,7 @@ size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
         while (index < hlit + hdist) {
           int symbol = huffman_table_decode(&codelength_table, &bitstream);
           if (symbol < 0) {
-            // invalid symbol
+            return DeflateStatus_UnknownSymbol;
           } else if (symbol < 16) {
             lenlit_dist_codelengths[index++] = symbol;
           } else {
@@ -218,13 +217,14 @@ size_t deflate_decompress(const u8 *compressed_data_set, u8 *output_buffer,
         build_huffman_table_from_codelengths(
             &dist_table, lenlit_dist_codelengths + hlit, hdist);
 
-        deflate_decompress_(&bitstream, &length_literal_table, &dist_table,
-                            &output_state);
+        DeflateStatus status = deflate_decompress_(
+            &bitstream, &length_literal_table, &dist_table, &output_state);
+        if (status != DeflateStatus_Success) {
+          return status;
+        }
       }
     }
-
-    return bitstream.current_byte_index;
   }
 
-  return 0;
+  return DeflateStatus_Success;
 }

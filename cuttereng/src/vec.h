@@ -67,4 +67,6 @@
   DECL_VEC(T, name)                                                            \
   DEF_VEC(T, name, initial_capacity)
 
+DECL_VEC(u8, u8vec)
+
 #endif // CUTTERENG_VEC_H

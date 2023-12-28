@@ -35,6 +35,7 @@ cuttereng_lib = library(
   'src/asset.c',
   'src/camera.c',
   'src/bytes.c',
+  'src/vec.c',
   'src/math/vector.c',
   'src/math/matrix.c',
   'src/math/quaternion.c',

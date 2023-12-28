@@ -12,6 +12,9 @@ AssetLoader image_loader = {.fn = image_loader_fn};
 void *image_loader_fn(const char *path) {
   char *file_content = asset_read_file_to_string(path);
   Image *image = png_load((u8 *)file_content);
+  if (!image) {
+    LOG_ERROR("Couldn't load image: %s", path);
+  }
   memory_free(file_content);
   return image;
 }

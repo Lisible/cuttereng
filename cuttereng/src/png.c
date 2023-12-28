@@ -2,7 +2,6 @@
 #include "assert.h"
 #include "bytes.h"
 #include "common.h"
-#include "deflate.h"
 #include "log.h"
 #include "memory.h"
 #include "vec.h"
@@ -13,8 +12,6 @@
 static const int CHUNK_LENGTH_SIZE = 4;
 static const int CHUNK_TYPE_SIZE = 4;
 static const int CHUNK_CRC_SIZE = 4;
-
-VEC_IMPL(u8, u8vec, 1024)
 
 typedef struct {
   const u8 *datastream;
@@ -204,7 +201,7 @@ bool parse_ihdr_chunk(ParsingContext *context, Image *image) {
   image->bytes_per_pixel =
       bit_depth / 8 * colour_type_sample_count(colour_type);
 
-  // TODO compute chunk crc and check it (maybe behind
+  // NOTE maybe compute chunk crc and check it (maybe behind
   // an option/build flag?)
   skip_u32(context);
 
@@ -235,7 +232,7 @@ void parse_idat_chunk(ParsingContext *context, u8vec *compressed_data) {
   u8vec_append(compressed_data, context->datastream + context->current_index,
                length);
   context->current_index += length;
-  // TODO validate crc
+  // NOTE: maybe validate crc
   skip_u32(context);
 }
 
@@ -340,20 +337,18 @@ Image *png_load(const u8 *datastream) {
     next_chunk_type = peek_next_chunk_type(&context);
   }
 
-  u8 *decompressed_data_buffer = memory_allocate_array(
-      image->width * image->height * 2, image->bytes_per_pixel);
-  u8 decompressed_data_buffer_size =
-      image->width * image->height * image->bytes_per_pixel * 2;
-  if (read_zlib_compressed_data(compressed_data.data, decompressed_data_buffer,
-                                decompressed_data_buffer_size) !=
+  u8vec decompressed_data_buffer;
+  u8vec_init(&decompressed_data_buffer);
+  if (read_zlib_compressed_data(compressed_data.data,
+                                &decompressed_data_buffer) !=
       ZlibResult_Success) {
     LOG_PNG_DECODER_ERROR("Couldn't read zlib compressed data");
     goto cleanup_image_data;
   }
 
-  apply_reconstruction_functions(image, decompressed_data_buffer);
+  apply_reconstruction_functions(image, decompressed_data_buffer.data);
 
-  memory_free(decompressed_data_buffer);
+  u8vec_deinit(&decompressed_data_buffer);
   u8vec_deinit(&compressed_data);
   skip_unsupported_chunks(&context);
   next_chunk_type = peek_next_chunk_type(&context);

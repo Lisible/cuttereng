@@ -3,9 +3,11 @@
 
 #include "common.h"
 #include "log.h"
+#include "vec.h"
 
 typedef enum {
   ZlibResult_Success,
+  ZlibResult_DeflateDecompressionFailed,
   ZlibResult_UnsupportedCompressionMethod,
   ZlibResult_UnsupportedFlag,
 } ZlibResult;
@@ -13,7 +15,6 @@ typedef enum {
 /// Reads zlib compressed data according to RFC1950
 /// https://datatracker.ietf.org/doc/html/rfc1950
 ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
-                                     u8 *out_decompressed_data,
-                                     const size_t out_decompressed_data_size);
+                                     u8vec *out_decompressed_data);
 
 #endif // CUTTERENG_ZLIB_H

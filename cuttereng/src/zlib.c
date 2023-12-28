@@ -4,8 +4,7 @@
 #include "deflate.h"
 
 ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
-                                     u8 *out_decompressed_data,
-                                     const size_t out_decompressed_data_size) {
+                                     u8vec *out_decompressed_data) {
   ASSERT(zlib_compressed_data != NULL);
   ASSERT(out_decompressed_data != NULL);
 
@@ -31,13 +30,10 @@ ZlibResult read_zlib_compressed_data(const u8 *zlib_compressed_data,
 
   static const size_t COMPRESSED_DATA_OFFSET = 2;
   // The only currently supported compression method is deflate
-  size_t byte_offset =
-      deflate_decompress(zlib_compressed_data + COMPRESSED_DATA_OFFSET,
-                         out_decompressed_data, out_decompressed_data_size);
+  deflate_decompress(zlib_compressed_data + COMPRESSED_DATA_OFFSET,
+                     out_decompressed_data);
 
-  u32 adler_checksum = u32_from_bytes(zlib_compressed_data +
-                                      COMPRESSED_DATA_OFFSET + byte_offset + 1);
-  LOG_TRACE("Adler checksum: %d", adler_checksum);
+  // NOTE maybe compute the adler checkum
 
   return ZlibResult_Success;
 }
