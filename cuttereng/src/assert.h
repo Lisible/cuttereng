@@ -2,6 +2,7 @@
 #define CUTTERENG_ASSERT_H
 
 #include "log.h"
+#include <stdlib.h>
 
 #ifdef DEBUG
 #define ASSERT(expr, ...)                                                      \

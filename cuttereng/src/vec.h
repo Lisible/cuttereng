@@ -1,7 +1,6 @@
 #ifndef CUTTERENG_VEC_H
 #define CUTTERENG_VEC_H
 
-#include "assert.h"
 #include "common.h"
 #include "memory.h"
 #include <string.h>
