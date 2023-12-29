@@ -48,6 +48,7 @@
     }                                                                          \
                                                                                \
     vec->data = allocator_reallocate(vec->allocator, vec->data,                \
+                                     vec->capacity * sizeof(T),                \
                                      new_capacity * sizeof(T));                \
     if (!vec->data) {                                                          \
       /* TODO maybe improve that error handling? */                            \

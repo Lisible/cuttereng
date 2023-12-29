@@ -213,8 +213,10 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
   while (current_character(ctx) != TOKEN_ARRAY_END) {
     eat_whitespaces(ctx);
     if (length == capacity) {
+      size_t old_capacity = capacity;
       capacity *= 2;
       array = allocator_reallocate(ctx->allocator, array,
+                                   (old_capacity + 1) * sizeof(Json *),
                                    (capacity + 1) * sizeof(Json *));
       if (!array) {
         LOG_ERROR("memory reallocation failed");
