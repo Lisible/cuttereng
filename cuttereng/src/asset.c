@@ -50,13 +50,13 @@ void asset_store_destroy(Allocator *allocator, AssetStore *asset_store) {
   allocator_free(asset_store->allocator, asset_store);
 }
 
-DECL_HASH_TABLE(AssetLoader, HashTableAssetLoader)
-DEF_HASH_TABLE(AssetLoader, HashTableAssetLoader, HashTable_noop_destructor)
-DECL_HASH_TABLE(AssetDestructor, HashTableAssetDestructor)
-DEF_HASH_TABLE(AssetDestructor, HashTableAssetDestructor,
+DECL_HASH_TABLE(AssetLoader *, HashTableAssetLoader)
+DEF_HASH_TABLE(AssetLoader *, HashTableAssetLoader, HashTable_noop_destructor)
+DECL_HASH_TABLE(AssetDestructor *, HashTableAssetDestructor)
+DEF_HASH_TABLE(AssetDestructor *, HashTableAssetDestructor,
                HashTable_noop_destructor)
-DECL_HASH_TABLE(AssetStore, HashTableAssetStore)
-DEF_HASH_TABLE(AssetStore, HashTableAssetStore, asset_store_destroy)
+DECL_HASH_TABLE(AssetStore *, HashTableAssetStore)
+DEF_HASH_TABLE(AssetStore *, HashTableAssetStore, asset_store_destroy)
 
 struct Assets {
   Allocator *allocator;
@@ -203,5 +203,7 @@ char *asset_read_file_to_string(Allocator *allocator, const char *path) {
   memset(effective_path, 0, effective_path_length);
   strcat(effective_path, ASSETS_BASE_PATH);
   strcat(effective_path, path);
-  return filesystem_read_file_to_string(allocator, effective_path);
+  char *result = filesystem_read_file_to_string(allocator, effective_path);
+  allocator_free(allocator, effective_path);
+  return result;
 }

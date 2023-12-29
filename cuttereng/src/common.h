@@ -10,10 +10,17 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-#define UNIMPLEMENTED(msg)                                                     \
+#define PANIC(msg)                                                             \
   do {                                                                         \
-    LOG_ERROR("Reached unimplemented code in function %s:%d %s()\n" msg,       \
-              __FILE__, __LINE__, __func__);                                   \
+    LOG_ERROR("Panicked in function %s:%d %s()\n" msg, __FILE__, __LINE__,     \
+              __func__, msg);                                                  \
+    exit(1);                                                                   \
+  } while (0)
+
+#define UNIMPLEMENTED(...)                                                     \
+  do {                                                                         \
+    LOG_ERROR("Reached unimplemented code in function %s:%d %s()\n%s",         \
+              __FILE__, __LINE__, __func__, ##__VA_ARGS__);                    \
     exit(1);                                                                   \
   } while (0)
 

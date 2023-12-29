@@ -6,17 +6,19 @@
 #include <string.h>
 
 #define DECL_VEC(T, name)                                                      \
-  typedef struct {                                                             \
+  struct name {                                                                \
     Allocator *allocator;                                                      \
     T *data;                                                                   \
     size_t length;                                                             \
     size_t capacity;                                                           \
-  } name;                                                                      \
+  };                                                                           \
+  typedef struct name name;                                                    \
   void name##_init(Allocator *allocator, name *vec);                           \
   void name##_deinit(name *vec);                                               \
   void name##_reserve(name *vec, size_t length_to_reserve);                    \
   void name##_push_back(name *vec, T value);                                   \
   void name##_append(name *vec, const T *values, size_t count);                \
+  void name##_clear(name *vec);                                                \
   size_t name##_length(name *vec);                                             \
   size_t name##_capacity(name *vec);
 
@@ -69,6 +71,10 @@
     name##_reserve(vec, vec->length + count);                                  \
     memcpy(vec->data + vec->length, values, count * sizeof(T));                \
     vec->length += count;                                                      \
+  }                                                                            \
+  void name##_clear(name *vec) {                                               \
+    ASSERT(vec != NULL);                                                       \
+    vec->length = 0;                                                           \
   }                                                                            \
   size_t name##_length(name *vec) {                                            \
     ASSERT(vec != NULL);                                                       \

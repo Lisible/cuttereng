@@ -46,6 +46,37 @@ void allocator_free(Allocator *allocator, void *ptr) {
   allocator->free(ptr, allocator->ctx);
 }
 
+void *arena_allocator_allocate(size_t size, void *ctx) {
+  ASSERT(ctx != NULL);
+  return arena_allocate((Arena *)ctx, size);
+}
+void *arena_allocator_allocate_array(size_t count, size_t item_size,
+                                     void *ctx) {
+  ASSERT(ctx != NULL);
+  return arena_allocate_array((Arena *)ctx, count, item_size);
+}
+void *arena_allocator_reallocate(void *ptr, size_t old_size, size_t new_size,
+                                 void *ctx) {
+  (void)ptr;
+  (void)old_size;
+  (void)new_size;
+  (void)ctx;
+  UNIMPLEMENTED();
+}
+
+void arena_allocator_free(void *ptr, void *ctx) {
+  (void)ptr;
+  (void)ctx;
+}
+
+Allocator arena_allocator(Arena *arena) {
+  return (Allocator){.ctx = arena,
+                     .allocate = arena_allocator_allocate,
+                     .allocate_array = arena_allocator_allocate_array,
+                     .reallocate = arena_allocator_reallocate,
+                     .free = arena_allocator_free};
+}
+
 void arena_init(Arena *arena, Allocator *allocator, size_t size) {
   ASSERT(arena != NULL);
   ASSERT(allocator != NULL);
@@ -60,7 +91,9 @@ void *arena_allocate(Arena *arena, size_t size) {
   return ptr;
 }
 void *arena_allocate_array(Arena *arena, size_t count, size_t item_size) {
-  return arena_allocate(arena, count * item_size);
+  void *ptr = arena_allocate(arena, count * item_size);
+  memset(ptr, 0, count * item_size);
+  return ptr;
 }
 void *arena_reallocate(Arena *arena, void *ptr, size_t old_size,
                        size_t new_size) {

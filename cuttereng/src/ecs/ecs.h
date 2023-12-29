@@ -1,7 +1,6 @@
 #ifndef CUTTERENG_ECS_ECS_H
 #define CUTTERENG_ECS_ECS_H
 
-#include "../common.h"
 #include "../hash.h"
 #include "../vec.h"
 
@@ -9,10 +8,13 @@ typedef size_t EcsId;
 typedef struct Ecs Ecs;
 
 typedef struct ComponentStore ComponentStore;
-DECL_HASH_TABLE(ComponentStore, HashTableComponentStore)
+DECL_HASH_TABLE(ComponentStore *, HashTableComponentStore)
+
+#define ECS_QUERY_MAX_COMPONENT_COUNT 16
 
 typedef struct {
-  const char **components;
+  char *components[ECS_QUERY_MAX_COMPONENT_COUNT];
+  size_t component_count;
 } EcsQuery;
 
 typedef struct EcsQueryItState EcsQueryItState;
@@ -21,12 +23,42 @@ typedef struct {
   EcsQueryItState *state;
 } EcsQueryIt;
 
-typedef void (*EcsSystemFn)(EcsQueryIt *);
-
+typedef struct EcsCommandQueue EcsCommandQueue;
+typedef void (*EcsSystemFn)(EcsCommandQueue *, EcsQueryIt *);
 typedef struct {
   EcsQuery query;
   EcsSystemFn fn;
 } EcsSystemDescriptor;
+
+typedef enum { EcsCommandType_RegisterSystem } EcsCommandType;
+typedef struct {
+  EcsSystemDescriptor system_descriptor;
+} EcsRegisterSystemCommand;
+
+typedef struct {
+  EcsCommandType type;
+  union {
+    EcsRegisterSystemCommand register_system;
+  };
+} EcsCommand;
+
+void ecs_command_deinit(Allocator *allocator, EcsCommand *command);
+void ecs_command_execute(Ecs *ecs, EcsCommand *command);
+
+DECL_VEC(EcsCommand, EcsCommandVec)
+struct EcsCommandQueue {
+  EcsCommandVec commands;
+  Allocator *allocator;
+};
+
+typedef void (*EcsInitSystem)(EcsCommandQueue *);
+void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue);
+void ecs_command_queue_deinit(EcsCommandQueue *queue);
+void ecs_command_queue_register_system(EcsCommandQueue *queue,
+                                       const EcsSystemDescriptor *system);
+void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
+
+void ecs_default_init_system(EcsCommandQueue *queue);
 
 typedef struct {
   EcsQuery query;
@@ -40,13 +72,15 @@ struct Ecs {
   HashTableComponentStore *component_stores;
   size_t entity_count;
   EcsSystemVec systems;
+  EcsCommandQueue command_queue;
 };
 
-void ecs_init(Allocator *allocator, Ecs *ecs);
+void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system);
 void ecs_deinit(Ecs *ecs);
 void ecs_register_system(Ecs *ecs,
                          const EcsSystemDescriptor *system_descriptor);
 void ecs_run_systems(Ecs *ecs);
+void ecs_process_command_queue(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,

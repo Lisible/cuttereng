@@ -5,12 +5,14 @@
 #include "log.h"
 #include "memory.h"
 #include "renderer/renderer.h"
+#include "src/math/quaternion.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
-                 SDL_Window *window) {
+                 EcsInitSystem ecs_init_system, SDL_Window *window) {
   ASSERT(engine != NULL);
   ASSERT(configuration != NULL);
   ASSERT(window != NULL);
+  ecs_init(&system_allocator, &engine->ecs, ecs_init_system);
   engine->assets = assets_new(&system_allocator);
   assets_register_loader(engine->assets, Image, &image_loader,
                          &image_destructor);
@@ -23,6 +25,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
 
 void engine_deinit(Engine *engine) {
   ASSERT(engine != NULL);
+  ecs_deinit(&engine->ecs);
   assets_destroy(engine->assets);
   renderer_destroy(engine->renderer);
 
@@ -37,7 +40,6 @@ void engine_handle_events(Engine *engine, Event *event) {
     engine->running = false;
     break;
   case EVT_KEYDOWN:
-    renderer_recreate_pipeline(engine->assets, engine->renderer);
     break;
   default:
     break;
@@ -48,19 +50,41 @@ void engine_set_current_time(Engine *engine, float current_time_secs) {
   engine->current_time_secs = current_time_secs;
 }
 
-void engine_update(Arena *frame_arena, Engine *engine) {
+void engine_update(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
-  (void)frame_arena;
+  (void)frame_allocator;
 
   LOG_TRACE("update");
+  ecs_run_systems(&engine->ecs);
+  ecs_process_command_queue(&engine->ecs);
 }
 
-void engine_render(Arena *frame_arena, Engine *engine) {
+void engine_render(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
-  (void)frame_arena;
-
   LOG_TRACE("render");
-  renderer_render(engine->renderer, engine->current_time_secs);
+  static float a = 0.0;
+  a += 0.05;
+
+  Transform triangle_transform = TRANSFORM_DEFAULT;
+  triangle_transform.scale = (v3f){1.0, 1.0, 1.0};
+  triangle_transform.position.z = 10.0;
+  for (int i = 0; i < 1; i++) {
+    triangle_transform.position.x = i % 10 - 4;
+    triangle_transform.position.y = (float)i / 10 - 2;
+    quaternion_set_to_axis_angle(&triangle_transform.rotation,
+                                 &(const v3f){0.0, 1.0, 0.0}, i + a);
+    Quaternion quaternion = {.scalar_part = 1.0, .vector_part = {0}};
+    quaternion_set_to_axis_angle(&quaternion, &(const v3f){1.0, 0.0, 0.0},
+                                 i + a);
+
+    quaternion_mul(&triangle_transform.rotation, &quaternion);
+    renderer_draw_mesh(engine->renderer, &triangle_transform, "sand.json");
+    triangle_transform.position.x = i % 10 - 4 + 5;
+    triangle_transform.position.y = (float)i / 10;
+    triangle_transform.position.z = 3;
+    renderer_draw_mesh(engine->renderer, &triangle_transform, "water.json");
+  }
+  renderer_render(frame_allocator, engine->renderer, engine->current_time_secs);
 }
 
 bool engine_is_running(Engine *engine) {

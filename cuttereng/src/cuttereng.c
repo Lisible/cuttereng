@@ -12,9 +12,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const size_t KB = 1000;
+
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
-void cutter_bootstrap(void) {
+void cutter_bootstrap(EcsInitSystem ecs_init_system) {
   LOG_INFO("Bootstrapping...");
   char *configuration_file_path =
       env_get_configuration_file_path(&system_allocator);
@@ -36,10 +38,11 @@ void cutter_bootstrap(void) {
   SDL_Window *window = SDL_CreateWindow(
       config.application_title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       config.window_size.width, config.window_size.height, 0);
-  engine_init(&engine, &config, window);
+  engine_init(&engine, &config, ecs_init_system, window);
 
   Arena frame_arena;
-  arena_init(&frame_arena, &system_allocator, 1000);
+  Allocator frame_allocator = arena_allocator(&frame_arena);
+  arena_init(&frame_arena, &system_allocator, 10 * KB);
   while (engine_is_running(&engine)) {
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event) != 0) {
@@ -48,10 +51,11 @@ void cutter_bootstrap(void) {
       engine_handle_events(&engine, &event);
     }
     engine_set_current_time(&engine, SDL_GetTicks() / 1000.f);
-    engine_update(&frame_arena, &engine);
-    engine_render(&frame_arena, &engine);
+    engine_update(&frame_allocator, &engine);
+    engine_render(&frame_allocator, &engine);
     arena_clear(&frame_arena);
   }
+  arena_deinit(&frame_arena, &system_allocator);
 
   SDL_DestroyWindow(window);
   engine_deinit(&engine);

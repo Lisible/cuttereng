@@ -26,6 +26,7 @@ void assets_destroy(Assets *assets);
 void assets_remove_(Assets *assets, const char *asset_type,
                     const char *asset_path);
 void assets_clear(Assets *assets);
+void assets_list_subdirectory(const char *subdirectory);
 char *asset_read_file_to_string(Allocator *allocator, const char *path);
 
 #define assets_remove(assets, asset_type, asset_path)                          \

@@ -1,6 +1,8 @@
 #ifndef CUTTERENG_H
 #define CUTTERENG_H
 
-void cutter_bootstrap(void);
+#include "ecs/ecs.h"
+
+void cutter_bootstrap(EcsInitSystem init_system);
 
 #endif // CUTTERENG_H

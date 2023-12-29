@@ -4,6 +4,7 @@
 #include "png.h"
 
 void image_destroy(Allocator *allocator, Image *image) {
+  ASSERT(image != NULL);
   if (!image) {
     return;
   }

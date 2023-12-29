@@ -7,7 +7,15 @@ void *shader_asset_loader_fn(Allocator *allocator, const char *path) {
   ASSERT(path != NULL);
   Shader *shader_asset = allocator_allocate(allocator, sizeof(Shader));
   shader_asset->source = asset_read_file_to_string(allocator, path);
+  if (!shader_asset->source) {
+    goto cleanup_shader;
+  }
+
   return shader_asset;
+
+cleanup_shader:
+  allocator_free(allocator, shader_asset);
+  return NULL;
 }
 AssetDestructor shader_asset_destructor = {.fn = shader_asset_destructor_fn};
 void shader_asset_destructor_fn(Allocator *allocator, void *asset) {

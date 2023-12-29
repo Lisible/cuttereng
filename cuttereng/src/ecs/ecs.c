@@ -7,6 +7,7 @@
 #include <string.h>
 
 DEF_VEC(EcsSystem, EcsSystemVec, 512)
+DEF_VEC(EcsCommand, EcsCommandVec, 128)
 
 struct ComponentStore {
   void *data;
@@ -45,7 +46,8 @@ void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   allocator_free(allocator, store->data);
   allocator_free(allocator, store);
 }
-DEF_HASH_TABLE(ComponentStore, HashTableComponentStore, component_store_destroy)
+DEF_HASH_TABLE(ComponentStore *, HashTableComponentStore,
+               component_store_destroy)
 
 void component_store_set(ComponentStore *store, EcsId entity_id,
                          const void *data) {
@@ -68,8 +70,77 @@ void *component_store_get(ComponentStore *store, EcsId entity_id) {
   char *ptr = (char *)store->data;
   return ptr + (entity_id * store->item_size);
 }
+void ecs_command_execute(Ecs *ecs, EcsCommand *command) {
+  switch (command->type) {
+  case EcsCommandType_RegisterSystem:
+    ecs_register_system(ecs, &command->register_system.system_descriptor);
+    break;
+  default:
+    break;
+  }
+}
+void ecs_command_deinit(Allocator *allocator, EcsCommand *command) {
+  switch (command->type) {
+  case EcsCommandType_RegisterSystem: {
+    size_t component_count =
+        command->register_system.system_descriptor.query.component_count;
+    for (size_t i = 0; i < component_count; i++) {
+      allocator_free(
+          allocator,
+          command->register_system.system_descriptor.query.components[i]);
+    }
+  } break;
+  default:
+    break;
+  }
+}
 
-void ecs_init(Allocator *allocator, Ecs *ecs) {
+void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue) {
+  ASSERT(allocator != NULL);
+  ASSERT(queue != NULL);
+
+  queue->allocator = allocator;
+  EcsCommandVec_init(allocator, &queue->commands);
+}
+
+void ecs_command_queue_deinit(EcsCommandQueue *queue) {
+  ASSERT(queue != NULL);
+  EcsCommandVec_deinit(&queue->commands);
+}
+
+void ecs_command_queue_register_system(EcsCommandQueue *queue,
+                                       const EcsSystemDescriptor *system) {
+  ASSERT(queue != NULL);
+  ASSERT(system != NULL);
+
+  EcsCommand command;
+  command.type = EcsCommandType_RegisterSystem;
+  command.register_system.system_descriptor.fn = system->fn;
+  command.register_system.system_descriptor.query.component_count =
+      system->query.component_count;
+  for (size_t i = 0; i < system->query.component_count; i++) {
+    size_t component_id_length = strlen(system->query.components[i]);
+    char *component_id =
+        allocator_allocate(queue->allocator, component_id_length + 1);
+    component_id = strcpy(component_id, system->query.components[i]);
+    command.register_system.system_descriptor.query.components[i] =
+        component_id;
+  }
+
+  EcsCommandVec_append(&queue->commands, &command, 1);
+}
+void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue) {
+  ASSERT(queue != NULL);
+  for (size_t command_index = 0; command_index < queue->commands.length;
+       command_index++) {
+    ecs_command_execute(ecs, &queue->commands.data[command_index]);
+    ecs_command_deinit(queue->allocator, &queue->commands.data[command_index]);
+  }
+  EcsCommandVec_clear(&queue->commands);
+}
+
+void ecs_default_init_system(EcsCommandQueue *queue) { (void)queue; }
+void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system) {
   ASSERT(allocator != NULL);
   ASSERT(ecs != NULL);
 
@@ -77,8 +148,11 @@ void ecs_init(Allocator *allocator, Ecs *ecs) {
   ecs->entity_count = 0;
   ecs->component_stores = HashTableComponentStore_create(allocator, 16);
   EcsSystemVec_init(allocator, &ecs->systems);
+  ecs_command_queue_init(allocator, &ecs->command_queue);
+  init_system(&ecs->command_queue);
 }
 void ecs_deinit(Ecs *ecs) {
+  ecs_command_queue_deinit(&ecs->command_queue);
   EcsSystemVec_deinit(&ecs->systems);
   HashTableComponentStore_destroy(ecs->component_stores);
 }
@@ -91,10 +165,16 @@ void ecs_register_system(Ecs *ecs,
 }
 
 void ecs_run_systems(Ecs *ecs) {
+  ASSERT(ecs != NULL);
   for (size_t i = 0; i < ecs->systems.length; i++) {
     EcsQueryIt it = ecs_query(ecs, &ecs->systems.data[i].query);
-    ecs->systems.data[i].fn(&it);
+    ecs->systems.data[i].fn(&ecs->command_queue, &it);
+    ecs_query_it_deinit(&it);
   }
+}
+void ecs_process_command_queue(Ecs *ecs) {
+  ASSERT(ecs != NULL);
+  ecs_command_queue_finish(ecs, &ecs->command_queue);
 }
 
 EcsId ecs_create_entity(Ecs *ecs) {
@@ -161,8 +241,8 @@ size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query) {
 
   size_t result = 0;
 
-  // FIXME this is O(n + m) with n being the entity count and m being the query
-  // component count. Using a hierarchical bitset could help.
+  // FIXME this is O(n + m) with n being the entity count and m being the
+  // query component count. Using a hierarchical bitset could help.
   for (size_t entity_id = 0; entity_id < ecs_get_entity_count(ecs);
        entity_id++) {
     if (ecs_query_is_matching(ecs, query, entity_id))
@@ -189,8 +269,6 @@ bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
   return matches;
 }
 
-#define ECS_QUERY_MAX_COMPONENT_COUNT 16
-
 struct EcsQueryItState {
   ComponentStore *component_stores[ECS_QUERY_MAX_COMPONENT_COUNT];
   EcsId *matching_entities;
@@ -213,16 +291,12 @@ EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
       ecs->allocator, ecs->entity_count, sizeof(size_t));
   ASSERT(iterator.state->matching_entities != NULL);
 
-  // TODO handle the case where the query has more than
-  // ECS_QUERY_MAX_COMPONENT_COUNT components
-  size_t i = 0;
-  while (query->components[i]) {
+  for (size_t i = 0; i < query->component_count; i++) {
     ASSERT(i < ECS_QUERY_MAX_COMPONENT_COUNT - 1,
            "Too many components in the query");
     ComponentStore *component_store = HashTableComponentStore_get(
         ecs->component_stores, query->components[i]);
     iterator.state->component_stores[i] = component_store;
-    i++;
   }
 
   for (EcsId i = 0; i < ecs->entity_count; i++) {

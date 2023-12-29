@@ -27,6 +27,7 @@ typedef struct {
   u8 *data;
 } Arena;
 
+Allocator arena_allocator(Arena *arena);
 void arena_init(Arena *arena, Allocator *allocator, size_t size);
 void *arena_allocate(Arena *arena, size_t size);
 void *arena_allocate_array(Arena *arena, size_t count, size_t item_size);

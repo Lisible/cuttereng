@@ -54,16 +54,20 @@ bool gpu_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *gpu_mesh,
   gpu_mesh->vertex_count = mesh->vertex_count;
 
   // NOTE: The writeBuffer operation needs to be 4-bytes aligned.
-  size_t index_buffer_size = (mesh->index_count * sizeof(Index) + 3) & ~3;
-  gpu_mesh->index_buffer = wgpuDeviceCreateBuffer(
-      device, &(const WGPUBufferDescriptor){.usage = WGPUBufferUsage_Index |
-                                                     WGPUBufferUsage_CopyDst,
-                                            .size = index_buffer_size});
-  if (!gpu_mesh->index_buffer) {
-    goto cleanup_vertex_buffer;
+  if (mesh->index_count > 0) {
+    size_t index_buffer_size = (mesh->index_count * sizeof(Index) + 3) & ~3;
+    gpu_mesh->index_buffer = wgpuDeviceCreateBuffer(
+        device, &(const WGPUBufferDescriptor){.usage = WGPUBufferUsage_Index |
+                                                       WGPUBufferUsage_CopyDst,
+                                              .size = index_buffer_size});
+    if (!gpu_mesh->index_buffer) {
+      goto cleanup_vertex_buffer;
+    }
+    wgpuQueueWriteBuffer(queue, gpu_mesh->index_buffer, 0, mesh->indices,
+                         index_buffer_size);
+  } else {
+    gpu_mesh->index_buffer = NULL;
   }
-  wgpuQueueWriteBuffer(queue, gpu_mesh->index_buffer, 0, mesh->indices,
-                       index_buffer_size);
 
   gpu_mesh->index_count = mesh->index_count;
 
@@ -80,15 +84,21 @@ void gpu_mesh_deinit(GPUMesh *gpu_mesh) {
   ASSERT(gpu_mesh != NULL);
   wgpuBufferDestroy(gpu_mesh->vertex_buffer);
   wgpuBufferRelease(gpu_mesh->vertex_buffer);
-  wgpuBufferDestroy(gpu_mesh->index_buffer);
-  wgpuBufferRelease(gpu_mesh->index_buffer);
+
+  if (gpu_mesh->index_buffer != NULL) {
+    wgpuBufferDestroy(gpu_mesh->index_buffer);
+    wgpuBufferRelease(gpu_mesh->index_buffer);
+  }
 }
 
 void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh) {
   ASSERT(gpu_mesh != NULL);
   wgpuRenderPassEncoderSetVertexBuffer(rpe, 0, gpu_mesh->vertex_buffer, 0,
                                        gpu_mesh->vertex_count * sizeof(Vertex));
-  wgpuRenderPassEncoderSetIndexBuffer(rpe, gpu_mesh->index_buffer,
-                                      WGPUIndexFormat_Uint16, 0,
-                                      gpu_mesh->index_count * sizeof(Index));
+
+  if (gpu_mesh->index_count > 0) {
+    wgpuRenderPassEncoderSetIndexBuffer(rpe, gpu_mesh->index_buffer,
+                                        WGPUIndexFormat_Uint16, 0,
+                                        gpu_mesh->index_count * sizeof(Index));
+  }
 }

@@ -3,6 +3,7 @@
 
 #include "asset.h"
 #include "common.h"
+#include "ecs/ecs.h"
 #include "event.h"
 #include "json.h"
 #include "renderer/renderer.h"
@@ -19,20 +20,21 @@ typedef struct {
 } Configuration;
 
 typedef struct {
-  Renderer *renderer;
+  Ecs ecs;
   Assets *assets;
-  float current_time_secs;
+  Renderer *renderer;
   const char *application_title;
+  float current_time_secs;
   bool running;
 } Engine;
 
 void engine_init(Engine *engine, const Configuration *config,
-                 SDL_Window *window);
+                 EcsInitSystem init_system, SDL_Window *window);
 void engine_set_current_time(Engine *engine, float current_time_secs);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
-void engine_update(Arena *frame_arena, Engine *engine);
-void engine_render(Arena *frame_arena, Engine *engine);
+void engine_update(Allocator *frame_allocator, Engine *engine);
+void engine_render(Allocator *frame_allocator, Engine *engine);
 bool engine_is_running(Engine *engine);
 
 bool window_size_from_json(Json *json, WindowSize *window_size);

@@ -15,14 +15,14 @@ typedef struct {
 
 void t_ecs_init(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   ASSERT_EQ(ecs_get_entity_count(&ecs), 0);
   ecs_deinit(&ecs);
 }
 
 void t_ecs_create_entity(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId id = ecs_create_entity(&ecs);
   ASSERT_EQ(ecs_get_entity_count(&ecs), 1);
   ASSERT_EQ(id, 0);
@@ -34,7 +34,7 @@ void t_ecs_create_entity(void) {
 
 void t_ecs_insert_component(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ASSERT(ecs_has_component(&ecs, entity, Position));
@@ -44,7 +44,7 @@ void t_ecs_insert_component(void) {
 
 void t_ecs_get_component(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -69,37 +69,37 @@ void t_ecs_get_component(void) {
 
 void t_ecs_count_matching(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert_component(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {
-      .components = (const char *[]){ecs_component_id(Position), NULL}};
+  EcsQuery query_positions = {.components = {ecs_component_id(Position)},
+                              .component_count = 1};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions), 2);
-  EcsQuery query_velocities = {
-      .components = (const char *[]){ecs_component_id(Velocity), NULL}};
+  EcsQuery query_velocities = {.components = {ecs_component_id(Velocity)},
+                               .component_count = 1};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_velocities), 1);
   EcsQuery query_positions_and_velocities = {
-      .components = (const char *[]){ecs_component_id(Position),
-                                     ecs_component_id(Velocity), NULL}};
+      .components = {ecs_component_id(Position), ecs_component_id(Velocity)},
+      .component_count = 2};
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
   ecs_deinit(&ecs);
 }
 
 void t_ecs_query(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert_component(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {
-      .components = (const char *[]){ecs_component_id(Position), NULL}};
+  EcsQuery query_positions = {.components = {ecs_component_id(Position)},
+                              .component_count = 1};
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions);
 
   ecs_query_it_next(&query_iterator);
@@ -118,7 +118,7 @@ void t_ecs_query(void) {
 
 void t_ecs_query_two_components(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});
@@ -129,8 +129,8 @@ void t_ecs_query_two_components(void) {
   ecs_insert_component(&ecs, entity3, Velocity, {.x = 121, .y = 300});
 
   EcsQuery query_positions_and_velocities = {
-      .components = (const char *[]){ecs_component_id(Position),
-                                     ecs_component_id(Velocity), NULL}};
+      .components = {ecs_component_id(Position), ecs_component_id(Velocity)},
+      .component_count = 2};
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions_and_velocities);
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 2);
 
@@ -153,7 +153,8 @@ void t_ecs_query_two_components(void) {
   ecs_deinit(&ecs);
 }
 
-void print_position_system(EcsQueryIt *it) {
+void print_position_system(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
   LOG_DEBUG("Running print_position_system");
   while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
@@ -161,7 +162,8 @@ void print_position_system(EcsQueryIt *it) {
   }
 }
 
-void move_right_system(EcsQueryIt *it) {
+void move_right_system(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
   LOG_DEBUG("Running move_right_system");
   while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
@@ -171,7 +173,7 @@ void move_right_system(EcsQueryIt *it) {
 
 void t_ecs_register_system(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});
@@ -180,27 +182,26 @@ void t_ecs_register_system(void) {
   EcsId entity3 = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity3, Position, {.x = 9, .y = 5});
   ecs_insert_component(&ecs, entity3, Velocity, {.x = 121, .y = 300});
-  ecs_register_system(
-      &ecs,
-      &(const EcsSystemDescriptor){
-          .query = {.components =
-                        (const char *[]){ecs_component_id(Position), NULL}},
-          .fn = print_position_system,
-      });
-  ecs_register_system(
-      &ecs,
-      &(const EcsSystemDescriptor){
-          .query = {.components =
-                        (const char *[]){ecs_component_id(Position), NULL}},
-          .fn = move_right_system,
-      });
-  ecs_register_system(
-      &ecs,
-      &(const EcsSystemDescriptor){
-          .query = {.components =
-                        (const char *[]){ecs_component_id(Position), NULL}},
-          .fn = print_position_system,
-      });
+  ecs_register_system(&ecs, &(const EcsSystemDescriptor){
+                                .query = {.components =
+                                              {
+                                                  ecs_component_id(Position),
+                                              },
+                                          .component_count = 1},
+                                .fn = print_position_system,
+                            });
+  ecs_register_system(&ecs,
+                      &(const EcsSystemDescriptor){
+                          .query = {.components = {ecs_component_id(Position)},
+                                    .component_count = 1},
+                          .fn = move_right_system,
+                      });
+  ecs_register_system(&ecs,
+                      &(const EcsSystemDescriptor){
+                          .query = {.components = {ecs_component_id(Position)},
+                                    .component_count = 1},
+                          .fn = print_position_system,
+                      });
   ecs_run_systems(&ecs);
   ecs_deinit(&ecs);
 }
