@@ -37,7 +37,6 @@ void engine_handle_events(Engine *engine, Event *event) {
     engine->running = false;
     break;
   case EVT_KEYDOWN:
-    renderer_recreate_pipeline(engine->assets, engine->renderer);
     break;
   default:
     break;
@@ -60,7 +59,8 @@ void engine_render(Arena *frame_arena, Engine *engine) {
   (void)frame_arena;
 
   LOG_TRACE("render");
-  renderer_render(engine->renderer, engine->current_time_secs);
+  renderer_render(&system_allocator, engine->renderer, engine->assets,
+                  engine->current_time_secs);
 }
 
 bool engine_is_running(Engine *engine) {

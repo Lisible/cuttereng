@@ -20,8 +20,6 @@ struct VertexOutput {
 
 @group(0) @binding(0) var<uniform> u_common: CommonUniforms;
 @group(1) @binding(0) var<uniform> u_mesh: MeshUniforms;
-@group(2) @binding(0) var sand_texture: texture_2d<f32>;
-@group(2) @binding(1) var sand_texture_sampler: sampler;
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
@@ -36,5 +34,5 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(textureSample(sand_texture, sand_texture_sampler, in.texture_coordinates).rgb,  1.0);
+    return vec4<f32>(1.0, 1.0, 0.0, 1.0);
 }

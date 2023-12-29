@@ -8,7 +8,7 @@ typedef size_t EcsId;
 typedef struct Ecs Ecs;
 
 typedef struct ComponentStore ComponentStore;
-DECL_HASH_TABLE(ComponentStore, HashTableComponentStore)
+DECL_HASH_TABLE(ComponentStore *, HashTableComponentStore)
 
 struct Ecs {
   Allocator *allocator;

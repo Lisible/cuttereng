@@ -10,7 +10,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
 #define DECL_HASH_TABLE(V, name)                                               \
   typedef struct {                                                             \
     char *key;                                                                 \
-    V *value;                                                                  \
+    V value;                                                                   \
   } name##KV;                                                                  \
   typedef struct {                                                             \
     name##KV *items;                                                           \
@@ -20,8 +20,8 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
   } name;                                                                      \
   name *name##_create(Allocator *allocator, size_t initial_capacity);          \
   void name##_destroy(name *table);                                            \
-  char *name##_set(name *table, char *key, V *value);                          \
-  V *name##_get(const name *table, const char *key);                           \
+  char *name##_set(name *table, char *key, V value);                           \
+  V name##_get(const name *table, const char *key);                            \
   bool name##_has(const name *table, const char *key);                         \
   size_t name##_length(const name *table);                                     \
   void name##_remove(name *table, const char *key);                            \
@@ -51,7 +51,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     uint64_t hash = hash_fnv_1a(key);                                          \
     return hash & (table->capacity - 1);                                       \
   }                                                                            \
-  char *name##_set(name *table, char *key, V *value) {                         \
+  char *name##_set(name *table, char *key, V value) {                          \
     ASSERT(table != NULL);                                                     \
     ASSERT(key != NULL);                                                       \
     ASSERT(value != NULL);                                                     \
@@ -86,7 +86,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     table->items[index].value = value;                                         \
     return key;                                                                \
   }                                                                            \
-  V *name##_get(const name *table, const char *key) {                          \
+  V name##_get(const name *table, const char *key) {                           \
     ASSERT(table != NULL);                                                     \
     ASSERT(key != NULL);                                                       \
     if (!key)                                                                  \
