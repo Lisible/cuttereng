@@ -3,6 +3,7 @@
 
 #include "asset.h"
 #include "common.h"
+#include "memory.h"
 
 typedef enum {
   PixelFormat_R8G8B8,
@@ -18,12 +19,12 @@ typedef struct {
   u8 *data;
 } Image;
 
-void image_destroy(Image *image);
+void image_destroy(Allocator *allocator, Image *image);
 
-void *image_loader_fn(const char *path);
+void *image_loader_fn(Allocator *allocator, const char *path);
 extern AssetLoader image_loader;
 
-void image_destructor_fn(void *asset);
+void image_destructor_fn(Allocator *allocator, void *asset);
 extern AssetDestructor image_destructor;
 
 #endif // CUTTERENG_IMAGE_H

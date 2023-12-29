@@ -12,12 +12,14 @@ DECL_HASH_TABLE(void *, HashTableAsset)
 DEF_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
 
 typedef struct {
+  Allocator *allocator;
   HashTableAsset *assets;
 } AssetStore;
 
-AssetStore *asset_store_new() {
-  AssetStore *asset_store = memory_allocate(sizeof(AssetStore));
-  asset_store->assets = HashTableAsset_create(16);
+AssetStore *asset_store_new(Allocator *allocator) {
+  AssetStore *asset_store = allocator_allocate(allocator, sizeof(AssetStore));
+  asset_store->allocator = allocator;
+  asset_store->assets = HashTableAsset_create(allocator, 16);
   return asset_store;
 }
 
@@ -40,10 +42,10 @@ void asset_store_remove(AssetStore *asset_store, const char *key) {
   HashTableAsset_remove(asset_store->assets, key);
 }
 
-void asset_store_destroy(AssetStore *asset_store) {
+void asset_store_destroy(Allocator *allocator, AssetStore *asset_store) {
   ASSERT(asset_store != NULL);
   HashTableAsset_destroy(asset_store->assets);
-  memory_free(asset_store);
+  allocator_free(asset_store->allocator, asset_store);
 }
 
 DECL_HASH_TABLE(AssetLoader, HashTableAssetLoader);
@@ -55,16 +57,18 @@ DECL_HASH_TABLE(AssetStore, HashTableAssetStore);
 DEF_HASH_TABLE(AssetStore, HashTableAssetStore, asset_store_destroy);
 
 struct Assets {
+  Allocator *allocator;
   HashTableAssetLoader *loaders;
   HashTableAssetDestructor *destructors;
   HashTableAssetStore *asset_stores;
 };
 
-Assets *assets_new() {
-  Assets *assets = memory_allocate(sizeof(Assets));
-  assets->loaders = HashTableAssetLoader_create(16);
-  assets->destructors = HashTableAssetDestructor_create(16);
-  assets->asset_stores = HashTableAssetStore_create(16);
+Assets *assets_new(Allocator *allocator) {
+  Assets *assets = allocator_allocate(allocator, sizeof(Assets));
+  assets->allocator = allocator;
+  assets->loaders = HashTableAssetLoader_create(allocator, 16);
+  assets->destructors = HashTableAssetDestructor_create(allocator, 16);
+  assets->asset_stores = HashTableAssetStore_create(allocator, 16);
   return assets;
 }
 
@@ -79,7 +83,7 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
     return NULL;
   }
 
-  void *asset = loader->fn(asset_path);
+  void *asset = loader->fn(assets->allocator, asset_path);
   if (!asset) {
     LOG_ERROR("Could not load asset %s of type %s", asset_path, asset_type);
     return NULL;
@@ -91,7 +95,7 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
     LOG_DEBUG("No asset store found for assets of type %s, creating it",
               asset_type);
     HashTableAssetStore_set(assets->asset_stores, asset_type,
-                            asset_store_new());
+                            asset_store_new(assets->allocator));
     asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type);
   }
 
@@ -180,21 +184,22 @@ void assets_destroy(Assets *assets) {
         continue;
       }
 
-      destructor->fn(asset_store->assets->items[asset_index].value);
+      destructor->fn(assets->allocator,
+                     asset_store->assets->items[asset_index].value);
     }
   }
 
   HashTableAssetStore_destroy(assets->asset_stores);
   HashTableAssetLoader_destroy(assets->loaders);
   HashTableAssetDestructor_destroy(assets->destructors);
-  memory_free(assets);
+  allocator_free(assets->allocator, assets);
 }
-char *asset_read_file_to_string(const char *path) {
+char *asset_read_file_to_string(Allocator *allocator, const char *path) {
   ASSERT(path != NULL);
   size_t effective_path_length = strlen(ASSETS_BASE_PATH) + strlen(path) + 1;
-  char *effective_path = memory_allocate(effective_path_length);
+  char *effective_path = allocator_allocate(allocator, effective_path_length);
   memset(effective_path, 0, effective_path_length);
   strcat(effective_path, ASSETS_BASE_PATH);
   strcat(effective_path, path);
-  return filesystem_read_file_to_string(effective_path);
+  return filesystem_read_file_to_string(allocator, effective_path);
 }

@@ -26,6 +26,7 @@
 #define CODEPOINT_CARRIAGE_RETURN 0x000D
 
 typedef struct {
+  Allocator *allocator;
   const char *str;
   size_t len;
   size_t index;
@@ -48,13 +49,17 @@ bool is_digit(char c);
 bool is_non_zero_digit(char c);
 char current_character(ParsingContext *ctx);
 char next_character(ParsingContext *ctx);
-Json *json_create();
+Json *json_create(Allocator *allocator);
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
-Json *json_parse_from_str(const char *str) {
+Json *json_parse_from_str(Allocator *allocator, const char *str) {
   ASSERT(str != NULL);
-  ParsingContext ctx = {
-      .str = str, .len = strlen(str), .index = 0, .line = 0, .column = 0};
+  ParsingContext ctx = {.allocator = allocator,
+                        .str = str,
+                        .len = strlen(str),
+                        .index = 0,
+                        .line = 0,
+                        .column = 0};
   return parse_element(&ctx);
 }
 
@@ -68,7 +73,7 @@ Json *parse_element(ParsingContext *ctx) {
 
 Json *parse_value(ParsingContext *ctx) {
   ASSERT(ctx != NULL);
-  Json *value = json_create();
+  Json *value = json_create(ctx->allocator);
   if (!value) {
     LOG_ERROR("json allocation failed");
     goto err;
@@ -128,14 +133,14 @@ struct JsonObject {
   HashTableJson *hash_table;
 };
 
-JsonObject *json_object_create() {
-  JsonObject *object = malloc(sizeof(JsonObject));
+JsonObject *json_object_create(Allocator *allocator) {
+  JsonObject *object = allocator_allocate(allocator, sizeof(JsonObject));
   if (!object) {
     LOG_ERROR("json object allocation failed");
     goto err;
   }
 
-  object->hash_table = HashTableJson_create(16);
+  object->hash_table = HashTableJson_create(allocator, 16);
   if (!object->hash_table)
     goto cleanup;
 
@@ -150,7 +155,7 @@ err:
 bool parse_object(ParsingContext *ctx, Json *output_value) {
   ASSERT(ctx != NULL);
   ASSERT(output_value != NULL);
-  JsonObject *object = json_object_create();
+  JsonObject *object = json_object_create(ctx->allocator);
   if (!object) {
     return false;
   }
@@ -160,7 +165,7 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
   while (current_character(ctx) != TOKEN_OBJECT_END) {
     eat_whitespaces(ctx);
 
-    Json *name = json_create();
+    Json *name = json_create(ctx->allocator);
     if (!name) {
       return false;
     }
@@ -175,7 +180,7 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
       return false;
     }
     json_object_set(object, name->string, value);
-    json_destroy(name);
+    json_destroy(ctx->allocator, name);
 
     eat_whitespaces(ctx);
     if (current_character(ctx) == TOKEN_COMMA) {
@@ -197,7 +202,8 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
   eat_character(ctx, TOKEN_ARRAY_BEGIN);
   size_t capacity = MINIMUM_ARRAY_CAPACITY;
 
-  Json **array = malloc((capacity + 1) * sizeof(Json *));
+  Json **array =
+      allocator_allocate(ctx->allocator, (capacity + 1) * sizeof(Json *));
   if (!array) {
     LOG_ERROR("memory allocation failed");
     goto err;
@@ -208,7 +214,8 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
     eat_whitespaces(ctx);
     if (length == capacity) {
       capacity *= 2;
-      array = realloc(array, (capacity + 1) * sizeof(Json *));
+      array = allocator_reallocate(ctx->allocator, array,
+                                   (capacity + 1) * sizeof(Json *));
       if (!array) {
         LOG_ERROR("memory reallocation failed");
         goto err;
@@ -258,7 +265,8 @@ bool parse_string(ParsingContext *ctx, Json *output_value) {
   ASSERT(output_value != NULL);
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
   size_t estimated_string_size = estimate_string_size(&ctx->str[ctx->index]);
-  char *string = malloc(estimated_string_size * sizeof(char));
+  char *string =
+      allocator_allocate(ctx->allocator, estimated_string_size * sizeof(char));
   if (!string) {
     LOG_ERROR("json string allocation failed");
     goto err;
@@ -442,40 +450,40 @@ void parse_number(ParsingContext *ctx, Json *output_value) {
   output_value->number = sign * (number * pow(10, exponent));
 }
 
-void json_cleanup(Json *value) {
+void json_cleanup(Allocator *allocator, Json *value) {
   ASSERT(value != NULL);
   if (value->type == JSON_STRING) {
-    free(value->string);
+    allocator_free(allocator, value->string);
     value->string = NULL;
   } else if (value->type == JSON_ARRAY) {
     size_t i = 0;
     while (value->array[i] != NULL) {
-      json_destroy(value->array[i]);
+      json_destroy(allocator, value->array[i]);
       i++;
     }
 
-    free(value->array);
+    allocator_free(allocator, value->array);
     value->array = NULL;
   } else if (value->type == JSON_OBJECT) {
     HashTableJson_destroy(value->object->hash_table);
-    free(value->object);
+    allocator_free(allocator, value->object);
     value->object = NULL;
   }
 }
 
-void json_destroy(Json *value) {
+void json_destroy(Allocator *allocator, Json *value) {
   if (!value)
     return;
 
-  json_cleanup(value);
-  free(value);
+  json_cleanup(allocator, value);
+  allocator_free(allocator, value);
 }
 
-void json_destroy_without_cleanup(Json *value) {
+void json_destroy_without_cleanup(Allocator *allocator, Json *value) {
   if (!value)
     return;
 
-  free(value);
+  allocator_free(allocator, value);
 }
 
 void eat_character(ParsingContext *ctx, char expected) {
@@ -526,7 +534,9 @@ bool is_escapable_character(char c) {
 bool is_digit(char c) { return c >= '0' && c <= '9'; }
 bool is_non_zero_digit(char c) { return is_digit(c) && c != '0'; }
 
-Json *json_create() { return malloc(sizeof(Json)); }
+Json *json_create(Allocator *allocator) {
+  return allocator_allocate(allocator, (sizeof(Json)));
+}
 
 Json *json_object_get(const JsonObject *object, const char *key) {
   ASSERT(object != NULL);

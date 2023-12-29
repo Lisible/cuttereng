@@ -11,12 +11,12 @@ void engine_init(Engine *engine, const Configuration *configuration,
   ASSERT(engine != NULL);
   ASSERT(configuration != NULL);
   ASSERT(window != NULL);
-  engine->assets = assets_new();
+  engine->assets = assets_new(&system_allocator);
   assets_register_loader(engine->assets, Image, &image_loader,
                          &image_destructor);
 
-  engine->renderer =
-      renderer_new(window, engine->assets, engine->current_time_secs);
+  engine->renderer = renderer_new(&system_allocator, window, engine->assets,
+                                  engine->current_time_secs);
   engine->application_title = configuration->application_title;
   engine->running = true;
 }
@@ -25,7 +25,8 @@ void engine_deinit(Engine *engine) {
   ASSERT(engine != NULL);
   assets_destroy(engine->assets);
   renderer_destroy(engine->renderer);
-  memory_free((char *)engine->application_title);
+
+  allocator_free(&system_allocator, (char *)engine->application_title);
 }
 
 void engine_handle_events(Engine *engine, Event *event) {
@@ -86,7 +87,7 @@ bool configuration_from_json(Json *configuration_json,
 
   output_configuration->application_title = title_json->string;
   json_object_steal(configuration_json_object, "title");
-  json_destroy_without_cleanup(title_json);
+  json_destroy_without_cleanup(&system_allocator, title_json);
 
   Json *window_size_json =
       json_object_get(configuration_json->object, "window_size");

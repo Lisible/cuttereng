@@ -6,6 +6,7 @@
 #include "filesystem.h"
 #include "json.h"
 #include "log.h"
+#include "src/memory.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,12 +16,14 @@ void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
 void cutter_bootstrap() {
   LOG_INFO("Bootstrapping...");
-  char *configuration_file_path = env_get_configuration_file_path();
+  char *configuration_file_path =
+      env_get_configuration_file_path(&system_allocator);
   LOG_DEBUG("Configuration file path: %s", configuration_file_path);
-  char *configuration_file_content =
-      filesystem_read_file_to_string(configuration_file_path);
+  char *configuration_file_content = filesystem_read_file_to_string(
+      &system_allocator, configuration_file_path);
 
-  Json *configuration_json = json_parse_from_str(configuration_file_content);
+  Json *configuration_json =
+      json_parse_from_str(&system_allocator, configuration_file_content);
   if (!configuration_json)
     goto cleanup;
 
@@ -52,7 +55,7 @@ void cutter_bootstrap() {
   SDL_Quit();
 
 cleanup_2:
-  json_destroy(configuration_json);
+  json_destroy(&system_allocator, configuration_json);
 cleanup:
   free(configuration_file_path);
   free(configuration_file_content);

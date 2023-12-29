@@ -14,9 +14,9 @@ struct ComponentStore {
   uint64_t bitset[8];
 };
 
-ComponentStore *component_store_new(size_t item_size) {
+ComponentStore *component_store_new(Allocator *allocator, size_t item_size) {
   const size_t INITIAL_CAPACITY = 64;
-  ComponentStore *store = memory_allocate(sizeof(ComponentStore));
+  ComponentStore *store = allocator_allocate(allocator, sizeof(ComponentStore));
   if (!store)
     goto err;
 
@@ -24,7 +24,8 @@ ComponentStore *component_store_new(size_t item_size) {
   store->length = 0;
   store->item_size = item_size;
   memset(store->bitset, 0, 8);
-  store->data = memory_allocate_array(store->capacity, store->item_size);
+  store->data =
+      allocator_allocate_array(allocator, store->capacity, store->item_size);
   if (!store->data)
     goto err;
 
@@ -35,11 +36,11 @@ err:
   return NULL;
 }
 
-void component_store_destroy(ComponentStore *store) {
+void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   ASSERT(store != NULL);
 
-  memory_free(store->data);
-  memory_free(store);
+  allocator_free(allocator, store->data);
+  allocator_free(allocator, store);
 }
 DEF_HASH_TABLE(ComponentStore, HashTableComponentStore,
                component_store_destroy);
@@ -66,11 +67,12 @@ void *component_store_get(ComponentStore *store, EcsId entity_id) {
   return ptr + (entity_id * store->item_size);
 }
 
-void ecs_init(Ecs *ecs) {
+void ecs_init(Allocator *allocator, Ecs *ecs) {
   ASSERT(ecs != NULL);
 
+  ecs->allocator = allocator;
   ecs->entity_count = 0;
-  ecs->component_stores = HashTableComponentStore_create(16);
+  ecs->component_stores = HashTableComponentStore_create(allocator, 16);
 }
 void ecs_deinit(Ecs *ecs) {
   HashTableComponentStore_destroy(ecs->component_stores);
@@ -95,7 +97,7 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
   ASSERT(data != NULL);
 
   if (!HashTableComponentStore_has(ecs->component_stores, component_name)) {
-    ComponentStore *store = component_store_new(component_size);
+    ComponentStore *store = component_store_new(ecs->allocator, component_size);
     if (!store) {
       goto err;
     }
@@ -181,13 +183,14 @@ EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
   ASSERT(query != NULL);
 
   EcsQueryIt iterator = {0};
-  iterator.state = memory_allocate(sizeof(EcsQueryItState));
+  iterator.allocator = ecs->allocator;
+  iterator.state = allocator_allocate(ecs->allocator, sizeof(EcsQueryItState));
   ASSERT(iterator.state != NULL);
 
   memset(iterator.state, 0, sizeof(EcsQueryItState));
 
-  iterator.state->matching_entities =
-      memory_allocate_array(ecs->entity_count, sizeof(size_t));
+  iterator.state->matching_entities = allocator_allocate_array(
+      ecs->allocator, ecs->entity_count, sizeof(size_t));
   ASSERT(iterator.state->matching_entities != NULL);
 
   // TODO handle the case where the query has more than
@@ -228,8 +231,8 @@ bool ecs_query_it_next(EcsQueryIt *it) {
 }
 void ecs_query_it_deinit(EcsQueryIt *it) {
   ASSERT(it != NULL);
-  memory_free(it->state->matching_entities);
-  memory_free(it->state);
+  allocator_free(it->allocator, it->state->matching_entities);
+  allocator_free(it->allocator, it->state);
 }
 void *ecs_query_it_get_(const EcsQueryIt *it, size_t component) {
   ASSERT(it != NULL);

@@ -1,5 +1,6 @@
 #ifndef CUTTERENG_JSON_H
 #define CUTTERENG_JSON_H
+#include "memory.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -35,11 +36,11 @@ void json_object_steal(JsonObject *object, const char *key);
 ///
 /// This value is dynamically allocated and must be freed using `json_free()`
 /// @return The parsed json or NULL in case of error
-Json *json_parse_from_str(const char *str);
+Json *json_parse_from_str(Allocator *allocator, const char *str);
 
 /// Destroys a `json_value`
-void json_destroy(Json *json_value);
+void json_destroy(Allocator *allocator, Json *json_value);
 /// Destroys a `json_value` but without cleaning up it's underlying data
-void json_destroy_without_cleanup(Json *json_value);
+void json_destroy_without_cleanup(Allocator *allocator, Json *json_value);
 
 #endif // CUTTERENG_JSON_H

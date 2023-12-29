@@ -14,6 +14,7 @@ static const int CHUNK_TYPE_SIZE = 4;
 static const int CHUNK_CRC_SIZE = 4;
 
 typedef struct {
+  Allocator *allocator;
   const u8 *datastream;
   size_t current_index;
 } ParsingContext;
@@ -321,10 +322,10 @@ void apply_reconstruction_functions(Image *image,
   }
 }
 
-Image *png_load(const u8 *datastream) {
+Image *png_load(Allocator *allocator, const u8 *datastream) {
   ASSERT(datastream != NULL);
 
-  Image *image = memory_allocate(sizeof(Image));
+  Image *image = allocator_allocate(allocator, sizeof(Image));
   if (!image) {
     goto err;
   }
@@ -340,8 +341,8 @@ Image *png_load(const u8 *datastream) {
     goto cleanup_image;
   }
 
-  image->data = memory_allocate_array(image->width * image->height,
-                                      image->bytes_per_pixel);
+  image->data = allocator_allocate_array(
+      allocator, image->width * image->height, image->bytes_per_pixel);
   if (!image->data) {
     goto cleanup_image;
   }
@@ -350,14 +351,14 @@ Image *png_load(const u8 *datastream) {
 
   ChunkType next_chunk_type = peek_next_chunk_type(&context);
   u8vec compressed_data;
-  u8vec_init(&compressed_data);
+  u8vec_init(allocator, &compressed_data);
   while (next_chunk_type == ChunkType_IDAT) {
     parse_idat_chunk(&context, &compressed_data);
     next_chunk_type = peek_next_chunk_type(&context);
   }
 
   u8vec decompressed_data_buffer;
-  u8vec_init(&decompressed_data_buffer);
+  u8vec_init(allocator, &decompressed_data_buffer);
   if (read_zlib_compressed_data(compressed_data.data,
                                 &decompressed_data_buffer) !=
       ZlibResult_Success) {
@@ -379,9 +380,9 @@ Image *png_load(const u8 *datastream) {
   return image;
 
 cleanup_image_data:
-  memory_free(image->data);
+  allocator_free(allocator, image->data);
 cleanup_image:
-  memory_free(image);
+  allocator_free(allocator, image);
 err:
   return NULL;
 }

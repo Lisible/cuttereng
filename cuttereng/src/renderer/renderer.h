@@ -4,6 +4,7 @@
 #include "../asset.h"
 #include "../camera.h"
 #include "../math/matrix.h"
+#include "../memory.h"
 #include "../transform.h"
 #include "mesh.h"
 #include <SDL.h>
@@ -20,6 +21,7 @@ typedef struct {
 } MeshUniforms;
 
 typedef struct {
+  Allocator *allocator;
   WGPUInstance wgpu_instance;
   WGPUAdapter wgpu_adapter;
   WGPUSurface wgpu_surface;
@@ -47,7 +49,7 @@ typedef struct {
   WGPUBindGroup sand_texture_bind_group;
 } Renderer;
 
-Renderer *renderer_new(SDL_Window *window, Assets *assets,
+Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                        float current_time_secs);
 void renderer_recreate_pipeline(Assets *assets, Renderer *renderer);
 void renderer_destroy(Renderer *renderer);

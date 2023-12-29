@@ -3,6 +3,7 @@
 
 #include "../common.h"
 #include "../math/vector.h"
+#include "../memory.h"
 #include <webgpu/webgpu.h>
 
 typedef struct {
@@ -25,7 +26,7 @@ typedef struct {
 /// Note: This function takes ownership of vertices and indices
 void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
                Index *indices, size_t index_count);
-void mesh_deinit(Mesh *mesh);
+void mesh_deinit(Allocator *allocator, Mesh *mesh);
 Vertex *mesh_vertices(Mesh *mesh);
 size_t mesh_vertex_count(Mesh *mesh);
 Index *mesh_indices(Mesh *mesh);

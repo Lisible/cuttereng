@@ -7,7 +7,7 @@ VEC_IMPL(int, intvec, 128);
 
 void t_vec_init() {
   intvec vec = {0};
-  intvec_init(&vec);
+  intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);
   ASSERT(intvec_capacity(&vec) == 128);
   intvec_deinit(&vec);
@@ -15,7 +15,7 @@ void t_vec_init() {
 
 void t_vec_push_back() {
   intvec vec = {0};
-  intvec_init(&vec);
+  intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);
   intvec_push_back(&vec, 10);
   ASSERT(intvec_length(&vec) == 1);
@@ -29,7 +29,7 @@ void t_vec_push_back() {
 }
 void t_vec_append() {
   intvec vec = {0};
-  intvec_init(&vec);
+  intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);
   intvec_push_back(&vec, 10);
   intvec_append(&vec, (int[]){11, 12, 13}, 3);

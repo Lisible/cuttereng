@@ -87,15 +87,16 @@ create_render_pipeline(WGPUDevice device, WGPUShaderModule shader_module,
                        WGPUBindGroupLayout mesh_uniforms_bind_group_layout,
                        WGPUBindGroupLayout texture_bind_group_layout);
 
-Renderer *renderer_new(SDL_Window *window, Assets *assets,
+Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                        float current_time_secs) {
   LOG_INFO("Initializing renderer...");
-  Renderer *renderer = memory_allocate(sizeof(Renderer));
+  Renderer *renderer = allocator_allocate(allocator, (sizeof(Renderer)));
   if (!renderer)
     goto err;
 
-  WGPUInstanceDescriptor wgpu_instance_descriptor = {.nextInChain = NULL};
+  renderer->allocator = allocator;
 
+  WGPUInstanceDescriptor wgpu_instance_descriptor = {.nextInChain = NULL};
   renderer->wgpu_instance = wgpuCreateInstance(&wgpu_instance_descriptor);
   if (!renderer->wgpu_instance) {
     LOG_ERROR("WGPUInstance creation failed");
@@ -108,15 +109,15 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
 
   size_t adapter_feature_count =
       wgpuAdapterEnumerateFeatures(renderer->wgpu_adapter, NULL);
-  WGPUFeatureName *adapter_features =
-      memory_allocate_array(adapter_feature_count, sizeof(WGPUFeatureName));
+  WGPUFeatureName *adapter_features = allocator_allocate_array(
+      allocator, adapter_feature_count, sizeof(WGPUFeatureName));
   wgpuAdapterEnumerateFeatures(renderer->wgpu_adapter, adapter_features);
 
   LOG_INFO("Adapter features: ");
   for (size_t i = 0; i < adapter_feature_count; i++) {
     LOG_INFO("\t%d", adapter_features[i]);
   }
-  memory_free(adapter_features);
+  allocator_free(allocator, adapter_features);
 
   renderer->wgpu_surface = NULL;
   renderer_initialize_for_window(renderer, window);
@@ -270,7 +271,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
               (WGPUBindGroupEntry){.binding = 1,
                                    .sampler = sand_texture_sampler}}});
 
-  Vertex *vertices = memory_allocate_array(4, sizeof(Vertex));
+  Vertex *vertices = allocator_allocate_array(allocator, 4, sizeof(Vertex));
   vertices[0] = (Vertex){.position = {-0.5, -0.5, -0.3},
                          .texture_coordinates = {0.0, 1.0}};
   vertices[1] = (Vertex){.position = {0.5, -0.5, -0.3},
@@ -280,7 +281,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
   vertices[3] = (Vertex){.position = {-0.5, 0.5, -0.3},
                          .texture_coordinates = {0.0, 0.0}};
 
-  Index *indices = memory_allocate_array(6, sizeof(Index));
+  Index *indices = allocator_allocate_array(allocator, 6, sizeof(Index));
   indices[0] = 0;
   indices[1] = 1;
   indices[2] = 3;
@@ -294,7 +295,7 @@ Renderer *renderer_new(SDL_Window *window, Assets *assets,
   GPUMesh gpu_mesh = {0};
   gpu_mesh_init(renderer->wgpu_device, queue, &gpu_mesh, &mesh);
   renderer->mesh = gpu_mesh;
-  mesh_deinit(&mesh);
+  mesh_deinit(renderer->allocator, &mesh);
 
   renderer->mesh_transform = TRANSFORM_DEFAULT;
   renderer->mesh_transform.position.z = 10.0;
@@ -451,7 +452,7 @@ cleanup_adapter:
 cleanup_instance:
   wgpuInstanceRelease(renderer->wgpu_instance);
 cleanup:
-  memory_free(renderer);
+  allocator_free(allocator, renderer);
 err:
   return NULL;
 }
@@ -595,7 +596,7 @@ void renderer_destroy(Renderer *renderer) {
   wgpuSurfaceRelease(renderer->wgpu_surface);
   wgpuAdapterRelease(renderer->wgpu_adapter);
   wgpuInstanceRelease(renderer->wgpu_instance);
-  memory_free(renderer);
+  allocator_free(renderer->allocator, renderer);
 }
 
 void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window) {

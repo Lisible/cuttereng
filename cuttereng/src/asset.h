@@ -2,19 +2,20 @@
 #define CUTTERENG_ASSET_H
 
 #include "common.h"
+#include "memory.h"
 
-typedef void *(*AssetLoaderFn)(const char *path);
+typedef void *(*AssetLoaderFn)(Allocator *allocator, const char *path);
 typedef struct {
   AssetLoaderFn fn;
 } AssetLoader;
 
-typedef void (*AssetDestructorFn)(void *asset);
+typedef void (*AssetDestructorFn)(Allocator *allocator, void *asset);
 typedef struct {
   AssetDestructorFn fn;
 } AssetDestructor;
 
 typedef struct Assets Assets;
-Assets *assets_new();
+Assets *assets_new(Allocator *allocator);
 void assets_register_loader_(Assets *assets, char *asset_type,
                              AssetLoader *asset_loader,
                              AssetDestructor *asset_destructor);
@@ -25,7 +26,7 @@ void assets_destroy(Assets *assets);
 void assets_remove_(Assets *assets, const char *asset_type,
                     const char *asset_path);
 void assets_clear(Assets *assets);
-char *asset_read_file_to_string(const char *path);
+char *asset_read_file_to_string(Allocator *allocator, const char *path);
 
 #define assets_remove(assets, asset_type, asset_path)                          \
   assets_remove_(assets, #asset_type, asset_path)

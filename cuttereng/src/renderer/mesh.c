@@ -1,6 +1,5 @@
 #include "mesh.h"
 #include "../assert.h"
-#include "../memory.h"
 #include "webgpu/webgpu.h"
 
 void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
@@ -13,10 +12,10 @@ void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
   mesh->indices = indices;
   mesh->index_count = index_count;
 }
-void mesh_deinit(Mesh *mesh) {
+void mesh_deinit(Allocator *allocator, Mesh *mesh) {
   ASSERT(mesh != NULL);
-  memory_free(mesh->vertices);
-  memory_free(mesh->indices);
+  allocator_free(allocator, mesh->vertices);
+  allocator_free(allocator, mesh->indices);
 }
 Vertex *mesh_vertices(Mesh *mesh) {
   ASSERT(mesh != NULL);

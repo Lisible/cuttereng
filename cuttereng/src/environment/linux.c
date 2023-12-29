@@ -6,28 +6,28 @@
 #include <string.h>
 #include <unistd.h>
 
-char *get_process_base_path();
-char *get_process_executable_path();
+char *get_process_base_path(Allocator *allocator);
+char *get_process_executable_path(Allocator *allocator);
 
-char *env_get_configuration_file_path() {
+char *env_get_configuration_file_path(Allocator *allocator) {
   static const char CONFIGURATION_FILE_NAME[] = "/project_configuration.json";
   static const size_t CONFIGURATION_FILE_NAME_LENGTH =
       sizeof(CONFIGURATION_FILE_NAME);
-  char *configuration_file_path = get_process_base_path();
+  char *configuration_file_path = get_process_base_path(allocator);
   size_t executable_directory_path_length = strlen(configuration_file_path);
-  configuration_file_path =
-      realloc(configuration_file_path, executable_directory_path_length +
-                                           CONFIGURATION_FILE_NAME_LENGTH + 2);
+  configuration_file_path = allocator_reallocate(
+      allocator, configuration_file_path,
+      executable_directory_path_length + CONFIGURATION_FILE_NAME_LENGTH + 2);
   strcat(configuration_file_path, CONFIGURATION_FILE_NAME);
   return configuration_file_path;
 }
 
-char *get_symlink_target(char *symlink_path) {
+char *get_symlink_target(Allocator *allocator, char *symlink_path) {
   ASSERT(symlink_path != NULL);
   size_t buffer_size = 512;
   ssize_t result;
 
-  char *buffer = malloc(buffer_size);
+  char *buffer = allocator_allocate(allocator, buffer_size);
   if (!buffer)
     goto err_alloc;
 
@@ -35,7 +35,7 @@ char *get_symlink_target(char *symlink_path) {
          buffer_size) {
     buffer_size *= 2;
 
-    buffer = realloc(buffer, buffer_size);
+    buffer = allocator_reallocate(allocator, buffer, buffer_size);
     if (!buffer)
       goto err_alloc;
   }
@@ -57,7 +57,9 @@ err_readlink:
             strerror(errno));
   return NULL;
 }
-char *get_process_executable_path() {
-  return get_symlink_target("/proc/self/exe");
+char *get_process_executable_path(Allocator *allocator) {
+  return get_symlink_target(allocator, "/proc/self/exe");
 }
-char *get_process_base_path() { return get_symlink_target("/proc/self/cwd"); }
+char *get_process_base_path(Allocator *allocator) {
+  return get_symlink_target(allocator, "/proc/self/cwd");
+}

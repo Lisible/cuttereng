@@ -1,11 +1,12 @@
 #include "filesystem.h"
+#include "memory.h"
 #include "src/log.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-char *filesystem_read_file_to_string(const char *path) {
+char *filesystem_read_file_to_string(Allocator *allocator, const char *path) {
   if (!path)
     goto err;
 
@@ -23,7 +24,7 @@ char *filesystem_read_file_to_string(const char *path) {
   if (fseek(file, 0, SEEK_SET) < 0)
     goto err_2;
 
-  char *content = malloc(length + 1);
+  char *content = allocator_allocate(allocator, length + 1);
   if (content == NULL)
     goto err_2;
 

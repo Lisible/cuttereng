@@ -1,6 +1,7 @@
 #include "log.h"
 #include "test.h"
 #include <ecs/ecs.h>
+#include <memory.h>
 
 typedef struct {
   int x;
@@ -14,14 +15,14 @@ typedef struct {
 
 void t_ecs_init() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   ASSERT_EQ(ecs_get_entity_count(&ecs), 0);
   ecs_deinit(&ecs);
 }
 
 void t_ecs_create_entity() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId id = ecs_create_entity(&ecs);
   ASSERT_EQ(ecs_get_entity_count(&ecs), 1);
   ASSERT_EQ(id, 0);
@@ -33,7 +34,7 @@ void t_ecs_create_entity() {
 
 void t_ecs_insert_component() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ASSERT(ecs_has_component(&ecs, entity, Position));
@@ -43,7 +44,7 @@ void t_ecs_insert_component() {
 
 void t_ecs_get_component() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -68,7 +69,7 @@ void t_ecs_get_component() {
 
 void t_ecs_count_matching() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -90,7 +91,7 @@ void t_ecs_count_matching() {
 
 void t_ecs_query() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -116,7 +117,7 @@ void t_ecs_query() {
 
 void t_ecs_query_two_components() {
   Ecs ecs;
-  ecs_init(&ecs);
+  ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});

@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-void HashTable_noop_destructor(void *value);
+void HashTable_noop_destructor(Allocator *allocator, void *value);
 #define DECL_HASH_TABLE(V, name)                                               \
   typedef struct {                                                             \
     char *key;                                                                 \
@@ -16,8 +16,9 @@ void HashTable_noop_destructor(void *value);
     name##KV *items;                                                           \
     size_t capacity;                                                           \
     size_t length;                                                             \
+    Allocator *allocator;                                                      \
   } name;                                                                      \
-  name *name##_create(size_t initial_capacity);                                \
+  name *name##_create(Allocator *allocator, size_t initial_capacity);          \
   void name##_destroy(name *table);                                            \
   char *name##_set(name *table, char *key, V *value);                          \
   V *name##_get(const name *table, const char *key);                           \
@@ -29,9 +30,11 @@ void HashTable_noop_destructor(void *value);
   bool name##_expand(name *table);
 
 #define DEF_HASH_TABLE(V, name, item_dctor_fn)                                 \
-  name *name##_create(size_t initial_capacity) {                               \
-    name *table = memory_allocate(sizeof(name));                               \
-    table->items = memory_allocate_array(initial_capacity, sizeof(name##KV));  \
+  name *name##_create(Allocator *allocator, size_t initial_capacity) {         \
+    name *table = allocator_allocate(allocator, sizeof(name));                 \
+    table->allocator = allocator;                                              \
+    table->items = allocator_allocate_array(allocator, initial_capacity,       \
+                                            sizeof(name##KV));                 \
     table->capacity = initial_capacity;                                        \
     table->length = 0;                                                         \
     return table;                                                              \
@@ -39,8 +42,8 @@ void HashTable_noop_destructor(void *value);
   void name##_destroy(name *table) {                                           \
     ASSERT(table != NULL);                                                     \
     name##_clear(table);                                                       \
-    memory_free(table->items);                                                 \
-    memory_free(table);                                                        \
+    allocator_free(table->allocator, table->items);                            \
+    allocator_free(table->allocator, table);                                   \
   }                                                                            \
   size_t name##_index_for_key(name *table, const char *key) {                  \
     ASSERT(table != NULL);                                                     \
@@ -129,9 +132,9 @@ void HashTable_noop_destructor(void *value);
       return;                                                                  \
     }                                                                          \
     if (execute_item_dctor && item_dctor_fn != NULL) {                         \
-      item_dctor_fn(table->items[index].value);                                \
+      item_dctor_fn(table->allocator, table->items[index].value);              \
     }                                                                          \
-    memory_free(table->items[index].key);                                      \
+    allocator_free(table->allocator, table->items[index].key);                 \
     table->items[index].key = NULL;                                            \
     table->items[index].value = NULL;                                          \
     table->length--;                                                           \
@@ -163,8 +166,8 @@ void HashTable_noop_destructor(void *value);
     if (new_capacity < table->capacity) {                                      \
       return false;                                                            \
     }                                                                          \
-    name##KV *new_items =                                                      \
-        memory_allocate_array(new_capacity, sizeof(name##KV));                 \
+    name##KV *new_items = allocator_allocate_array(                            \
+        table->allocator, new_capacity, sizeof(name##KV));                     \
     if (new_items == NULL) {                                                   \
       return false;                                                            \
     }                                                                          \
@@ -191,7 +194,7 @@ void HashTable_noop_destructor(void *value);
         }                                                                      \
       }                                                                        \
     }                                                                          \
-    memory_free(table->items);                                                 \
+    allocator_free(table->allocator, table->items);                            \
     table->capacity = new_capacity;                                            \
     table->items = new_items;                                                  \
     return true;                                                               \

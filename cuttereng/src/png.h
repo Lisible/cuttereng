@@ -3,8 +3,9 @@
 
 #include "common.h"
 #include "image.h"
+#include "memory.h"
 
-Image *png_load(const u8 *datastream);
+Image *png_load(Allocator *allocator, const u8 *datastream);
 
 #define LOG_PNG_PREFIX "PNG decoder: "
 #define LOG_PNG_DECODER(msg, ...) LOG_TRACE(LOG_PNG_PREFIX msg, ##__VA_ARGS__)

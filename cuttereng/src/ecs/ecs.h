@@ -11,6 +11,7 @@ typedef struct ComponentStore ComponentStore;
 DECL_HASH_TABLE(ComponentStore, HashTableComponentStore)
 
 struct Ecs {
+  Allocator *allocator;
   HashTableComponentStore *component_stores;
   size_t entity_count;
 };
@@ -21,10 +22,11 @@ typedef struct {
 
 typedef struct EcsQueryItState EcsQueryItState;
 typedef struct {
+  Allocator *allocator;
   EcsQueryItState *state;
 } EcsQueryIt;
 
-void ecs_init(Ecs *ecs);
+void ecs_init(Allocator *allocator, Ecs *ecs);
 void ecs_deinit(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);

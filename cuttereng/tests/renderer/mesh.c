@@ -4,7 +4,7 @@
 #include <renderer/mesh.h>
 
 void t_mesh_init() {
-  Vertex *vertices = memory_allocate(3 * sizeof(Vertex));
+  Vertex *vertices = allocator_allocate(&system_allocator, 3 * sizeof(Vertex));
   vertices[0] = (Vertex){
       .position = {0.0, 1.0, 0.0},
       .normal = {0.0, 0.0, -1.0},
@@ -17,7 +17,7 @@ void t_mesh_init() {
                          .normal = {0.0, 0.0, -1.0},
                          .texture_coordinates = {0.0, 0.4}};
   size_t vertex_count = 3;
-  Index *indices = memory_allocate(3 * sizeof(Index));
+  Index *indices = allocator_allocate(&system_allocator, 3 * sizeof(Index));
   indices[0] = 0;
   indices[1] = 1;
   indices[2] = 2;
@@ -27,7 +27,7 @@ void t_mesh_init() {
   mesh_init(&mesh, vertices, vertex_count, indices, index_count);
   ASSERT_EQ(mesh_vertex_count(&mesh), 3);
   ASSERT_EQ(mesh_index_count(&mesh), 3);
-  mesh_deinit(&mesh);
+  mesh_deinit(&system_allocator, &mesh);
 }
 
 TEST_SUITE(TEST(t_mesh_init));

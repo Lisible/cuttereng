@@ -4,28 +4,20 @@
 #include "common.h"
 /// @file
 
-/// Allocates `size` bytes
-///
-/// Similar to `malloc()`
-/// @return a pointer to the newly allocated data or NULL if an error occurs
-void *memory_allocate(size_t size);
+typedef struct {
+  void *(*allocate)(size_t size, void *ctx);
+  void *(*allocate_array)(size_t count, size_t item_size, void *ctx);
+  void *(*reallocate)(void *ptr, size_t new_size, void *ctx);
+  void (*free)(void *ptr, void *ctx);
+  void *ctx;
+} Allocator;
 
-/// Allocate an array of `count` elements, each of size `size`
-///
-/// Sets the allocated memory to 0
-/// Similar to `calloc()`
-/// @return a pointer to the newly allocated data or NULL if an error occurs
-void *memory_allocate_array(size_t count, size_t item_size);
+void *allocator_allocate(Allocator *allocator, size_t size);
+void *allocator_allocate_array(Allocator *allocator, size_t count,
+                               size_t item_size);
+void *allocator_reallocate(Allocator *allocator, void *ptr, size_t new_size);
+void allocator_free(Allocator *allocator, void *ptr);
 
-/// Reallocate a memory block
-///
-/// Similar to `realloc()`
-/// @return the pointer to the reallocated data
-void *memory_reallocate(void *ptr, size_t new_size);
-
-/// Frees the memory space pointed by `ptr`
-///
-/// Similar to `free()`
-void memory_free(void *ptr);
+extern Allocator system_allocator;
 
 #endif
