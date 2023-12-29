@@ -1,6 +1,8 @@
 #include "memory.h"
 #include "assert.h"
+#include "src/common.h"
 #include <stdlib.h>
+#include <string.h>
 
 void *memory_allocate(size_t size, void *ctx) { return malloc(size); }
 void *memory_allocate_array(size_t count, size_t item_size, void *ctx) {
@@ -33,4 +35,32 @@ void *allocator_reallocate(Allocator *allocator, void *ptr, size_t old_size,
 void allocator_free(Allocator *allocator, void *ptr) {
   ASSERT(allocator != NULL);
   allocator->free(ptr, allocator->ctx);
+}
+
+void arena_init(Arena *arena, Allocator *allocator, size_t size) {
+  ASSERT(arena != NULL);
+  ASSERT(allocator != NULL);
+  arena->size = 0;
+  arena->capacity = size;
+  arena->data = allocator_allocate(allocator, size);
+}
+void *arena_allocate(Arena *arena, size_t size) {
+  ASSERT(arena->size + size <= arena->capacity);
+  void *ptr = arena->data + arena->size;
+  arena->size += size;
+  return ptr;
+}
+void *arena_allocate_array(Arena *arena, size_t count, size_t item_size) {
+  return arena_allocate(arena, count * item_size);
+}
+void *arena_reallocate(Arena *arena, void *ptr, size_t old_size,
+                       size_t new_size) {
+  ASSERT(new_size > old_size);
+  void *new_ptr = arena_allocate(arena, new_size);
+  memcpy(new_ptr, ptr, old_size);
+  return new_ptr;
+}
+void arena_clear(Arena *arena) { arena->size = 0; }
+void arena_deinit(Arena *arena, Allocator *allocator) {
+  allocator_free(allocator, arena->data);
 }

@@ -73,3 +73,5 @@ test_vec = executable('test_vec', 'tests/test_runner.c', 'tests/vec.c', dependen
 test('test_vec', test_vec)
 test_bitstream = executable('test_bitstream', 'tests/test_runner.c', 'tests/bitstream.c', dependencies: [cuttereng_dep])
 test('test_bitstream', test_bitstream)
+test_memory = executable('test_memory', 'tests/test_runner.c', 'tests/memory.c', dependencies: [cuttereng_dep])
+test('test_memory', test_memory)

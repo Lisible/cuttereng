@@ -21,4 +21,16 @@ void allocator_free(Allocator *allocator, void *ptr);
 
 extern Allocator system_allocator;
 
+typedef struct {
+  size_t capacity;
+  size_t size;
+  u8 *data;
+} Arena;
+
+void arena_init(Arena *arena, Allocator *allocator, size_t size);
+void *arena_allocate(Arena *arena, size_t size);
+void *arena_allocate_array(Arena *arena, size_t count, size_t item_size);
+void arena_clear(Arena *arena);
+void arena_deinit(Arena *arena, Allocator *allocator);
+
 #endif
