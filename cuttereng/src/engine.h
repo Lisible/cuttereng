@@ -31,8 +31,8 @@ void engine_init(Engine *engine, const Configuration *config,
 void engine_set_current_time(Engine *engine, float current_time_secs);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
-void engine_update(Engine *engine);
-void engine_render(Engine *engine);
+void engine_update(Arena *frame_arena, Engine *engine);
+void engine_render(Arena *frame_arena, Engine *engine);
 bool engine_is_running(Engine *engine);
 
 bool window_size_from_json(Json *json, WindowSize *window_size);

@@ -48,12 +48,12 @@ void engine_set_current_time(Engine *engine, float current_time_secs) {
   engine->current_time_secs = current_time_secs;
 }
 
-void engine_update(Engine *engine) {
+void engine_update(Arena *frame_arena, Engine *engine) {
   ASSERT(engine != NULL);
   LOG_TRACE("update");
 }
 
-void engine_render(Engine *engine) {
+void engine_render(Arena *frame_arena, Engine *engine) {
   ASSERT(engine != NULL);
   LOG_TRACE("render");
   renderer_render(engine->renderer, engine->current_time_secs);

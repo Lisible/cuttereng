@@ -38,6 +38,8 @@ void cutter_bootstrap() {
       config.window_size.width, config.window_size.height, 0);
   engine_init(&engine, &config, window);
 
+  Arena frame_arena;
+  arena_init(&frame_arena, &system_allocator, 1000);
   while (engine_is_running(&engine)) {
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event) != 0) {
@@ -46,8 +48,9 @@ void cutter_bootstrap() {
       engine_handle_events(&engine, &event);
     }
     engine_set_current_time(&engine, SDL_GetTicks() / 1000.f);
-    engine_update(&engine);
-    engine_render(&engine);
+    engine_update(&frame_arena, &engine);
+    engine_render(&frame_arena, &engine);
+    arena_clear(&frame_arena);
   }
 
   SDL_DestroyWindow(window);
