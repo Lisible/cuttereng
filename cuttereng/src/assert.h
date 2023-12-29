@@ -8,7 +8,7 @@
 #define ASSERT(expr, ...)                                                      \
   do {                                                                         \
     if (!(expr)) {                                                             \
-      LOG_ERROR("Assertion failed: \n\t%s" #expr, ##__VA_ARGS__);              \
+      LOG_ERROR("Assertion failed: \n\t" #expr, ##__VA_ARGS__);                \
       exit(1);                                                                 \
     }                                                                          \
   } while (0)
