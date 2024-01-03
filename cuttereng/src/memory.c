@@ -4,15 +4,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-void *memory_allocate(size_t size, void *ctx) { return malloc(size); }
+void *memory_allocate(size_t size, void *ctx) {
+  (void)ctx;
+  return malloc(size);
+}
 void *memory_allocate_array(size_t count, size_t item_size, void *ctx) {
+  (void)ctx;
   return calloc(count, item_size);
 }
 void *memory_reallocate(void *ptr, size_t old_size, size_t new_size,
                         void *ctx) {
+  (void)old_size;
+  (void)ctx;
   return realloc(ptr, new_size);
 }
-void memory_free(void *ptr, void *ctx) { free(ptr); }
+void memory_free(void *ptr, void *ctx) {
+  (void)ctx;
+  free(ptr);
+}
 Allocator system_allocator = {.allocate = memory_allocate,
                               .allocate_array = memory_allocate_array,
                               .reallocate = memory_reallocate,

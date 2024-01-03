@@ -2,7 +2,7 @@
 #include <log.h>
 #include <memory.h>
 
-void t_arena_create() {
+void t_arena_create(void) {
   Arena arena;
   arena_init(&arena, &system_allocator, 1024);
   ASSERT_EQ(arena.capacity, 1024);
@@ -11,7 +11,7 @@ void t_arena_create() {
   arena_deinit(&arena, &system_allocator);
 }
 
-void t_arena_allocate() {
+void t_arena_allocate(void) {
   Arena arena;
   arena_init(&arena, &system_allocator, 10);
   void *ptr = arena_allocate(&arena, 10);
@@ -21,7 +21,7 @@ void t_arena_allocate() {
   arena_deinit(&arena, &system_allocator);
 }
 
-void t_arena_allocate_array() {
+void t_arena_allocate_array(void) {
   Arena arena;
   arena_init(&arena, &system_allocator, 100);
   void *ptr = arena_allocate_array(&arena, 10, sizeof(int));
@@ -31,7 +31,7 @@ void t_arena_allocate_array() {
   arena_deinit(&arena, &system_allocator);
 }
 
-void t_arena_allocate_clear() {
+void t_arena_allocate_clear(void) {
   Arena arena;
   arena_init(&arena, &system_allocator, 100);
   arena_allocate(&arena, 8);

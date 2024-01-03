@@ -3,9 +3,9 @@
 #include <memory.h>
 #include <vec.h>
 
-VEC_IMPL(int, intvec, 128);
+VEC_IMPL(int, intvec, 128)
 
-void t_vec_init() {
+void t_vec_init(void) {
   intvec vec = {0};
   intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);
@@ -13,7 +13,7 @@ void t_vec_init() {
   intvec_deinit(&vec);
 }
 
-void t_vec_push_back() {
+void t_vec_push_back(void) {
   intvec vec = {0};
   intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);
@@ -27,7 +27,7 @@ void t_vec_push_back() {
   ASSERT(vec.data[2] == 15);
   intvec_deinit(&vec);
 }
-void t_vec_append() {
+void t_vec_append(void) {
   intvec vec = {0};
   intvec_init(&system_allocator, &vec);
   ASSERT(intvec_length(&vec) == 0);

@@ -42,8 +42,7 @@ void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   allocator_free(allocator, store->data);
   allocator_free(allocator, store);
 }
-DEF_HASH_TABLE(ComponentStore, HashTableComponentStore,
-               component_store_destroy);
+DEF_HASH_TABLE(ComponentStore, HashTableComponentStore, component_store_destroy)
 
 void component_store_set(ComponentStore *store, EcsId entity_id,
                          const void *data) {

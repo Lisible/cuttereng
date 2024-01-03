@@ -27,13 +27,12 @@ char *env_get_configuration_file_path(Allocator *allocator) {
 char *get_symlink_target(Allocator *allocator, size_t *out_buffer_size,
                          char *symlink_path) {
   ASSERT(symlink_path != NULL);
-  size_t buffer_size = 512;
+  ssize_t buffer_size = 512;
   ssize_t result;
 
   char *buffer = allocator_allocate(allocator, buffer_size);
   if (!buffer)
     goto err_alloc;
-
   while ((result = readlink(symlink_path, buffer, buffer_size)) >=
          buffer_size) {
     size_t old_buffer_size = buffer_size;

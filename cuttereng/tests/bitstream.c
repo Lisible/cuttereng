@@ -2,7 +2,7 @@
 #include <bitstream.h>
 #include <log.h>
 
-void t_bitstream_init() {
+void t_bitstream_init(void) {
   const u8 bytes[] = {0b00100011, 0b11110000, 0b10101101};
   Bitstream bitstream;
   bitstream_init(&bitstream, bytes, 3);
@@ -11,7 +11,7 @@ void t_bitstream_init() {
   ASSERT_NOT_NULL(bitstream.data);
 }
 
-void t_bitstream_read_first_bits() {
+void t_bitstream_read_first_bits(void) {
   const u8 bytes[] = {0b00100011, 0b11110000, 0b10101101};
   Bitstream bitstream;
   bitstream_init(&bitstream, bytes, 3);
@@ -21,7 +21,7 @@ void t_bitstream_read_first_bits() {
   ASSERT_EQ(next_three_bits, 0b100);
 }
 
-void t_bitstream_read_bits_spanning_over_two_bytes() {
+void t_bitstream_read_bits_spanning_over_two_bytes(void) {
   const u8 bytes[] = {0b00100011, 0b11110101, 0b10101101};
   Bitstream bitstream;
   bitstream_init(&bitstream, bytes, 3);
@@ -33,4 +33,4 @@ void t_bitstream_read_bits_spanning_over_two_bytes() {
 }
 
 TEST_SUITE(TEST(t_bitstream_init), TEST(t_bitstream_read_first_bits),
-           TEST(t_bitstream_read_bits_spanning_over_two_bytes));
+           TEST(t_bitstream_read_bits_spanning_over_two_bytes))

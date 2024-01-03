@@ -5,7 +5,10 @@
 #include <stddef.h>
 #include <string.h>
 
-void HashTable_noop_destructor(Allocator *allocator, void *value) {}
+void HashTable_noop_destructor(Allocator *allocator, void *value) {
+  (void)allocator;
+  (void)value;
+}
 uint64_t hash_fnv_1a(const char *bytes) {
   ASSERT(bytes != NULL);
   static const uint64_t FNV_OFFSET_BASIS = 14695981039346656037u;

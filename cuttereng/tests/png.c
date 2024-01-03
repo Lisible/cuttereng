@@ -4,13 +4,13 @@
 #include <memory.h>
 #include <png.h>
 
-void t_load_simple_png() {
+void t_load_simple_png(void) {
   char *file_content = filesystem_read_file_to_string(
       &system_allocator, TEST_DATA_PATH "png/1.png");
 
   Image *img = png_load(&system_allocator, (u8 *)file_content);
   ASSERT(img != NULL);
-  for (int i = 0; i < img->width * img->height * img->bytes_per_pixel;
+  for (u32 i = 0; i < img->width * img->height * img->bytes_per_pixel;
        i += img->bytes_per_pixel) {
     int x = (i / img->bytes_per_pixel) % img->width;
     int y = (i / img->bytes_per_pixel) / img->width;

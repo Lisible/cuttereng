@@ -7,16 +7,16 @@ DECL_HASH_TABLE(int, HashTableInt)
 void hash_table_int_item_dctor(Allocator *allocator, int *item) {
   allocator_free(allocator, item);
 }
-DEF_HASH_TABLE(int, HashTableInt, hash_table_int_item_dctor);
+DEF_HASH_TABLE(int, HashTableInt, hash_table_int_item_dctor)
 
-void t_hash_table_create() {
+void t_hash_table_create(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   ASSERT_EQ(HashTableInt_length(hash_table), 0);
 
   HashTableInt_destroy(hash_table);
 }
 
-void t_hash_table_set() {
+void t_hash_table_set(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 0;
@@ -25,7 +25,7 @@ void t_hash_table_set() {
   HashTableInt_destroy(hash_table);
 }
 
-void t_hash_table_has() {
+void t_hash_table_has(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 532;
@@ -34,7 +34,7 @@ void t_hash_table_has() {
   HashTableInt_destroy(hash_table);
 }
 
-void t_hash_table_get() {
+void t_hash_table_get(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 532;
@@ -44,4 +44,4 @@ void t_hash_table_get() {
 }
 
 TEST_SUITE(TEST(t_hash_table_create), TEST(t_hash_table_set),
-           TEST(t_hash_table_has), TEST(t_hash_table_get));
+           TEST(t_hash_table_has), TEST(t_hash_table_get))

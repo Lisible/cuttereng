@@ -44,17 +44,19 @@ void asset_store_remove(AssetStore *asset_store, const char *key) {
 
 void asset_store_destroy(Allocator *allocator, AssetStore *asset_store) {
   ASSERT(asset_store != NULL);
+  (void)allocator;
+
   HashTableAsset_destroy(asset_store->assets);
   allocator_free(asset_store->allocator, asset_store);
 }
 
-DECL_HASH_TABLE(AssetLoader, HashTableAssetLoader);
-DEF_HASH_TABLE(AssetLoader, HashTableAssetLoader, HashTable_noop_destructor);
-DECL_HASH_TABLE(AssetDestructor, HashTableAssetDestructor);
+DECL_HASH_TABLE(AssetLoader, HashTableAssetLoader)
+DEF_HASH_TABLE(AssetLoader, HashTableAssetLoader, HashTable_noop_destructor)
+DECL_HASH_TABLE(AssetDestructor, HashTableAssetDestructor)
 DEF_HASH_TABLE(AssetDestructor, HashTableAssetDestructor,
-               HashTable_noop_destructor);
-DECL_HASH_TABLE(AssetStore, HashTableAssetStore);
-DEF_HASH_TABLE(AssetStore, HashTableAssetStore, asset_store_destroy);
+               HashTable_noop_destructor)
+DECL_HASH_TABLE(AssetStore, HashTableAssetStore)
+DEF_HASH_TABLE(AssetStore, HashTableAssetStore, asset_store_destroy)
 
 struct Assets {
   Allocator *allocator;

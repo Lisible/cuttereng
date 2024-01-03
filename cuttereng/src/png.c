@@ -255,15 +255,23 @@ void parse_idat_chunk(ParsingContext *context, u8vec *compressed_data) {
 }
 
 u8 none_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  (void)recon_a;
+  (void)recon_b;
+  (void)recon_c;
   return x;
 }
 u8 sub_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  (void)recon_b;
+  (void)recon_c;
   return x + recon_a;
 }
 u8 up_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  (void)recon_a;
+  (void)recon_c;
   return x + recon_b;
 }
 u8 average_reconstruction_function(u8 recon_a, u8 recon_b, u8 recon_c, u8 x) {
+  (void)recon_c;
   return x + floor((recon_a + recon_b) / 2.f);
 }
 int paeth_predictor(int a, int b, int c) {
@@ -296,11 +304,11 @@ void apply_reconstruction_functions(Image *image,
   ASSERT(image != NULL);
   ASSERT(decompressed_data_buffer != NULL);
   size_t bytes_per_pixel = image->bytes_per_pixel;
-  for (int scanline = 0; scanline < image->height; scanline++) {
+  for (u32 scanline = 0; scanline < image->height; scanline++) {
     int scanline_start_offset = scanline * (1 + image->width * bytes_per_pixel);
     u8 filter_type = decompressed_data_buffer[scanline_start_offset];
     int scanline_data_offset = scanline_start_offset + 1;
-    for (int byte = 0; byte < image->width * bytes_per_pixel; byte++) {
+    for (u32 byte = 0; byte < image->width * bytes_per_pixel; byte++) {
       int a = 0;
       if (byte >= bytes_per_pixel) {
         a = image->data[scanline * image->width * bytes_per_pixel + byte -

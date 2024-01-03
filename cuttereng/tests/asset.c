@@ -5,10 +5,15 @@
 
 struct SomeAssetType;
 void *some_asset_type_loader_fn(Allocator *allocator, const char *path) {
+  (void)allocator;
+  (void)path;
   return NULL;
 }
 static AssetLoader some_asset_type_loader = {.fn = some_asset_type_loader_fn};
-void some_asset_type_destructor_fn(Allocator *allocator, void *asset) {}
+void some_asset_type_destructor_fn(Allocator *allocator, void *asset) {
+  (void)allocator;
+  (void)asset;
+}
 static AssetDestructor some_asset_type_destructor = {
     .fn = some_asset_type_destructor_fn};
 
@@ -19,6 +24,7 @@ typedef struct {
 } IntAsset;
 
 void *int_asset_loader_fn(Allocator *allocator, const char *path) {
+  (void)path;
   IntAsset *int_asset = allocator_allocate(allocator, sizeof(IntAsset));
   int_asset->value = 4;
   return int_asset;
@@ -31,7 +37,7 @@ void int_asset_destructor_fn(Allocator *allocator, void *asset) {
 }
 static AssetDestructor int_asset_destructor = {.fn = int_asset_destructor_fn};
 
-void t_assets_register_loader() {
+void t_assets_register_loader(void) {
   Assets *assets = assets_new(&system_allocator);
   assets_register_loader(assets, SomeAssetType, &some_asset_type_loader,
                          &some_asset_type_destructor);
@@ -40,7 +46,7 @@ void t_assets_register_loader() {
   assets_destroy(assets);
 }
 
-void t_assets_fetch() {
+void t_assets_fetch(void) {
   Assets *assets = assets_new(&system_allocator);
   assets_register_loader(assets, IntAsset, &int_asset_loader,
                          &int_asset_destructor);

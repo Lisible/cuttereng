@@ -14,7 +14,7 @@
 
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
-void cutter_bootstrap() {
+void cutter_bootstrap(void) {
   LOG_INFO("Bootstrapping...");
   char *configuration_file_path =
       env_get_configuration_file_path(&system_allocator);

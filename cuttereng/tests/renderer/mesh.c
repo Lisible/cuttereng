@@ -3,7 +3,7 @@
 #include <memory.h>
 #include <renderer/mesh.h>
 
-void t_mesh_init() {
+void t_mesh_init(void) {
   Vertex *vertices = allocator_allocate(&system_allocator, 3 * sizeof(Vertex));
   vertices[0] = (Vertex){
       .position = {0.0, 1.0, 0.0},
@@ -30,4 +30,4 @@ void t_mesh_init() {
   mesh_deinit(&system_allocator, &mesh);
 }
 
-TEST_SUITE(TEST(t_mesh_init));
+TEST_SUITE(TEST(t_mesh_init))

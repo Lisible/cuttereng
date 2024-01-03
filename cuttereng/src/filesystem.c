@@ -28,7 +28,7 @@ char *filesystem_read_file_to_string(Allocator *allocator, const char *path) {
   if (content == NULL)
     goto err_2;
 
-  if (fread(content, 1, length, file) != length)
+  if (fread(content, 1, length, file) != (unsigned long)length)
     goto err_3;
 
   content[length] = '\0';

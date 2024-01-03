@@ -13,14 +13,14 @@ typedef struct {
   int y;
 } Velocity;
 
-void t_ecs_init() {
+void t_ecs_init(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   ASSERT_EQ(ecs_get_entity_count(&ecs), 0);
   ecs_deinit(&ecs);
 }
 
-void t_ecs_create_entity() {
+void t_ecs_create_entity(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId id = ecs_create_entity(&ecs);
@@ -32,7 +32,7 @@ void t_ecs_create_entity() {
   ecs_deinit(&ecs);
 }
 
-void t_ecs_insert_component() {
+void t_ecs_insert_component(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
@@ -42,7 +42,7 @@ void t_ecs_insert_component() {
   ecs_deinit(&ecs);
 }
 
-void t_ecs_get_component() {
+void t_ecs_get_component(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
@@ -67,7 +67,7 @@ void t_ecs_get_component() {
   ecs_deinit(&ecs);
 }
 
-void t_ecs_count_matching() {
+void t_ecs_count_matching(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
@@ -89,7 +89,7 @@ void t_ecs_count_matching() {
   ecs_deinit(&ecs);
 }
 
-void t_ecs_query() {
+void t_ecs_query(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
@@ -115,7 +115,7 @@ void t_ecs_query() {
   ecs_deinit(&ecs);
 }
 
-void t_ecs_query_two_components() {
+void t_ecs_query_two_components(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs);
   EcsId entity = ecs_create_entity(&ecs);
@@ -154,4 +154,4 @@ void t_ecs_query_two_components() {
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),
            TEST(t_ecs_insert_component), TEST(t_ecs_get_component),
            TEST(t_ecs_count_matching), TEST(t_ecs_query),
-           TEST(t_ecs_query_two_components));
+           TEST(t_ecs_query_two_components))

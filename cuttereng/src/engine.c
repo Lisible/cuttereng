@@ -50,11 +50,15 @@ void engine_set_current_time(Engine *engine, float current_time_secs) {
 
 void engine_update(Arena *frame_arena, Engine *engine) {
   ASSERT(engine != NULL);
+  (void)frame_arena;
+
   LOG_TRACE("update");
 }
 
 void engine_render(Arena *frame_arena, Engine *engine) {
   ASSERT(engine != NULL);
+  (void)frame_arena;
+
   LOG_TRACE("render");
   renderer_render(engine->renderer, engine->current_time_secs);
 }

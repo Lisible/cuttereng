@@ -13,11 +13,13 @@
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
                                   void *user_data) {
+  (void)user_data;
   LOG_TRACE("Queued work finished with status: %d", status);
 }
 
 void on_device_error(WGPUErrorType error_type, const char *message,
                      void *user_data) {
+  (void)user_data;
   LOG_ERROR("Uncaptured device error: type %d", error_type);
   if (message) {
     LOG_ERROR("(%s)", message);
@@ -43,7 +45,7 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
 }
 
 WGPUAdapter request_adapter(WGPUInstance instance) {
-  WGPURequestAdapterOptions adapter_options = {};
+  WGPURequestAdapterOptions adapter_options = {0};
   AdapterRequestUserData user_data = {.adapter = NULL, .request_ended = false};
 
   wgpuInstanceRequestAdapter(instance, &adapter_options,
