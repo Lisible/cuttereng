@@ -3,18 +3,13 @@
 
 #include "../common.h"
 #include "../hash.h"
+#include "../vec.h"
 
 typedef size_t EcsId;
 typedef struct Ecs Ecs;
 
 typedef struct ComponentStore ComponentStore;
 DECL_HASH_TABLE(ComponentStore, HashTableComponentStore)
-
-struct Ecs {
-  Allocator *allocator;
-  HashTableComponentStore *component_stores;
-  size_t entity_count;
-};
 
 typedef struct {
   const char **components;
@@ -26,8 +21,32 @@ typedef struct {
   EcsQueryItState *state;
 } EcsQueryIt;
 
+typedef void (*EcsSystemFn)(EcsQueryIt *);
+
+typedef struct {
+  EcsQuery query;
+  EcsSystemFn fn;
+} EcsSystemDescriptor;
+
+typedef struct {
+  EcsQuery query;
+  EcsSystemFn fn;
+} EcsSystem;
+
+DECL_VEC(EcsSystem, EcsSystemVec)
+
+struct Ecs {
+  Allocator *allocator;
+  HashTableComponentStore *component_stores;
+  size_t entity_count;
+  EcsSystemVec systems;
+};
+
 void ecs_init(Allocator *allocator, Ecs *ecs);
 void ecs_deinit(Ecs *ecs);
+void ecs_register_system(Ecs *ecs,
+                         const EcsSystemDescriptor *system_descriptor);
+void ecs_run_systems(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,

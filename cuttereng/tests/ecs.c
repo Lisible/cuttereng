@@ -151,7 +151,59 @@ void t_ecs_query_two_components(void) {
   ecs_deinit(&ecs);
 }
 
+void print_position_system(EcsQueryIt *it) {
+  LOG_DEBUG("Running print_position_system");
+  do {
+    Position *position = ecs_query_it_get(it, Position, 0);
+    LOG_INFO("Position: (%d, %d)", position->x, position->y);
+  } while (ecs_query_it_next(it));
+}
+
+void move_right_system(EcsQueryIt *it) {
+  LOG_DEBUG("Running move_right_system");
+  do {
+    Position *position = ecs_query_it_get(it, Position, 0);
+    position->x++;
+  } while (ecs_query_it_next(it));
+}
+
+void t_ecs_register_system(void) {
+  Ecs ecs;
+  ecs_init(&system_allocator, &ecs);
+  EcsId entity = ecs_create_entity(&ecs);
+  ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
+  ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});
+  EcsId entity2 = ecs_create_entity(&ecs);
+  ecs_insert_component(&ecs, entity2, Position, {.x = 5, .y = 85});
+  EcsId entity3 = ecs_create_entity(&ecs);
+  ecs_insert_component(&ecs, entity3, Position, {.x = 9, .y = 5});
+  ecs_insert_component(&ecs, entity3, Velocity, {.x = 121, .y = 300});
+  ecs_register_system(
+      &ecs,
+      &(const EcsSystemDescriptor){
+          .query = {.components =
+                        (const char *[]){ecs_component_id(Position), NULL}},
+          .fn = print_position_system,
+      });
+  ecs_register_system(
+      &ecs,
+      &(const EcsSystemDescriptor){
+          .query = {.components =
+                        (const char *[]){ecs_component_id(Position), NULL}},
+          .fn = move_right_system,
+      });
+  ecs_register_system(
+      &ecs,
+      &(const EcsSystemDescriptor){
+          .query = {.components =
+                        (const char *[]){ecs_component_id(Position), NULL}},
+          .fn = print_position_system,
+      });
+  ecs_run_systems(&ecs);
+  ecs_deinit(&ecs);
+}
+
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),
            TEST(t_ecs_insert_component), TEST(t_ecs_get_component),
            TEST(t_ecs_count_matching), TEST(t_ecs_query),
-           TEST(t_ecs_query_two_components))
+           TEST(t_ecs_query_two_components), TEST(t_ecs_register_system))

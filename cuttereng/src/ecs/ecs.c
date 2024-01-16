@@ -3,7 +3,10 @@
 #include "../bitset.h"
 #include "../log.h"
 #include "../memory.h"
+#include "src/vec.h"
 #include <string.h>
+
+DEF_VEC(EcsSystem, EcsSystemVec, 512)
 
 struct ComponentStore {
   void *data;
@@ -67,14 +70,31 @@ void *component_store_get(ComponentStore *store, EcsId entity_id) {
 }
 
 void ecs_init(Allocator *allocator, Ecs *ecs) {
+  ASSERT(allocator != NULL);
   ASSERT(ecs != NULL);
 
   ecs->allocator = allocator;
   ecs->entity_count = 0;
   ecs->component_stores = HashTableComponentStore_create(allocator, 16);
+  EcsSystemVec_init(allocator, &ecs->systems);
 }
 void ecs_deinit(Ecs *ecs) {
+  EcsSystemVec_deinit(&ecs->systems);
   HashTableComponentStore_destroy(ecs->component_stores);
+}
+void ecs_register_system(Ecs *ecs,
+                         const EcsSystemDescriptor *system_descriptor) {
+  EcsSystemVec_append(&ecs->systems,
+                      &(const EcsSystem){.query = system_descriptor->query,
+                                         .fn = system_descriptor->fn},
+                      1);
+}
+
+void ecs_run_systems(Ecs *ecs) {
+  for (size_t i = 0; i < ecs->systems.length; i++) {
+    EcsQueryIt it = ecs_query(ecs, &ecs->systems.data[i].query);
+    ecs->systems.data[i].fn(&it);
+  }
 }
 
 EcsId ecs_create_entity(Ecs *ecs) {
@@ -219,12 +239,11 @@ bool ecs_query_it_next(EcsQueryIt *it) {
   ASSERT(it != NULL);
   ASSERT(it->state != NULL);
 
+  it->state->current_matching_entity++;
   if (it->state->current_matching_entity >= it->state->matching_entity_count) {
     ecs_query_it_deinit(it);
     return false;
   }
-
-  it->state->current_matching_entity++;
 
   return true;
 }
