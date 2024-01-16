@@ -190,11 +190,13 @@ bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
 }
 
 #define ECS_QUERY_MAX_COMPONENT_COUNT 16
+
 struct EcsQueryItState {
   ComponentStore *component_stores[ECS_QUERY_MAX_COMPONENT_COUNT];
   EcsId *matching_entities;
   size_t current_matching_entity;
   size_t matching_entity_count;
+  bool iterating;
 };
 
 EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
@@ -205,9 +207,8 @@ EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
   iterator.allocator = ecs->allocator;
   iterator.state = allocator_allocate(ecs->allocator, sizeof(EcsQueryItState));
   ASSERT(iterator.state != NULL);
-
   memset(iterator.state, 0, sizeof(EcsQueryItState));
-
+  iterator.state->iterating = false;
   iterator.state->matching_entities = allocator_allocate_array(
       ecs->allocator, ecs->entity_count, sizeof(size_t));
   ASSERT(iterator.state->matching_entities != NULL);
@@ -239,7 +240,12 @@ bool ecs_query_it_next(EcsQueryIt *it) {
   ASSERT(it != NULL);
   ASSERT(it->state != NULL);
 
-  it->state->current_matching_entity++;
+  if (it->state->iterating == false) {
+    it->state->iterating = true;
+  } else {
+    it->state->current_matching_entity++;
+  }
+
   if (it->state->current_matching_entity >= it->state->matching_entity_count) {
     ecs_query_it_deinit(it);
     return false;

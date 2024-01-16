@@ -102,6 +102,7 @@ void t_ecs_query(void) {
       .components = (const char *[]){ecs_component_id(Position), NULL}};
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions);
 
+  ecs_query_it_next(&query_iterator);
   Position *pos = ecs_query_it_get(&query_iterator, Position, 0);
   ASSERT_EQ(pos->x, 4);
   ASSERT_EQ(pos->y, 22);
@@ -133,6 +134,7 @@ void t_ecs_query_two_components(void) {
   EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions_and_velocities);
   ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 2);
 
+  ecs_query_it_next(&query_iterator);
   Position *pos = ecs_query_it_get(&query_iterator, Position, 0);
   ASSERT_EQ(pos->x, 4);
   ASSERT_EQ(pos->y, 22);
@@ -153,18 +155,18 @@ void t_ecs_query_two_components(void) {
 
 void print_position_system(EcsQueryIt *it) {
   LOG_DEBUG("Running print_position_system");
-  do {
+  while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
     LOG_INFO("Position: (%d, %d)", position->x, position->y);
-  } while (ecs_query_it_next(it));
+  }
 }
 
 void move_right_system(EcsQueryIt *it) {
   LOG_DEBUG("Running move_right_system");
-  do {
+  while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
     position->x++;
-  } while (ecs_query_it_next(it));
+  }
 }
 
 void t_ecs_register_system(void) {
