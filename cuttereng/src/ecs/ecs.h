@@ -15,7 +15,14 @@ DECL_HASH_TABLE(ComponentStore *, HashTableComponentStore)
 typedef struct {
   char *components[ECS_QUERY_MAX_COMPONENT_COUNT];
   size_t component_count;
-} EcsQuery;
+} EcsQueryDescriptor;
+
+typedef struct EcsQuery EcsQuery;
+EcsQuery *EcsQuery_new(Allocator *allocator,
+                       const EcsQueryDescriptor *query_descriptor);
+void EcsQuery_destroy(EcsQuery *query, Allocator *allocator);
+size_t EcsQuery_component_count(const EcsQuery *query);
+char *EcsQuery_component(const EcsQuery *query, size_t component_index);
 
 typedef struct EcsQueryItState EcsQueryItState;
 typedef struct {
@@ -26,7 +33,7 @@ typedef struct {
 typedef struct EcsCommandQueue EcsCommandQueue;
 typedef void (*EcsSystemFn)(EcsCommandQueue *, EcsQueryIt *);
 typedef struct {
-  EcsQuery query;
+  EcsQueryDescriptor query;
   EcsSystemFn fn;
 } EcsSystemDescriptor;
 
@@ -35,8 +42,14 @@ typedef enum {
   EcsCommandType_CreateEntity,
   EcsCommandType_InsertComponent,
 } EcsCommandType;
+
 typedef struct {
-  EcsSystemDescriptor system_descriptor;
+  EcsQuery *query;
+  EcsSystemFn fn;
+} EcsSystem;
+
+typedef struct {
+  EcsSystem system;
 } EcsRegisterSystemCommand;
 
 typedef struct {
@@ -82,11 +95,6 @@ void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
                                       &(component_type)__VA_ARGS__)
 
 void ecs_default_init_system(EcsCommandQueue *queue);
-
-typedef struct {
-  EcsQuery query;
-  EcsSystemFn fn;
-} EcsSystem;
 
 DECL_VEC(EcsSystem, EcsSystemVec)
 

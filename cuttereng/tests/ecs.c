@@ -76,16 +76,26 @@ void t_ecs_count_matching(void) {
   ecs_insert_component(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert_component(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {.components = {ecs_component_id(Position)},
-                              .component_count = 1};
-  T_ASSERT_EQ(ecs_count_matching(&ecs, &query_positions), 2);
-  EcsQuery query_velocities = {.components = {ecs_component_id(Velocity)},
-                               .component_count = 1};
-  T_ASSERT_EQ(ecs_count_matching(&ecs, &query_velocities), 1);
-  EcsQuery query_positions_and_velocities = {
+  EcsQueryDescriptor query_positions_descriptor = {
+      .components = {ecs_component_id(Position)}, .component_count = 1};
+  EcsQuery *query_positions =
+      EcsQuery_new(&system_allocator, &query_positions_descriptor);
+  T_ASSERT_EQ(ecs_count_matching(&ecs, query_positions), 2);
+  EcsQueryDescriptor query_velocities_descriptor = {
+      .components = {ecs_component_id(Velocity)}, .component_count = 1};
+  EcsQuery *query_velocities =
+      EcsQuery_new(&system_allocator, &query_velocities_descriptor);
+  T_ASSERT_EQ(ecs_count_matching(&ecs, query_velocities), 1);
+  EcsQueryDescriptor query_positions_and_velocities_descriptor = {
       .components = {ecs_component_id(Position), ecs_component_id(Velocity)},
       .component_count = 2};
-  T_ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 1);
+  EcsQuery *query_positions_and_velocities =
+      EcsQuery_new(ecs.allocator, &query_positions_and_velocities_descriptor);
+  T_ASSERT_EQ(ecs_count_matching(&ecs, query_positions_and_velocities), 1);
+
+  EcsQuery_destroy(query_positions, ecs.allocator);
+  EcsQuery_destroy(query_velocities, ecs.allocator);
+  EcsQuery_destroy(query_positions_and_velocities, ecs.allocator);
   ecs_deinit(&ecs);
 }
 
@@ -98,9 +108,11 @@ void t_ecs_query(void) {
   ecs_insert_component(&ecs, entity2, Position, {.x = 5, .y = 85});
   ecs_insert_component(&ecs, entity2, Velocity, {.x = 123, .y = 865});
 
-  EcsQuery query_positions = {.components = {ecs_component_id(Position)},
-                              .component_count = 1};
-  EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions);
+  EcsQueryDescriptor query_positions_descriptor = {
+      .components = {ecs_component_id(Position)}, .component_count = 1};
+  EcsQuery *query_positions =
+      EcsQuery_new(&system_allocator, &query_positions_descriptor);
+  EcsQueryIt query_iterator = ecs_query(&ecs, query_positions);
 
   ecs_query_it_next(&query_iterator);
   Position *pos = ecs_query_it_get(&query_iterator, Position, 0);
@@ -113,6 +125,7 @@ void t_ecs_query(void) {
   T_ASSERT_EQ(pos->y, 85);
   T_ASSERT_NULL(ecs_query_it_get(&query_iterator, Position, 1));
   ecs_query_it_deinit(&query_iterator);
+  EcsQuery_destroy(query_positions, ecs.allocator);
   ecs_deinit(&ecs);
 }
 
@@ -128,11 +141,13 @@ void t_ecs_query_two_components(void) {
   ecs_insert_component(&ecs, entity3, Position, {.x = 9, .y = 5});
   ecs_insert_component(&ecs, entity3, Velocity, {.x = 121, .y = 300});
 
-  EcsQuery query_positions_and_velocities = {
+  EcsQueryDescriptor query_positions_and_velocities_descriptor = {
       .components = {ecs_component_id(Position), ecs_component_id(Velocity)},
       .component_count = 2};
-  EcsQueryIt query_iterator = ecs_query(&ecs, &query_positions_and_velocities);
-  T_ASSERT_EQ(ecs_count_matching(&ecs, &query_positions_and_velocities), 2);
+  EcsQuery *query_positions_and_velocities =
+      EcsQuery_new(ecs.allocator, &query_positions_and_velocities_descriptor);
+  EcsQueryIt query_iterator = ecs_query(&ecs, query_positions_and_velocities);
+  T_ASSERT_EQ(ecs_count_matching(&ecs, query_positions_and_velocities), 2);
 
   ecs_query_it_next(&query_iterator);
   Position *pos = ecs_query_it_get(&query_iterator, Position, 0);
@@ -149,6 +164,7 @@ void t_ecs_query_two_components(void) {
   vel = ecs_query_it_get(&query_iterator, Velocity, 1);
   T_ASSERT_EQ(vel->x, 121);
   T_ASSERT_EQ(vel->y, 300);
+  EcsQuery_destroy(query_positions_and_velocities, ecs.allocator);
   ecs_query_it_deinit(&query_iterator);
   ecs_deinit(&ecs);
 }

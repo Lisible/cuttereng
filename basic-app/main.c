@@ -25,13 +25,14 @@ void system_b(EcsCommandQueue *queue, EcsQueryIt *it) {
 void init_system(EcsCommandQueue *command_queue) {
   LOG_DEBUG("Initializing");
   ecs_command_queue_register_system(
-      command_queue,
-      &(const EcsSystemDescriptor){.query = (EcsQuery){0}, .fn = system_a});
+      command_queue, &(const EcsSystemDescriptor){
+                         .query = (EcsQueryDescriptor){0}, .fn = system_a});
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
-          .query = (EcsQuery){.components = {ecs_component_id(Position)},
-                              .component_count = 1},
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Position)},
+                                   .component_count = 1},
           .fn = system_b});
   EcsId first_entity = ecs_command_queue_create_entity(command_queue);
   ecs_command_queue_insert_component(command_queue, first_entity, Position,

@@ -10,6 +10,72 @@
 DEF_VEC(EcsSystem, EcsSystemVec, 512)
 DEF_VEC(EcsCommand, EcsCommandVec, 128)
 
+struct EcsQuery {
+  char **components;
+  size_t component_count;
+};
+EcsQuery *EcsQuery_new(Allocator *allocator,
+                       const EcsQueryDescriptor *query_descriptor) {
+  ASSERT(allocator != NULL);
+  ASSERT(query_descriptor != NULL);
+  EcsQuery *query = allocator_allocate(allocator, sizeof(EcsQuery));
+  if (!query) {
+    LOG_ERROR("Couldn't allocate query");
+    goto err;
+  }
+
+  query->component_count = query_descriptor->component_count;
+  query->components = allocator_allocate_array(
+      allocator, query->component_count, sizeof(char *));
+  if (!query->components) {
+    LOG_ERROR("Couldn't allocate query component array");
+    goto cleanup_query;
+  }
+
+  size_t component_index = 0;
+  for (component_index = 0; component_index < query_descriptor->component_count;
+       component_index++) {
+    query->components[component_index] = memory_clone_string(
+        allocator, query_descriptor->components[component_index]);
+    if (!query->components[component_index]) {
+      LOG_ERROR("Couldn't allocate query component");
+      goto cleanup_query_components;
+    }
+  }
+
+  return query;
+
+cleanup_query_components:
+  for (size_t i = 0; i < component_index; i++) {
+    allocator_free(allocator, query->components[i]);
+  }
+  allocator_free(allocator, query->components);
+cleanup_query:
+  allocator_free(allocator, query);
+err:
+  return NULL;
+}
+
+void EcsQuery_destroy(EcsQuery *query, Allocator *allocator) {
+  ASSERT(query != NULL);
+  ASSERT(allocator != NULL);
+  for (size_t component_index = 0; component_index < query->component_count;
+       component_index++) {
+    allocator_free(allocator, query->components[component_index]);
+  }
+  allocator_free(allocator, query->components);
+  allocator_free(allocator, query);
+}
+size_t EcsQuery_component_count(const EcsQuery *query) {
+  ASSERT(query != NULL);
+  return query->component_count;
+}
+char *EcsQuery_component(const EcsQuery *query, size_t component_index) {
+  ASSERT(query != NULL);
+  ASSERT(component_index < query->component_count);
+  return query->components[component_index];
+}
+
 struct ComponentStore {
   void *data;
   size_t length;
@@ -71,10 +137,13 @@ void *component_store_get(ComponentStore *store, EcsId entity_id) {
   char *ptr = (char *)store->data;
   return ptr + (entity_id * store->item_size);
 }
+void ecs_register_system_(Ecs *ecs, EcsSystem *system) {
+  EcsSystemVec_append(&ecs->systems, system, 1);
+}
 void ecs_command_execute(Ecs *ecs, EcsCommand *command) {
   switch (command->type) {
   case EcsCommandType_RegisterSystem:
-    ecs_register_system(ecs, &command->register_system.system_descriptor);
+    ecs_register_system_(ecs, &command->register_system.system);
     break;
   case EcsCommandType_CreateEntity:
     ecs_create_entity(ecs);
@@ -125,16 +194,9 @@ void ecs_command_queue_register_system(EcsCommandQueue *queue,
 
   EcsCommand command;
   command.type = EcsCommandType_RegisterSystem;
-  command.register_system.system_descriptor.fn = system->fn;
-  command.register_system.system_descriptor.query.component_count =
-      system->query.component_count;
-  for (size_t i = 0; i < system->query.component_count; i++) {
-    char *component_id =
-        memory_clone_string(queue->allocator, system->query.components[i]);
-    command.register_system.system_descriptor.query.components[i] =
-        component_id;
-  }
-
+  command.register_system.system.fn = system->fn;
+  EcsQuery *query = EcsQuery_new(queue->allocator, &system->query);
+  command.register_system.system.query = query;
   EcsCommandVec_append(&queue->commands, &command, 1);
 }
 EcsId ecs_command_queue_create_entity(EcsCommandQueue *queue) {
@@ -193,29 +255,24 @@ void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system) {
 void ecs_deinit(Ecs *ecs) {
   ecs_command_queue_deinit(&ecs->command_queue);
 
-  // FIXME the query components might be in text segment
   for (size_t i = 0; i < ecs->systems.length; i++) {
-    EcsQuery *query = &ecs->systems.data[i].query;
-    for (size_t component_index = 0; component_index < query->component_count;
-         component_index++) {
-      allocator_free(ecs->allocator, query->components[component_index]);
-    }
+    EcsQuery_destroy(ecs->systems.data[i].query, ecs->allocator);
   }
   EcsSystemVec_deinit(&ecs->systems);
   HashTableComponentStore_destroy(ecs->component_stores);
 }
 void ecs_register_system(Ecs *ecs,
                          const EcsSystemDescriptor *system_descriptor) {
-  EcsSystemVec_append(&ecs->systems,
-                      &(const EcsSystem){.query = system_descriptor->query,
-                                         .fn = system_descriptor->fn},
-                      1);
+
+  EcsQuery *query = EcsQuery_new(ecs->allocator, &system_descriptor->query);
+  EcsSystem system = {.fn = system_descriptor->fn, .query = query};
+  ecs_register_system_(ecs, &system);
 }
 
 void ecs_run_systems(Ecs *ecs) {
   ASSERT(ecs != NULL);
   for (size_t i = 0; i < ecs->systems.length; i++) {
-    EcsQueryIt it = ecs_query(ecs, &ecs->systems.data[i].query);
+    EcsQueryIt it = ecs_query(ecs, ecs->systems.data[i].query);
     ecs->systems.data[i].fn(&ecs->command_queue, &it);
     ecs_query_it_deinit(&it);
   }
