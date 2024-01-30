@@ -470,10 +470,12 @@ void render_graph_resource_deinit(RenderGraphResource *resource) {
   switch (resource->type) {
   case RenderGraphResourceType_OwnedTexture:
     wgpuTextureViewRelease(resource->owned_texture.texture_view);
+    wgpuSamplerRelease(resource->owned_texture.texture_sampler);
     wgpuTextureDestroy(resource->owned_texture.texture);
     wgpuTextureRelease(resource->owned_texture.texture);
     break;
   case RenderGraphResourceType_ImportedTexture:
+    wgpuSamplerRelease(resource->imported_texture.texture_sampler);
     wgpuTextureViewRelease(resource->imported_texture.texture_view);
     break;
   default:

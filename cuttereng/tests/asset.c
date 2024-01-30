@@ -41,8 +41,8 @@ void t_assets_register_loader(void) {
   Assets *assets = assets_new(&system_allocator);
   assets_register_loader(assets, SomeAssetType, &some_asset_type_loader,
                          &some_asset_type_destructor);
-  ASSERT(assets_is_loader_registered_for_type(assets, SomeAssetType));
-  ASSERT(!assets_is_loader_registered_for_type(assets, SomeOtherAssetType));
+  T_ASSERT(assets_is_loader_registered_for_type(assets, SomeAssetType));
+  T_ASSERT(!assets_is_loader_registered_for_type(assets, SomeOtherAssetType));
   assets_destroy(assets);
 }
 
@@ -53,7 +53,7 @@ void t_assets_fetch(void) {
   IntAsset *loaded_int_asset =
       assets_fetch(assets, IntAsset, "some/asset_path");
 
-  ASSERT_EQ(loaded_int_asset->value, 4);
+  T_ASSERT_EQ(loaded_int_asset->value, 4);
   assets_destroy(assets);
 }
 

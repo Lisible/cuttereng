@@ -29,12 +29,12 @@ inline static void assert(int boolean, const char *fmt, ...) {
   }
 }
 
-#define ASSERT(expr) ASSERT_MSG(expr, #expr)
+#define T_ASSERT(expr) T_ASSERT_MSG(expr, #expr)
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#define ASSERT_MSG(expr, fmt, ...)                                             \
+#define T_ASSERT_MSG(expr, fmt, ...)                                           \
   do {                                                                         \
     assert((expr),                                                             \
            "Assertion failed in " __FILE__ ":" TOSTRING(__LINE__) ": " fmt     \
@@ -42,15 +42,15 @@ inline static void assert(int boolean, const char *fmt, ...) {
            ##__VA_ARGS__);                                                     \
   } while (0)
 
-#define ASSERT_EQ(a, b) ASSERT_MSG((a == b), #a " != " #b)
-#define ASSERT_FLOAT_EQ(a, b, epsilon)                                         \
-  ASSERT_MSG((fabs(a - b) < epsilon), #a " != " #b)
+#define T_ASSERT_EQ(a, b) T_ASSERT_MSG((a == b), #a " != " #b)
+#define T_ASSERT_FLOAT_EQ(a, b, epsilon)                                       \
+  T_ASSERT_MSG((fabs(a - b) < epsilon), #a " != " #b)
 
-#define ASSERT_NULL(a) ASSERT_MSG((a == NULL), #a " is not NULL")
-#define ASSERT_NOT_NULL(a) ASSERT_MSG((a != NULL), #a " is NULL")
+#define T_ASSERT_NULL(a) T_ASSERT_MSG((a == NULL), #a " is not NULL")
+#define T_ASSERT_NOT_NULL(a) T_ASSERT_MSG((a != NULL), #a " is NULL")
 
-#define ASSERT_STR_EQ(a, b, length)                                            \
-  ASSERT_MSG((strncmp(a, b, length) == 0), #a " != " #b)
+#define T_ASSERT_STR_EQ(a, b, length)                                          \
+  T_ASSERT_MSG((strncmp(a, b, length) == 0), #a " != " #b)
 
 #define ARG_COUNT(...) (sizeof((Test[]){__VA_ARGS__}) / sizeof(Test))
 #define TEST_SUITE(...)                                                        \

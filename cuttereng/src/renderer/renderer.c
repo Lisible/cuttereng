@@ -29,14 +29,14 @@ DEF_HASH_TABLE(WGPUShaderModule, HashTableShaderModule,
                HashTableShaderModule_destructor)
 void HashTableTexture_destructor(Allocator *allocator, void *value) {
   (void)allocator;
-  wgpuTextureRelease(value);
   wgpuTextureDestroy(value);
+  wgpuTextureRelease(value);
 }
 DEF_HASH_TABLE(WGPUTexture, HashTableTexture, HashTableTexture_destructor)
 
 void HashTableMaterial_destructor(Allocator *allocator, void *value) {
   (void)allocator;
-  gpu_material_destroy(value);
+  gpu_material_destroy(allocator, value);
 }
 DEF_HASH_TABLE(GPUMaterial *, HashTableMaterial, HashTableMaterial_destructor)
 
@@ -206,9 +206,8 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                                        on_device_error, NULL);
   renderer->ctx.wgpu_limits = required_limits;
 
-  renderer->ctx.wgpu_queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
-  wgpuQueueOnSubmittedWorkDone(renderer->ctx.wgpu_queue,
-                               on_queue_submitted_work_done, NULL);
+  WGPUQueue queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
+  wgpuQueueOnSubmittedWorkDone(queue, on_queue_submitted_work_done, NULL);
 
   WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(renderer->ctx.wgpu_surface,
@@ -321,7 +320,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   //                        .texture_coordinates = {0.0, 1.0}};
 
   DrawCommandQueue_init(allocator, &renderer->draw_commands);
-  gpu_mesh_init(renderer->ctx.wgpu_device, renderer->ctx.wgpu_queue,
+  gpu_mesh_init(renderer->ctx.wgpu_device, queue,
                 &renderer->resources.triangle_mesh,
                 &(Mesh){.vertices = vertices,
                         .vertex_count = vertex_count,
@@ -334,9 +333,9 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
           .label = "mesh_uniforms_buffer",
           .size = MAX_MESH_DRAW_PER_FRAME * sizeof(MeshUniforms),
           .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform});
-  wgpuQueueWriteBuffer(
-      renderer->ctx.wgpu_queue, renderer->resources.mesh_uniforms_buffer, 0,
-      &renderer->resources.mesh_uniforms, sizeof(MeshUniforms));
+  wgpuQueueWriteBuffer(queue, renderer->resources.mesh_uniforms_buffer, 0,
+                       &renderer->resources.mesh_uniforms,
+                       sizeof(MeshUniforms));
   renderer->resources
       .mesh_uniforms_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
       renderer->ctx.wgpu_device,
@@ -395,9 +394,9 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                                     .usage = WGPUBufferUsage_CopyDst |
                                              WGPUBufferUsage_Uniform,
                                     .mappedAtCreation = false});
-  wgpuQueueWriteBuffer(
-      renderer->ctx.wgpu_queue, renderer->resources.common_uniforms_buffer, 0,
-      &renderer->resources.common_uniforms, sizeof(CommonUniforms));
+  wgpuQueueWriteBuffer(queue, renderer->resources.common_uniforms_buffer, 0,
+                       &renderer->resources.common_uniforms,
+                       sizeof(CommonUniforms));
   renderer->resources.common_uniforms_bind_group_layout =
       wgpuDeviceCreateBindGroupLayout(
           renderer->ctx.wgpu_device,
@@ -462,7 +461,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   load_shader_modules(allocator, renderer->resources.shader_modules,
                       renderer->ctx.wgpu_device, assets);
   load_textures(allocator, renderer->resources.textures,
-                renderer->ctx.wgpu_device, renderer->ctx.wgpu_queue, assets);
+                renderer->ctx.wgpu_device, queue, assets);
 
   renderer->resources
       .material_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
@@ -492,6 +491,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   load_materials(allocator, renderer->ctx.wgpu_device,
                  renderer->resources.materials, renderer->resources.textures,
                  renderer->resources.material_bind_group_layout, assets);
+  wgpuQueueRelease(queue);
 
   return renderer;
 cleanup_surface:
@@ -631,7 +631,9 @@ void renderer_destroy(Renderer *renderer) {
   HashTableRenderPipeline_destroy(renderer->resources.pipelines);
   HashTableShaderModule_destroy(renderer->resources.shader_modules);
   HashTableTexture_destroy(renderer->resources.textures);
+  HashTableMaterial_destroy(renderer->resources.materials);
   gpu_mesh_deinit(&renderer->resources.triangle_mesh);
+  wgpuBindGroupLayoutRelease(renderer->resources.material_bind_group_layout);
   wgpuBindGroupLayoutRelease(
       renderer->resources.mesh_uniforms_bind_group_layout);
   wgpuBindGroupRelease(renderer->resources.mesh_uniforms_bind_group);
@@ -642,8 +644,16 @@ void renderer_destroy(Renderer *renderer) {
   wgpuBufferRelease(renderer->resources.mesh_uniforms_buffer);
   wgpuBufferDestroy(renderer->resources.common_uniforms_buffer);
   wgpuBufferRelease(renderer->resources.common_uniforms_buffer);
+
+  for (size_t draw_command_index = 0;
+       draw_command_index < renderer->draw_commands.length;
+       draw_command_index++) {
+    allocator_free(
+        renderer->allocator,
+        renderer->draw_commands.data[draw_command_index].material_identifier);
+  }
   DrawCommandQueue_deinit(&renderer->draw_commands);
-  wgpuQueueRelease(renderer->ctx.wgpu_queue);
+
   wgpuTextureDestroy(renderer->resources.depth_texture);
   wgpuTextureRelease(renderer->resources.depth_texture);
   wgpuDeviceRelease(renderer->ctx.wgpu_device);
@@ -768,7 +778,7 @@ uint32_t ceilToNextMultiple(uint32_t value, uint32_t step) {
 }
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                      float current_time_secs) {
-
+  WGPUQueue wgpu_queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
   WGPUSurfaceTexture surface_texture;
   wgpuSurfaceGetCurrentTexture(renderer->ctx.wgpu_surface, &surface_texture);
   switch (surface_texture.status) {
@@ -948,9 +958,9 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .dispatch_fn = composition_pass_dispatch});
 
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
-  wgpuQueueWriteBuffer(
-      renderer->ctx.wgpu_queue, renderer->resources.common_uniforms_buffer, 0,
-      &renderer->resources.common_uniforms, sizeof(CommonUniforms));
+  wgpuQueueWriteBuffer(wgpu_queue, renderer->resources.common_uniforms_buffer,
+                       0, &renderer->resources.common_uniforms,
+                       sizeof(CommonUniforms));
 
   size_t mesh_uniform_stride = ceilToNextMultiple(
       sizeof(MeshUniforms),
@@ -962,8 +972,7 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
     transform_matrix(&command->transform,
                      (float *)mesh_uniforms.world_from_local);
     mat4_transpose(mesh_uniforms.world_from_local);
-    wgpuQueueWriteBuffer(renderer->ctx.wgpu_queue,
-                         renderer->resources.mesh_uniforms_buffer,
+    wgpuQueueWriteBuffer(wgpu_queue, renderer->resources.mesh_uniforms_buffer,
                          command_index * mesh_uniform_stride, &mesh_uniforms,
                          sizeof(MeshUniforms));
   }
@@ -980,12 +989,14 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
       .nextInChain = NULL, .label = "command_buffer"};
   WGPUCommandBuffer command_buffer =
       wgpuCommandEncoderFinish(command_encoder, &command_buffer_descriptor);
-  wgpuQueueSubmit(renderer->ctx.wgpu_queue, 1, &command_buffer);
+  wgpuQueueSubmit(wgpu_queue, 1, &command_buffer);
   wgpuSurfacePresent(renderer->ctx.wgpu_surface);
-
+  wgpuQueueRelease(wgpu_queue);
   wgpuCommandBufferRelease(command_buffer);
   wgpuCommandEncoderRelease(command_encoder);
   wgpuTextureRelease(surface_texture.texture);
+  wgpuBindGroupLayoutRelease(deferred_lighting_result_bind_group_layout);
+  wgpuBindGroupRelease(deferred_lighting_result_bind_group);
   wgpuBindGroupLayoutRelease(g_buffer_bind_group_layout);
   wgpuBindGroupRelease(g_buffer_bind_group);
   render_graph_deinit(&render_graph);

@@ -1,7 +1,7 @@
 #include "deflate.h"
 #include "assert.h"
 #include "bitstream.h"
-#include "memory.h"
+#include "src/vec.h"
 #include <string.h>
 
 #define MAX_HUFFMAN_CODE_LENGTH 15
@@ -131,10 +131,9 @@ DeflateStatus deflate_decompress_(Bitstream *bitstream,
           bitstream_next_bits(bitstream, distance_extra_bits[symbol]);
       while (length > 0) {
         size_t output_buffer_length = u8vec_length(output_state->output_buffer);
-        u8vec_append(output_state->output_buffer,
-                     output_state->output_buffer->data + output_buffer_length -
-                         distance,
-                     1);
+        u8vec_push_back(
+            output_state->output_buffer,
+            output_state->output_buffer->data[output_buffer_length - distance]);
         length--;
       }
     }

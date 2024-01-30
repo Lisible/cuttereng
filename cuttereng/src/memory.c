@@ -111,6 +111,6 @@ char *memory_clone_string(Allocator *allocator, char *str) {
   size_t string_length = strlen(str) + 1;
   char *duplicate_string =
       allocator_allocate_array(allocator, string_length, sizeof(char));
-  memcpy(duplicate_string, str, string_length);
+  memcpy(duplicate_string, str, strlen(str));
   return duplicate_string;
 }

@@ -25,8 +25,8 @@ void t_mesh_init(void) {
 
   Mesh mesh;
   mesh_init(&mesh, vertices, vertex_count, indices, index_count);
-  ASSERT_EQ(mesh_vertex_count(&mesh), 3);
-  ASSERT_EQ(mesh_index_count(&mesh), 3);
+  T_ASSERT_EQ(mesh_vertex_count(&mesh), 3);
+  T_ASSERT_EQ(mesh_index_count(&mesh), 3);
   mesh_deinit(&system_allocator, &mesh);
 }
 

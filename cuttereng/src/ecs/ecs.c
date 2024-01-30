@@ -5,6 +5,7 @@
 #include "../memory.h"
 #include "src/vec.h"
 #include <string.h>
+#include <unistd.h>
 
 DEF_VEC(EcsSystem, EcsSystemVec, 512)
 DEF_VEC(EcsCommand, EcsCommandVec, 128)
@@ -93,15 +94,6 @@ void ecs_command_execute(Ecs *ecs, EcsCommand *command) {
 }
 void ecs_command_deinit(Allocator *allocator, EcsCommand *command) {
   switch (command->type) {
-  case EcsCommandType_RegisterSystem: {
-    size_t component_count =
-        command->register_system.system_descriptor.query.component_count;
-    for (size_t i = 0; i < component_count; i++) {
-      allocator_free(
-          allocator,
-          command->register_system.system_descriptor.query.components[i]);
-    }
-  } break;
   case EcsCommandType_InsertComponent:
     allocator_free(allocator, command->insert_component.component_name);
     allocator_free(allocator, command->insert_component.component_data);
@@ -200,6 +192,15 @@ void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system) {
 }
 void ecs_deinit(Ecs *ecs) {
   ecs_command_queue_deinit(&ecs->command_queue);
+
+  // FIXME the query components might be in text segment
+  for (size_t i = 0; i < ecs->systems.length; i++) {
+    EcsQuery *query = &ecs->systems.data[i].query;
+    for (size_t component_index = 0; component_index < query->component_count;
+         component_index++) {
+      allocator_free(ecs->allocator, query->components[component_index]);
+    }
+  }
   EcsSystemVec_deinit(&ecs->systems);
   HashTableComponentStore_destroy(ecs->component_stores);
 }

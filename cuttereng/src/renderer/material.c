@@ -71,6 +71,8 @@ void *material_loader_fn(Allocator *allocator, const char *path) {
   }
   memcpy(material->normal, normal_str, normal_str_length);
 
+  json_destroy(allocator, material_json);
+  allocator_free(allocator, material_file_content);
   return material;
 
 cleanup_material_json:
@@ -148,6 +150,11 @@ GPUMaterial *gpu_material_create(Allocator *allocator,
                   .lodMaxClamp = 1.0f,
                   .maxAnisotropy = 1});
 
+  gpu_material->base_color_texture_view = base_color_texture_view;
+  gpu_material->base_color_texture_sampler = base_color_texture_sampler;
+  gpu_material->normal_texture_view = normal_texture_view;
+  gpu_material->normal_texture_sampler = normal_texture_sampler;
+
   gpu_material->bind_group = wgpuDeviceCreateBindGroup(
       device,
       &(const WGPUBindGroupDescriptor){
@@ -167,8 +174,11 @@ GPUMaterial *gpu_material_create(Allocator *allocator,
   return gpu_material;
 }
 
-void gpu_material_destroy(GPUMaterial *material) {
+void gpu_material_destroy(Allocator *allocator, GPUMaterial *material) {
   wgpuTextureViewRelease(material->base_color_texture_view);
   wgpuSamplerRelease(material->base_color_texture_sampler);
+  wgpuTextureViewRelease(material->normal_texture_view);
+  wgpuSamplerRelease(material->normal_texture_sampler);
   wgpuBindGroupRelease(material->bind_group);
+  allocator_free(allocator, material);
 }

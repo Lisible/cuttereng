@@ -39,7 +39,6 @@ struct RendererContext {
   WGPUAdapter wgpu_adapter;
   WGPUSurface wgpu_surface;
   WGPUDevice wgpu_device;
-  WGPUQueue wgpu_queue;
   WGPUTextureFormat wgpu_render_surface_texture_format;
   WGPUTextureFormat depth_texture_format;
 };

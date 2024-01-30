@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_VEC_H
 #define CUTTERENG_VEC_H
 
+#include "assert.h"
 #include "common.h"
 #include "memory.h"
 #include <string.h>
@@ -69,7 +70,7 @@
     ASSERT(vec != NULL);                                                       \
     ASSERT(values != NULL);                                                    \
     name##_reserve(vec, vec->length + count);                                  \
-    memcpy(vec->data + vec->length, values, count * sizeof(T));                \
+    memmove(&vec->data[vec->length], values, count * sizeof(T));               \
     vec->length += count;                                                      \
   }                                                                            \
   void name##_clear(name *vec) {                                               \

@@ -24,6 +24,8 @@ extern AssetDestructor material_destructor;
 struct GPUMaterial {
   WGPUTextureView base_color_texture_view;
   WGPUSampler base_color_texture_sampler;
+  WGPUTextureView normal_texture_view;
+  WGPUSampler normal_texture_sampler;
   WGPUBindGroup bind_group;
 };
 
@@ -33,6 +35,6 @@ GPUMaterial *gpu_material_create(Allocator *allocator,
                                  HashTableTexture *textures, WGPUDevice device,
                                  WGPUBindGroupLayout material_bind_group_layout,
                                  Material *material);
-void gpu_material_destroy(GPUMaterial *material);
+void gpu_material_destroy(Allocator *allocator, GPUMaterial *material);
 
 #endif // CUTTERENG_RENDERER_MATERIAL_H

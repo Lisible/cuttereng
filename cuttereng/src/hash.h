@@ -1,7 +1,7 @@
 #ifndef CUTTERENG_HASH_H
 #define CUTTERENG_HASH_H
 
-#include "common.h"
+#include "assert.h"
 #include "memory.h"
 #include <stdbool.h>
 #include <string.h>
@@ -48,7 +48,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
   size_t name##_index_for_key(name *table, const char *key) {                  \
     ASSERT(table != NULL);                                                     \
     ASSERT(key != NULL);                                                       \
-    uint64_t hash = hash_fnv_1a(key);                                          \
+    uint64_t hash = hash_fnv_1a(key, strlen(key));                             \
     return hash & (table->capacity - 1);                                       \
   }                                                                            \
   char *name##_set(name *table, char *key, V value) {                          \
@@ -78,7 +78,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
       }                                                                        \
     }                                                                          \
                                                                                \
-    key = strdup(key);                                                         \
+    key = memory_clone_string(table->allocator, key);                          \
     if (!key)                                                                  \
       return NULL;                                                             \
     table->length++;                                                           \
@@ -92,7 +92,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     if (!key)                                                                  \
       return NULL;                                                             \
                                                                                \
-    uint64_t hash = hash_fnv_1a(key);                                          \
+    uint64_t hash = hash_fnv_1a(key, strlen(key));                             \
     size_t index = hash & (table->capacity - 1);                               \
     while (table->items[index].key != NULL) {                                  \
       if (strcmp(key, table->items[index].key) == 0) {                         \
@@ -109,7 +109,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     ASSERT(key != NULL);                                                       \
     if (!key)                                                                  \
       return false;                                                            \
-    uint64_t hash = hash_fnv_1a(key);                                          \
+    uint64_t hash = hash_fnv_1a(key, strlen(key));                             \
     size_t index = hash & (table->capacity - 1);                               \
     while (table->items[index].key != NULL) {                                  \
       if (strcmp(key, table->items[index].key) == 0) {                         \
@@ -174,7 +174,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     for (size_t i = 0; i < table->capacity; i++) {                             \
       name##KV kv = table->items[i];                                           \
       if (kv.key != NULL) {                                                    \
-        uint64_t hash = hash_fnv_1a(kv.key);                                   \
+        uint64_t hash = hash_fnv_1a(kv.key, strlen(kv.key));                   \
         size_t index = hash & (table->capacity - 1);                           \
         bool found = false;                                                    \
         while (new_items[index].key != NULL) {                                 \
@@ -200,6 +200,6 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     return true;                                                               \
   }
 
-uint64_t hash_fnv_1a(const char *bytes);
+uint64_t hash_fnv_1a(const char *bytes, size_t nbytes);
 
 #endif // CUTTERENG_HASH_H

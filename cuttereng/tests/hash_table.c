@@ -11,7 +11,7 @@ DEF_HASH_TABLE(int *, HashTableInt, hash_table_int_item_dctor)
 
 void t_hash_table_create(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
-  ASSERT_EQ(HashTableInt_length(hash_table), 0);
+  T_ASSERT_EQ(HashTableInt_length(hash_table), 0);
 
   HashTableInt_destroy(hash_table);
 }
@@ -21,7 +21,7 @@ void t_hash_table_set(void) {
   int *i = malloc(sizeof(int));
   *i = 0;
   HashTableInt_set(hash_table, "some_key", i);
-  ASSERT_EQ(HashTableInt_length(hash_table), 1);
+  T_ASSERT_EQ(HashTableInt_length(hash_table), 1);
   HashTableInt_destroy(hash_table);
 }
 
@@ -30,7 +30,7 @@ void t_hash_table_has(void) {
   int *i = malloc(sizeof(int));
   *i = 532;
   HashTableInt_set(hash_table, "some_key", i);
-  ASSERT(HashTableInt_has(hash_table, "some_key"));
+  T_ASSERT(HashTableInt_has(hash_table, "some_key"));
   HashTableInt_destroy(hash_table);
 }
 
@@ -39,7 +39,7 @@ void t_hash_table_get(void) {
   int *i = malloc(sizeof(int));
   *i = 532;
   HashTableInt_set(hash_table, "some_key", i);
-  ASSERT_EQ(*HashTableInt_get(hash_table, "some_key"), 532);
+  T_ASSERT_EQ(*HashTableInt_get(hash_table, "some_key"), 532);
   HashTableInt_destroy(hash_table);
 }
 

@@ -1,0 +1,33 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:ReallocZero
+   fun:realloc
+   obj:/usr/lib64/libnvidia-glcore.so.535.154.05
+   obj:/usr/lib64/libGLX_nvidia.so.535.154.05
+   obj:/usr/lib64/libGLX_nvidia.so.535.154.05
+   obj:/usr/lib64/libGLX_nvidia.so.535.154.05
+   obj:/lib64/ld-linux-x86-64.so.2
+   fun:call_init
+   fun:call_init
+   fun:_dl_init
+   fun:_dl_catch_exception
+   fun:dl_open_worker
+   fun:_dl_catch_exception
+   fun:_dl_open
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:ReallocZero
+   fun:realloc
+   obj:/usr/lib64/libnvidia-eglcore.so.535.154.05
+   obj:/usr/lib64/libnvidia-eglcore.so.535.154.05
+   obj:/usr/lib64/libnvidia-eglcore.so.535.154.05
+   obj:/usr/lib64/libnvidia-eglcore.so.535.154.05
+   fun:NvGlEglApiInit
+   obj:/usr/lib64/libEGL_nvidia.so.535.154.05
+   obj:/usr/lib64/libEGL_nvidia.so.535.154.05
+   obj:/usr/lib64/libEGL_nvidia.so.535.154.05
+   obj:/usr/lib64/libEGL_nvidia.so.535.154.05
+   obj:/usr/lib64/libEGL_nvidia.so.535.154.05
+   obj:/usr/lib64/libEGL.so.1.1.0
+}
