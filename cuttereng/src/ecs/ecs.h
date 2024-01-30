@@ -30,15 +30,27 @@ typedef struct {
   EcsSystemFn fn;
 } EcsSystemDescriptor;
 
-typedef enum { EcsCommandType_RegisterSystem } EcsCommandType;
+typedef enum {
+  EcsCommandType_RegisterSystem,
+  EcsCommandType_CreateEntity,
+  EcsCommandType_InsertComponent,
+} EcsCommandType;
 typedef struct {
   EcsSystemDescriptor system_descriptor;
 } EcsRegisterSystemCommand;
 
 typedef struct {
+  EcsId entity;
+  char *component_name;
+  size_t component_size;
+  void *component_data;
+} EcsInsertComponentCommand;
+
+typedef struct {
   EcsCommandType type;
   union {
     EcsRegisterSystemCommand register_system;
+    EcsInsertComponentCommand insert_component;
   };
 } EcsCommand;
 
@@ -47,16 +59,27 @@ void ecs_command_execute(Ecs *ecs, EcsCommand *command);
 
 DECL_VEC(EcsCommand, EcsCommandVec)
 struct EcsCommandQueue {
+  Ecs *ecs;
   EcsCommandVec commands;
   Allocator *allocator;
 };
 
 typedef void (*EcsInitSystem)(EcsCommandQueue *);
-void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue);
+void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue,
+                            Ecs *ecs);
 void ecs_command_queue_deinit(EcsCommandQueue *queue);
 void ecs_command_queue_register_system(EcsCommandQueue *queue,
                                        const EcsSystemDescriptor *system);
+EcsId ecs_command_queue_create_entity(EcsCommandQueue *queue);
+void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
+                                         char *component_name,
+                                         size_t component_size,
+                                         void *component_data);
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
+#define ecs_command_queue_insert_component(queue, entity, component_type, ...) \
+  ecs_command_queue_insert_component_(queue, entity, #component_type,          \
+                                      sizeof(component_type),                  \
+                                      &(component_type)__VA_ARGS__)
 
 void ecs_default_init_system(EcsCommandQueue *queue);
 
@@ -71,6 +94,7 @@ struct Ecs {
   Allocator *allocator;
   HashTableComponentStore *component_stores;
   size_t entity_count;
+  size_t reserved_entity_count;
   EcsSystemVec systems;
   EcsCommandQueue command_queue;
 };
@@ -81,6 +105,7 @@ void ecs_register_system(Ecs *ecs,
                          const EcsSystemDescriptor *system_descriptor);
 void ecs_run_systems(Ecs *ecs);
 void ecs_process_command_queue(Ecs *ecs);
+EcsId ecs_reserve_entity(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
