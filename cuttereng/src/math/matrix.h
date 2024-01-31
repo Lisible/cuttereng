@@ -49,6 +49,7 @@ DEFINE_MAT4(double, mat4d)
 
 typedef float mat4_value_type;
 
+void mat4_set_to_identity(mat4 mat);
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far);
 void mat4_set_to_translation(mat4 mat, const v3f *translation);

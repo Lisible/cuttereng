@@ -6,6 +6,8 @@
 #include "memory.h"
 #include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
+#include "src/graphics/camera.h"
+#include "src/math/matrix.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  EcsInitSystem ecs_init_system, SDL_Window *window) {
@@ -74,6 +76,24 @@ bool engine_is_running(Engine *engine) {
 }
 
 void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
+  EcsQuery *query_camera = EcsQuery_new(
+      allocator,
+      &(const EcsQueryDescriptor){
+          .components = {ecs_component_id(Camera), ecs_component_id(Transform)},
+          .component_count = 2});
+  EcsQueryIt camera_query_it = ecs_query(&engine->ecs, query_camera);
+  ecs_query_it_next(&camera_query_it);
+  Camera *camera = ecs_query_it_get(&camera_query_it, Camera, 0);
+  Transform *transform = ecs_query_it_get(&camera_query_it, Transform, 1);
+  mat4 projection = {0};
+  memcpy(projection, camera->projection_matrix, 16 * sizeof(mat4_value_type));
+  mat4 inverse_transform_mat;
+  transform_matrix(transform, inverse_transform_mat);
+  mat4_transpose(inverse_transform_mat);
+  mat4 view_projection_matrix = {0};
+  mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
+  renderer_set_projection(engine->renderer, view_projection_matrix);
+
   EcsQuery *query_cubes = EcsQuery_new(
       allocator,
       &(const EcsQueryDescriptor){

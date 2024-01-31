@@ -104,6 +104,7 @@ typedef struct {
 Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                        float current_time_secs);
 void renderer_destroy(Renderer *renderer);
+void renderer_set_projection(Renderer *renderer, mat4 projection);
 void renderer_draw_mesh(Renderer *renderer, Transform *transform,
                         char *material_identifier);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,

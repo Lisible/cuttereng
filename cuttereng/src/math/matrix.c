@@ -7,6 +7,24 @@ IMPL_MAT4(int, mat4i)
 IMPL_MAT4(float, mat4)
 IMPL_MAT4(double, mat4d)
 
+void mat4_set_to_identity(mat4 mat) {
+  mat[0] = 1.0;
+  mat[1] = 0.0;
+  mat[2] = 0.0;
+  mat[3] = 0.0;
+  mat[4] = 0.0;
+  mat[5] = 1.0;
+  mat[6] = 0.0;
+  mat[7] = 0.0;
+  mat[8] = 0.0;
+  mat[9] = 0.0;
+  mat[10] = 1.0;
+  mat[11] = 0.0;
+  mat[12] = 0.0;
+  mat[13] = 0.0;
+  mat[14] = 0.0;
+  mat[15] = 1.0;
+}
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
   ASSERT(mat != NULL);

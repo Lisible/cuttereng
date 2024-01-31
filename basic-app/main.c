@@ -1,3 +1,5 @@
+#include "graphics/camera.h"
+#include "math/quaternion.h"
 #include <cuttereng.h>
 #include <ecs/ecs.h>
 #include <engine.h>
@@ -29,6 +31,16 @@ void system_print_cube_infos(EcsCommandQueue *queue, EcsQueryIt *it) {
   }
 }
 
+void system_rotate_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
+  while (ecs_query_it_next(it)) {
+    Transform *transform = ecs_query_it_get(it, Transform, 0);
+    Quaternion r;
+    quaternion_set_to_axis_angle(&r, &(const v3f){.y = 1.0}, 0.01);
+    quaternion_mul(&transform->rotation, &r);
+  }
+}
+
 void init_system(EcsCommandQueue *command_queue) {
   LOG_DEBUG("Initializing");
   ecs_command_queue_register_system(
@@ -48,6 +60,24 @@ void init_system(EcsCommandQueue *command_queue) {
                                                   ecs_component_id(Cube)},
                                    .component_count = 2},
           .fn = system_print_cube_infos});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
+                                                  ecs_component_id(Camera)},
+                                   .component_count = 2},
+          .fn = system_rotate_camera});
+
+  EcsId camera_entity = ecs_command_queue_create_entity(command_queue);
+  Camera camera;
+  camera_init_perspective(&camera, 45.f, 800.f / 600.f, 0.1f, 100.f);
+  ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
+                                              Camera, &camera);
+  Transform camera_transform = TRANSFORM_DEFAULT;
+  ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
+                                              Transform, &camera_transform);
+
   EcsId first_entity = ecs_command_queue_create_entity(command_queue);
   Transform first_entity_transform = TRANSFORM_DEFAULT;
   first_entity_transform.position.z = 10.0;

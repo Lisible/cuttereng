@@ -1,6 +1,5 @@
 #include "renderer.h"
 #include "../assert.h"
-#include "../graphics/camera.h"
 #include "../hash.h"
 #include "../image.h"
 #include "../log.h"
@@ -379,19 +378,13 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
               .offset = 0,
               .size = sizeof(MeshUniforms)}});
 
-  Camera camera;
-  camera_init_perspective(&camera, 45.0f, 800.0f / 600.0f, 0.1f, 100.0f);
-  mat4 projection_matrix = {0};
-  memcpy(projection_matrix, camera.projection_matrix, 16 * sizeof(float));
-  mat4_transpose(projection_matrix);
+  mat4 identity_matrix = {0};
+  mat4_set_to_identity(identity_matrix);
   memcpy(renderer->resources.common_uniforms.projection_from_view,
-         projection_matrix, 16 * sizeof(mat4_value_type));
-
-  mat4 inverse_projection_from_view;
-  mat4_inverse(projection_matrix, inverse_projection_from_view);
-  mat4_transpose(inverse_projection_from_view);
+         identity_matrix, 16 * sizeof(mat4_value_type));
   memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
-         inverse_projection_from_view, 16 * sizeof(mat4_value_type));
+         identity_matrix, 16 * sizeof(mat4_value_type));
+
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
   renderer->resources.common_uniforms_buffer = wgpuDeviceCreateBuffer(
       renderer->ctx.wgpu_device,
@@ -1140,4 +1133,17 @@ GBuffer_create_bind_group(GBuffer *g_buffer, RenderGraph *render_graph,
                       .sampler = render_graph->resources[g_buffer->position.id]
                                      .owned_texture.texture_sampler}},
           .entryCount = 6});
+}
+
+void renderer_set_projection(Renderer *renderer, mat4 projection) {
+  mat4 projection_matrix = {0};
+  memcpy(projection_matrix, projection, 16 * sizeof(mat4_value_type));
+  mat4_transpose(projection_matrix);
+  memcpy(renderer->resources.common_uniforms.projection_from_view,
+         projection_matrix, 16 * sizeof(mat4_value_type));
+
+  mat4 inverse_projection_matrix = {0};
+  mat4_inverse(projection_matrix, inverse_projection_matrix);
+  memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
+         projection_matrix, 16 * sizeof(mat4_value_type));
 }
