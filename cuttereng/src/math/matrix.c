@@ -12,8 +12,7 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
   ASSERT(mat != NULL);
   float fov_y_rad = fov_y_deg * 2.0f * M_PI / 360.0f;
 
-  float ratio = 640.0f / 480.0f;
-  float focalLength = 2.0;
+  float focalLength = 1 / tan(fov_y_rad / 2);
   near = 0.01f;
   far = 100.0f;
   float divider = 1 / (focalLength * (far - near));
@@ -23,7 +22,7 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
   mat[2] = 0.0;
   mat[3] = 0.0;
   mat[4] = 0.0;
-  mat[5] = ratio;
+  mat[5] = aspect;
   mat[6] = 0.0;
   mat[7] = 0.0;
   mat[8] = 0.0;
