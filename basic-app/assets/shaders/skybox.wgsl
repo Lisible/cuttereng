@@ -24,6 +24,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 	var gradient_uniform: GradientUniform;
 	gradient_uniform.top_color = vec4<f32>(0.6, 0.6, 1.0, 1.0);
 	gradient_uniform.bottom_color= vec4<f32>(1.0, 0.4, 0.0, 1.0);
-    return gradient_uniform.bottom_color * (1.0 - in.texture_coordinates.y) + gradient_uniform.top_color * in.texture_coordinates.y;
+    return gradient_uniform.bottom_color * (1.0 - in.texture_coordinates.y * 2.0) + gradient_uniform.top_color * in.texture_coordinates.y * 2.0;
 }
 

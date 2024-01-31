@@ -1,7 +1,6 @@
 #ifndef CUTTERENG_MATH_MATRIX_H
 #define CUTTERENG_MATH_MATRIX_H
 
-#include "../common.h"
 #include "vector.h"
 
 #define DEFINE_MAT4(T, name)                                                   \
@@ -54,6 +53,7 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far);
 void mat4_set_to_translation(mat4 mat, const v3f *translation);
 void mat4_set_to_scale(mat4 mat, const v3f *scale);
+void mat4_inverse(mat4 mat, mat4 out_mat);
 
 #define MAT4_DEBUG_LOG(mat)                                                    \
   LOG_DEBUG(#mat " : \n(\n %f, %f, %f, %f,\n %f, %f, %f, %f,\n %f, %f, %f, "   \

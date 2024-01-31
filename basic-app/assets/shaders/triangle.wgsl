@@ -1,5 +1,6 @@
 struct CommonUniforms {
     projection_from_view: mat4x4<f32>,
+    inverse_projection_from_view: mat4x4<f32>,
     current_time_secs: f32
 }
 

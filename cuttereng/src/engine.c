@@ -36,7 +36,6 @@ void engine_handle_events(Engine *engine, Event *event) {
   ASSERT(engine != NULL);
   ASSERT(event != NULL);
   switch (event->type) {
-  case EVT_KEYDOWN:
   case EVT_QUIT:
     engine->running = false;
     break;

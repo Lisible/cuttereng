@@ -1,4 +1,5 @@
 #include "../test.h"
+#include <log.h>
 #include <math/matrix.h>
 
 void t_mat_mul(void) {
@@ -45,4 +46,29 @@ void t_mat4_transpose(void) {
   T_ASSERT_EQ(a[15], 16);
 }
 
-TEST_SUITE(TEST(t_mat_mul), TEST(t_mat4_transpose))
+void t_mat4_inverse(void) {
+  mat4 a = {
+      1.0, 0.0, 0.0, 1.0, 0.0, 2.0, 1.0, 2.0,
+      2.0, 1.0, 0.0, 1.0, 2.0, 0.0, 1.0, 4.0,
+  };
+  mat4 a_inv;
+  mat4_inverse(a, a_inv);
+  T_ASSERT_FLOAT_EQ(a_inv[0], -2.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[1], -0.5, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[2], 1.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[3], 0.5, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[4], 1.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[5], 0.5, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[6], 0.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[7], -0.5, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[8], -8.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[9], -1.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[10], 2.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[11], 2.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[12], 3.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[13], 0.5, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[14], -1.0, 0.01);
+  T_ASSERT_FLOAT_EQ(a_inv[15], -0.5, 0.01);
+}
+
+TEST_SUITE(TEST(t_mat_mul), TEST(t_mat4_transpose), TEST(t_mat4_inverse))

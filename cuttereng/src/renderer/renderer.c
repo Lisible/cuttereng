@@ -172,7 +172,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   required_limits.limits.maxUniformBufferBindingSize = sizeof(CommonUniforms);
   required_limits.limits.maxBufferSize = 64000;
   required_limits.limits.maxVertexBufferArrayStride = sizeof(Vertex);
-  required_limits.limits.maxInterStageShaderComponents = 3;
+  required_limits.limits.maxInterStageShaderComponents = 6;
   required_limits.limits.maxTextureDimension2D = 800;
   required_limits.limits.maxTextureArrayLayers = 1;
   required_limits.limits.maxSampledTexturesPerShaderStage = 3;
@@ -386,6 +386,12 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   mat4_transpose(projection_matrix);
   memcpy(renderer->resources.common_uniforms.projection_from_view,
          projection_matrix, 16 * sizeof(mat4_value_type));
+
+  mat4 inverse_projection_from_view;
+  mat4_inverse(projection_matrix, inverse_projection_from_view);
+  mat4_transpose(inverse_projection_from_view);
+  memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
+         inverse_projection_from_view, 16 * sizeof(mat4_value_type));
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
   renderer->resources.common_uniforms_buffer = wgpuDeviceCreateBuffer(
       renderer->ctx.wgpu_device,
@@ -424,7 +430,8 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                           .multisampled = false,
                           .sampleType = WGPUTextureSampleType_Undefined,
                           .viewDimension = WGPUTextureViewDimension_Undefined},
-                  .visibility = WGPUShaderStage_Vertex}});
+                  .visibility =
+                      WGPUShaderStage_Vertex | WGPUShaderStage_Fragment}});
   renderer->resources.common_uniforms_bind_group = wgpuDeviceCreateBindGroup(
       renderer->ctx.wgpu_device,
       &(const WGPUBindGroupDescriptor){
@@ -711,6 +718,20 @@ void skybox_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
   wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
 }
 
+void debug_grid_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
+                              RendererResources *res,
+                              DrawCommandQueue *command_queue, GPUMesh *mesh,
+                              u32 mesh_stride, void *custom_data) {
+  (void)custom_data;
+  (void)res;
+  (void)command_queue;
+  (void)mesh;
+  (void)mesh_stride;
+  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
+                                    res->common_uniforms_bind_group, 0, NULL);
+  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
+}
+
 void mesh_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
                         RendererResources *res, DrawCommandQueue *command_queue,
                         GPUMesh *mesh, u32 mesh_stride, void *custom_data) {
@@ -894,6 +915,24 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .uses_vertex_buffer = false,
           .shader_module_identifier = "skybox.wgsl",
           .dispatch_fn = skybox_pass_dispatch});
+
+  // render_graph_add_pass(
+  //     frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
+  //     &(const RenderPassDescriptor){
+  //         .identifier = "debug_grid_pass",
+  //         .bind_group_layouts =
+  //             {renderer->resources.common_uniforms_bind_group_layout},
+  //         .bind_group_layout_count = 1,
+  //         .render_attachments = {(RenderPassRenderAttachment){
+  //             .type = RenderPassRenderAttachmentType_ColorAttachment,
+  //             .render_attachment_handle = &surface_texture_handle,
+  //             .load_op = WGPULoadOp_Load,
+  //             .store_op = WGPUStoreOp_Store}},
+  //         .render_attachment_count = 1,
+  //         .read_resource_count = 0,
+  //         .uses_vertex_buffer = false,
+  //         .shader_module_identifier = "debug_grid.wgsl",
+  //         .dispatch_fn = debug_grid_pass_dispatch});
 
   WGPUBindGroupLayout deferred_lighting_result_bind_group_layout =
       wgpuDeviceCreateBindGroupLayout(

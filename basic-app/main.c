@@ -4,6 +4,8 @@
 #include <graphics/shape.h>
 #include <transform.h>
 
+typedef struct Moving Moving;
+
 void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
 
@@ -34,8 +36,9 @@ void init_system(EcsCommandQueue *command_queue) {
       &(const EcsSystemDescriptor){
           .query =
               (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
-                                                  ecs_component_id(Cube)},
-                                   .component_count = 2},
+                                                  ecs_component_id(Cube),
+                                                  ecs_component_id(Moving)},
+                                   .component_count = 3},
           .fn = system_move_cubes});
   ecs_command_queue_register_system(
       command_queue,
@@ -53,6 +56,7 @@ void init_system(EcsCommandQueue *command_queue) {
   ecs_command_queue_insert_component_with_ptr(
       command_queue, first_entity, Transform, &first_entity_transform);
   ecs_command_queue_insert_tag_component(command_queue, first_entity, Cube);
+  ecs_command_queue_insert_tag_component(command_queue, first_entity, Moving);
 
   EcsId second_entity = ecs_command_queue_create_entity(command_queue);
   Transform second_entity_transform = TRANSFORM_DEFAULT;

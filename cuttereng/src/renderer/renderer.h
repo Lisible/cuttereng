@@ -25,6 +25,7 @@ DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
 
 typedef struct {
   mat4 projection_from_view;
+  mat4 inverse_projection_from_view;
   float current_time_secs;
   float _pad[15];
 } CommonUniforms;

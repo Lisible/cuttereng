@@ -1,6 +1,6 @@
 #include "matrix.h"
 #include "../assert.h"
-#include "radians.h"
+#include "math.h"
 #include <string.h>
 
 IMPL_MAT4(int, mat4i)
@@ -74,4 +74,91 @@ void mat4_set_to_scale(mat4 mat, const v3f *scale) {
   mat[13] = 0.0;
   mat[14] = 0.0;
   mat[15] = 1.0;
+}
+void mat4_inverse(mat4 mat, mat4 out_mat) {
+  mat4_value_type a2323 =
+      mat[2 * 4 + 2] * mat[3 * 4 + 3] - mat[2 * 4 + 3] * mat[3 * 4 + 2];
+  mat4_value_type a1323 =
+      mat[2 * 4 + 1] * mat[3 * 4 + 3] - mat[2 * 4 + 3] * mat[3 * 4 + 1];
+  mat4_value_type a1223 =
+      mat[2 * 4 + 1] * mat[3 * 4 + 2] - mat[2 * 4 + 2] * mat[3 * 4 + 1];
+  mat4_value_type a0323 =
+      mat[2 * 4 + 0] * mat[3 * 4 + 3] - mat[2 * 4 + 3] * mat[3 * 4 + 0];
+  mat4_value_type a0223 =
+      mat[2 * 4 + 0] * mat[3 * 4 + 2] - mat[2 * 4 + 2] * mat[3 * 4 + 0];
+  mat4_value_type a0123 =
+      mat[2 * 4 + 0] * mat[3 * 4 + 1] - mat[2 * 4 + 1] * mat[3 * 4 + 0];
+  mat4_value_type a2313 =
+      mat[1 * 4 + 2] * mat[3 * 4 + 3] - mat[1 * 4 + 3] * mat[3 * 4 + 2];
+  mat4_value_type a1313 =
+      mat[1 * 4 + 1] * mat[3 * 4 + 3] - mat[1 * 4 + 3] * mat[3 * 4 + 1];
+  mat4_value_type a1213 =
+      mat[1 * 4 + 1] * mat[3 * 4 + 2] - mat[1 * 4 + 2] * mat[3 * 4 + 1];
+  mat4_value_type a2312 =
+      mat[1 * 4 + 2] * mat[2 * 4 + 3] - mat[1 * 4 + 3] * mat[2 * 4 + 2];
+  mat4_value_type a1312 =
+      mat[1 * 4 + 1] * mat[2 * 4 + 3] - mat[1 * 4 + 3] * mat[2 * 4 + 1];
+  mat4_value_type a1212 =
+      mat[1 * 4 + 1] * mat[2 * 4 + 2] - mat[1 * 4 + 2] * mat[2 * 4 + 1];
+  mat4_value_type a0313 =
+      mat[1 * 4 + 0] * mat[3 * 4 + 3] - mat[1 * 4 + 3] * mat[3 * 4 + 0];
+  mat4_value_type a0213 =
+      mat[1 * 4 + 0] * mat[3 * 4 + 2] - mat[1 * 4 + 2] * mat[3 * 4 + 0];
+  mat4_value_type a0312 =
+      mat[1 * 4 + 0] * mat[2 * 4 + 3] - mat[1 * 4 + 3] * mat[2 * 4 + 0];
+  mat4_value_type a0212 =
+      mat[1 * 4 + 0] * mat[2 * 4 + 2] - mat[1 * 4 + 2] * mat[2 * 4 + 0];
+  mat4_value_type a0113 =
+      mat[1 * 4 + 0] * mat[3 * 4 + 1] - mat[1 * 4 + 1] * mat[3 * 4 + 0];
+  mat4_value_type a0112 =
+      mat[1 * 4 + 0] * mat[2 * 4 + 1] - mat[1 * 4 + 1] * mat[2 * 4 + 0];
+
+  mat4_value_type det =
+      mat[0 * 4 + 0] * (mat[1 * 4 + 1] * a2323 - mat[1 * 4 + 2] * a1323 +
+                        mat[1 * 4 + 3] * a1223) -
+      mat[0 * 4 + 1] * (mat[1 * 4 + 0] * a2323 - mat[1 * 4 + 2] * a0323 +
+                        mat[1 * 4 + 3] * a0223) +
+      mat[0 * 4 + 2] * (mat[1 * 4 + 0] * a1323 - mat[1 * 4 + 1] * a0323 +
+                        mat[1 * 4 + 3] * a0123) -
+      mat[0 * 4 + 3] * (mat[1 * 4 + 0] * a1223 - mat[1 * 4 + 1] * a0223 +
+                        mat[1 * 4 + 2] * a0123);
+
+  if (fabs(det) < 0.000001) {
+    LOG_ERROR("matrix non inversible");
+    return;
+  }
+
+  mat4_value_type inv_det = 1.0 / det;
+  out_mat[0] = inv_det * (mat[1 * 4 + 1] * a2323 - mat[1 * 4 + 2] * a1323 +
+                          mat[1 * 4 + 3] * a1223);
+  out_mat[1] = inv_det * -(mat[0 * 4 + 1] * a2323 - mat[0 * 4 + 2] * a1323 +
+                           mat[0 * 4 + 3] * a1223);
+  out_mat[2] = inv_det * (mat[0 * 4 + 1] * a2313 - mat[0 * 4 + 2] * a1313 +
+                          mat[0 * 4 + 3] * a1213);
+  out_mat[3] = inv_det * -(mat[0 * 4 + 1] * a2312 - mat[0 * 4 + 2] * a1312 +
+                           mat[0 * 4 + 3] * a1212);
+  out_mat[4] = inv_det * -(mat[1 * 4 + 0] * a2323 - mat[1 * 4 + 2] * a0323 +
+                           mat[1 * 4 + 3] * a0223);
+  out_mat[5] = inv_det * (mat[0 * 4 + 0] * a2323 - mat[0 * 4 + 2] * a0323 +
+                          mat[0 * 4 + 3] * a0223);
+  out_mat[6] = inv_det * -(mat[0 * 4 + 0] * a2313 - mat[0 * 4 + 2] * a0313 +
+                           mat[0 * 4 + 3] * a0213);
+  out_mat[7] = inv_det * (mat[0 * 4 + 0] * a2312 - mat[0 * 4 + 2] * a0312 +
+                          mat[0 * 4 + 3] * a0212);
+  out_mat[8] = inv_det * (mat[1 * 4 + 0] * a1323 - mat[1 * 4 + 1] * a0323 +
+                          mat[1 * 4 + 3] * a0123);
+  out_mat[9] = inv_det * -(mat[0 * 4 + 0] * a1323 - mat[0 * 4 + 1] * a0323 +
+                           mat[0 * 4 + 3] * a0123);
+  out_mat[10] = inv_det * (mat[0 * 4 + 0] * a1313 - mat[0 * 4 + 1] * a0313 +
+                           mat[0 * 4 + 3] * a0113);
+  out_mat[11] = inv_det * -(mat[0 * 4 + 0] * a1312 - mat[0 * 4 + 1] * a0312 +
+                            mat[0 * 4 + 3] * a0112);
+  out_mat[12] = inv_det * -(mat[1 * 4 + 0] * a1223 - mat[1 * 4 + 1] * a0223 +
+                            mat[1 * 4 + 2] * a0123);
+  out_mat[13] = inv_det * (mat[0 * 4 + 0] * a1223 - mat[0 * 4 + 1] * a0223 +
+                           mat[0 * 4 + 2] * a0123);
+  out_mat[14] = inv_det * -(mat[0 * 4 + 0] * a1213 - mat[0 * 4 + 1] * a0213 +
+                            mat[0 * 4 + 2] * a0113);
+  out_mat[15] = inv_det * (mat[0 * 4 + 0] * a1212 - mat[0 * 4 + 1] * a0212 +
+                           mat[0 * 4 + 2] * a0112);
 }
