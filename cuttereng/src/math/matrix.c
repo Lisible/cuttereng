@@ -11,21 +11,28 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
   ASSERT(mat != NULL);
   float fov_y_rad = fov_y_deg * 2.0f * M_PI / 360.0f;
-  mat[0] = (1.0f / tan(fov_y_rad / 2.0f)) / aspect;
+
+  float ratio = 640.0f / 480.0f;
+  float focalLength = 2.0;
+  near = 0.01f;
+  far = 100.0f;
+  float divider = 1 / (focalLength * (far - near));
+
+  mat[0] = 1.0;
   mat[1] = 0.0;
   mat[2] = 0.0;
   mat[3] = 0.0;
   mat[4] = 0.0;
-  mat[5] = 1.0f / tan(fov_y_rad / 2.0f);
+  mat[5] = ratio;
   mat[6] = 0.0;
   mat[7] = 0.0;
   mat[8] = 0.0;
   mat[9] = 0.0;
-  mat[10] = near / (far - near);
-  mat[11] = far * (near / (far - near));
+  mat[10] = far * divider;
+  mat[11] = -far * near * divider;
   mat[12] = 0.0;
   mat[13] = 0.0;
-  mat[14] = 1.0;
+  mat[14] = 1.0 / focalLength;
   mat[15] = 0.0;
 }
 void mat4_set_to_translation(mat4 mat, const v3f *translation) {

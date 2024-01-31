@@ -395,8 +395,8 @@ void render_graph_execute(RenderGraph *render_graph,
         depth_stencil_attachment =
             &(const WGPURenderPassDepthStencilAttachment){
                 .view = render_graph_resource_get_texture_view(resource),
-                .depthStoreOp = WGPUStoreOp_Store,
                 .depthLoadOp = WGPULoadOp_Clear,
+                .depthStoreOp = WGPUStoreOp_Store,
                 .depthClearValue = 1.0,
                 .stencilLoadOp = WGPULoadOp_Clear,
                 .stencilStoreOp = WGPUStoreOp_Store,

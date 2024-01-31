@@ -10,7 +10,8 @@ void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   const SystemContext *system_context = it->ctx;
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    transform->position.x = sin(system_context->current_time_secs);
+    LOG_DEBUG("A");
+    transform->position.z += sin(system_context->current_time_secs);
   }
 }
 
@@ -47,17 +48,17 @@ void init_system(EcsCommandQueue *command_queue) {
   EcsId first_entity = ecs_command_queue_create_entity(command_queue);
   Transform first_entity_transform = TRANSFORM_DEFAULT;
   first_entity_transform.position.z = 10.0;
-  first_entity_transform.position.x = -4.0;
-  first_entity_transform.position.y = -2.0;
+  first_entity_transform.position.x = -3.0;
+  first_entity_transform.position.y = 0.0;
   ecs_command_queue_insert_component_with_ptr(
       command_queue, first_entity, Transform, &first_entity_transform);
   ecs_command_queue_insert_tag_component(command_queue, first_entity, Cube);
 
   EcsId second_entity = ecs_command_queue_create_entity(command_queue);
   Transform second_entity_transform = TRANSFORM_DEFAULT;
-  second_entity_transform.position.x = 1.0;
-  second_entity_transform.position.y = 0.1;
   second_entity_transform.position.z = 3.0;
+  second_entity_transform.position.x = 1.0;
+  second_entity_transform.position.y = 0.0;
   ecs_command_queue_insert_component_with_ptr(
       command_queue, second_entity, Transform, &second_entity_transform);
   ecs_command_queue_insert_tag_component(command_queue, second_entity, Cube);

@@ -850,7 +850,6 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                    .load_op = WGPULoadOp_Clear,
                    .store_op = WGPUStoreOp_Store}},
           .render_attachment_count = 4,
-          .read_resource_count = 0,
           .uses_vertex_buffer = true,
           .shader_module_identifier = "shader.wgsl",
           .dispatch_fn = mesh_pass_dispatch});
