@@ -288,10 +288,11 @@ void ecs_register_system(Ecs *ecs,
   ecs_register_system_(ecs, &system);
 }
 
-void ecs_run_systems(Ecs *ecs) {
+void ecs_run_systems(Ecs *ecs, const void *system_context) {
   ASSERT(ecs != NULL);
   for (size_t i = 0; i < ecs->systems.length; i++) {
     EcsQueryIt it = ecs_query(ecs, ecs->systems.data[i].query);
+    it.ctx = system_context;
     ecs->systems.data[i].fn(&ecs->command_queue, &it);
     ecs_query_it_deinit(&it);
   }

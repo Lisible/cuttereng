@@ -28,6 +28,7 @@ typedef struct EcsQueryItState EcsQueryItState;
 typedef struct {
   Allocator *allocator;
   EcsQueryItState *state;
+  const void *ctx;
 } EcsQueryIt;
 
 typedef struct EcsCommandQueue EcsCommandQueue;
@@ -96,6 +97,10 @@ void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
   ecs_command_queue_insert_component_(queue, entity, #component_type,          \
                                       sizeof(component_type),                  \
                                       &(component_type)__VA_ARGS__)
+#define ecs_command_queue_insert_component_with_ptr(queue, entity,             \
+                                                    component_type, ptr)       \
+  ecs_command_queue_insert_component_(queue, entity, #component_type,          \
+                                      sizeof(component_type), ptr)
 #define ecs_command_queue_insert_tag_component(queue, entity, component_type)  \
   ecs_command_queue_insert_tag_component_(queue, entity, #component_type);
 
@@ -116,7 +121,7 @@ void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system);
 void ecs_deinit(Ecs *ecs);
 void ecs_register_system(Ecs *ecs,
                          const EcsSystemDescriptor *system_descriptor);
-void ecs_run_systems(Ecs *ecs);
+void ecs_run_systems(Ecs *ecs, const void *system_context);
 void ecs_process_command_queue(Ecs *ecs);
 EcsId ecs_reserve_entity(Ecs *ecs);
 EcsId ecs_create_entity(Ecs *ecs);
@@ -136,6 +141,9 @@ void *ecs_query_it_get_(const EcsQueryIt *it, size_t component);
 EcsId ecs_query_it_entity_id(const EcsQueryIt *it);
 void ecs_query_it_deinit(EcsQueryIt *it);
 
+#define ecs_insert_component_with_ptr(ecs, entity_id, component_type, ptr)     \
+  ecs_insert_component_(ecs, entity_id, #component_type,                       \
+                        sizeof(component_type), ptr)
 #define ecs_insert_component(ecs, entity_id, component_type, ...)              \
   ecs_insert_component_(ecs, entity_id, #component_type,                       \
                         sizeof(component_type), &(component_type)__VA_ARGS__)

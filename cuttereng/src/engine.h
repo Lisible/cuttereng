@@ -2,7 +2,6 @@
 #define CUTTERENG_ENGINE_H
 
 #include "asset.h"
-#include "common.h"
 #include "ecs/ecs.h"
 #include "event.h"
 #include "json.h"
@@ -27,6 +26,10 @@ typedef struct {
   float current_time_secs;
   bool running;
 } Engine;
+
+typedef struct {
+  float current_time_secs;
+} SystemContext;
 
 void engine_init(Engine *engine, const Configuration *config,
                  EcsInitSystem init_system, SDL_Window *window);

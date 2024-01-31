@@ -218,7 +218,7 @@ void t_ecs_register_system(void) {
                                     .component_count = 1},
                           .fn = print_position_system,
                       });
-  ecs_run_systems(&ecs);
+  ecs_run_systems(&ecs, NULL);
   ecs_deinit(&ecs);
 }
 

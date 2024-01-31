@@ -5,7 +5,7 @@
 #include "log.h"
 #include "memory.h"
 #include "renderer/renderer.h"
-#include "src/math/quaternion.h"
+#include "src/ecs/ecs.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  EcsInitSystem ecs_init_system, SDL_Window *window) {
@@ -53,42 +53,39 @@ void engine_update(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
   (void)frame_allocator;
 
-  LOG_TRACE("update");
-  ecs_run_systems(&engine->ecs);
+  const SystemContext system_context = {.current_time_secs =
+                                            engine->current_time_secs};
+
+  ecs_run_systems(&engine->ecs, &system_context);
   ecs_process_command_queue(&engine->ecs);
 }
 
+void engine_emit_draw_commands(Allocator *allocator, Engine *engine);
 void engine_render(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
   LOG_TRACE("render");
-  static float a = 0.0;
-  a += 0.05;
 
-  Transform triangle_transform = TRANSFORM_DEFAULT;
-  triangle_transform.scale = (v3f){1.0, 1.0, 1.0};
-  triangle_transform.position.z = 10.0;
-  for (int i = 0; i < 1; i++) {
-    triangle_transform.position.x = i % 10 - 4;
-    triangle_transform.position.y = (float)i / 10 - 2;
-    quaternion_set_to_axis_angle(&triangle_transform.rotation,
-                                 &(const v3f){0.0, 1.0, 0.0}, i + a);
-    Quaternion quaternion = {.scalar_part = 1.0, .vector_part = {0}};
-    quaternion_set_to_axis_angle(&quaternion, &(const v3f){1.0, 0.0, 0.0},
-                                 i + a);
-
-    quaternion_mul(&triangle_transform.rotation, &quaternion);
-    renderer_draw_mesh(engine->renderer, &triangle_transform, "sand.json");
-    triangle_transform.position.x = i % 10 - 4 + 5;
-    triangle_transform.position.y = (float)i / 10;
-    triangle_transform.position.z = 3;
-    renderer_draw_mesh(engine->renderer, &triangle_transform, "water.json");
-  }
+  engine_emit_draw_commands(frame_allocator, engine);
   renderer_render(frame_allocator, engine->renderer, engine->current_time_secs);
 }
 
 bool engine_is_running(Engine *engine) {
   ASSERT(engine != NULL);
   return engine->running;
+}
+
+void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
+  EcsQuery *query_cubes = EcsQuery_new(
+      allocator,
+      &(const EcsQueryDescriptor){
+          .components = {ecs_component_id(Transform), ecs_component_id(Cube)},
+          .component_count = 2});
+  EcsQueryIt query_it = ecs_query(&engine->ecs, query_cubes);
+  while (ecs_query_it_next(&query_it)) {
+    Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
+    renderer_draw_mesh(engine->renderer, transform, "water.json");
+  }
+  EcsQuery_destroy(query_cubes, allocator);
 }
 
 bool configuration_from_json(Json *configuration_json,
