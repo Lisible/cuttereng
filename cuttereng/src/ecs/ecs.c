@@ -119,11 +119,13 @@ DEF_HASH_TABLE(ComponentStore *, HashTableComponentStore,
 void component_store_set(ComponentStore *store, EcsId entity_id,
                          const void *data) {
   ASSERT(store != NULL);
-  ASSERT(data != NULL);
+  ASSERT(data != NULL || store->item_size == 0);
 
-  char *dst = (char *)store->data;
-  memcpy(dst + (entity_id * store->item_size), (char *)data,
-         store->item_size * sizeof(char));
+  if (store->item_size > 0) {
+    char *dst = (char *)store->data;
+    memcpy(dst + (entity_id * store->item_size), (char *)data,
+           store->item_size * sizeof(char));
+  }
   BITSET(store->bitset, entity_id);
 }
 
@@ -228,6 +230,23 @@ void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
                             .component_data = owned_component_data}};
   EcsCommandVec_append(&queue->commands, &command, 1);
 }
+
+void ecs_command_queue_insert_tag_component_(EcsCommandQueue *queue,
+                                             EcsId entity,
+                                             char *component_name) {
+  ASSERT(queue != NULL);
+  ASSERT(component_name != NULL);
+  char *owned_component_name =
+      memory_clone_string(queue->allocator, component_name);
+
+  EcsCommand command = {.type = EcsCommandType_InsertComponent,
+                        .insert_component = (EcsInsertComponentCommand){
+                            .entity = entity,
+                            .component_name = owned_component_name,
+                            0,
+                            .component_data = NULL}};
+  EcsCommandVec_append(&queue->commands, &command, 1);
+}
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue) {
   ASSERT(queue != NULL);
   for (size_t command_index = 0; command_index < queue->commands.length;
@@ -304,7 +323,7 @@ size_t ecs_get_entity_count(const Ecs *ecs) {
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
                            size_t component_size, const void *data) {
   ASSERT(ecs != NULL);
-  ASSERT(data != NULL);
+  ASSERT(data != NULL || component_size == 0);
 
   LOG_DEBUG("Inserting component %s for entity %d", component_name, entity_id);
   if (!HashTableComponentStore_has(ecs->component_stores, component_name)) {

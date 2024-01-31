@@ -88,11 +88,16 @@ void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
                                          char *component_name,
                                          size_t component_size,
                                          void *component_data);
+void ecs_command_queue_insert_tag_component_(EcsCommandQueue *queue,
+                                             EcsId entity,
+                                             char *component_name);
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
 #define ecs_command_queue_insert_component(queue, entity, component_type, ...) \
   ecs_command_queue_insert_component_(queue, entity, #component_type,          \
                                       sizeof(component_type),                  \
                                       &(component_type)__VA_ARGS__)
+#define ecs_command_queue_insert_tag_component(queue, entity, component_type)  \
+  ecs_command_queue_insert_tag_component_(queue, entity, #component_type);
 
 void ecs_default_init_system(EcsCommandQueue *queue);
 

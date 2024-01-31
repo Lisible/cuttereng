@@ -74,7 +74,7 @@ struct RendererResources {
   WGPUBindGroupLayout common_uniforms_bind_group_layout;
   WGPUBindGroup common_uniforms_bind_group;
 
-  GPUMesh triangle_mesh;
+  GPUMesh cube_mesh;
   MeshUniforms mesh_uniforms[MAX_MESH_DRAW_PER_FRAME];
   size_t mesh_uniform_count;
   WGPUBuffer mesh_uniforms_buffer;

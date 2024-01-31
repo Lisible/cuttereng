@@ -321,7 +321,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
 
   DrawCommandQueue_init(allocator, &renderer->draw_commands);
   gpu_mesh_init(renderer->ctx.wgpu_device, queue,
-                &renderer->resources.triangle_mesh,
+                &renderer->resources.cube_mesh,
                 &(Mesh){.vertices = vertices,
                         .vertex_count = vertex_count,
                         .index_count = 0});
@@ -632,7 +632,7 @@ void renderer_destroy(Renderer *renderer) {
   HashTableShaderModule_destroy(renderer->resources.shader_modules);
   HashTableTexture_destroy(renderer->resources.textures);
   HashTableMaterial_destroy(renderer->resources.materials);
-  gpu_mesh_deinit(&renderer->resources.triangle_mesh);
+  gpu_mesh_deinit(&renderer->resources.cube_mesh);
   wgpuBindGroupLayoutRelease(renderer->resources.material_bind_group_layout);
   wgpuBindGroupLayoutRelease(
       renderer->resources.mesh_uniforms_bind_group_layout);
