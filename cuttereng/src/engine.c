@@ -1,12 +1,14 @@
 #include "engine.h"
 #include "assert.h"
 #include "asset.h"
+#include "event.h"
 #include "image.h"
 #include "log.h"
 #include "memory.h"
 #include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
 #include "src/graphics/camera.h"
+#include "src/input.h"
 #include "src/math/matrix.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
@@ -15,6 +17,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   ASSERT(configuration != NULL);
   ASSERT(window != NULL);
   ecs_init(&system_allocator, &engine->ecs, ecs_init_system);
+  InputState_init(&engine->input_state);
   engine->assets = assets_new(&system_allocator);
   assets_register_loader(engine->assets, Image, &image_loader,
                          &image_destructor);
@@ -42,6 +45,7 @@ void engine_handle_events(Engine *engine, Event *event) {
     engine->running = false;
     break;
   default:
+    InputState_handle_event(&engine->input_state, event);
     break;
   }
 }

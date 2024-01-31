@@ -1,4 +1,5 @@
 #include "cuttereng.h"
+#include "SDL_events.h"
 #include "assert.h"
 #include "engine.h"
 #include "environment/environment.h"
@@ -68,6 +69,65 @@ cleanup:
   free(configuration_file_content);
 }
 
+Key key_from_sdl_keysym(SDL_Keycode keycode) {
+  switch (keycode) {
+  case SDLK_a:
+    return Key_A;
+  case SDLK_b:
+    return Key_B;
+  case SDLK_c:
+    return Key_C;
+  case SDLK_d:
+    return Key_D;
+  case SDLK_e:
+    return Key_E;
+  case SDLK_f:
+    return Key_F;
+  case SDLK_g:
+    return Key_G;
+  case SDLK_h:
+    return Key_H;
+  case SDLK_i:
+    return Key_I;
+  case SDLK_j:
+    return Key_J;
+  case SDLK_k:
+    return Key_K;
+  case SDLK_l:
+    return Key_L;
+  case SDLK_m:
+    return Key_M;
+  case SDLK_n:
+    return Key_N;
+  case SDLK_o:
+    return Key_O;
+  case SDLK_p:
+    return Key_P;
+  case SDLK_q:
+    return Key_Q;
+  case SDLK_r:
+    return Key_R;
+  case SDLK_s:
+    return Key_S;
+  case SDLK_t:
+    return Key_T;
+  case SDLK_u:
+    return Key_U;
+  case SDLK_v:
+    return Key_V;
+  case SDLK_w:
+    return Key_W;
+  case SDLK_x:
+    return Key_X;
+  case SDLK_y:
+    return Key_Y;
+  case SDLK_z:
+    return Key_Z;
+  default:
+    return Key_Unknown;
+  }
+}
+
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
   ASSERT(sdl_event != NULL);
   ASSERT(event != NULL);
@@ -78,6 +138,16 @@ void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
     break;
   case SDL_KEYDOWN:
     event->type = EVT_KEYDOWN;
+    event->key_event.key = key_from_sdl_keysym(sdl_event->key.keysym.sym);
+    break;
+  case SDL_KEYUP:
+    event->type = EVT_KEYUP;
+    event->key_event.key = key_from_sdl_keysym(sdl_event->key.keysym.sym);
+    break;
+  case SDL_MOUSEMOTION:
+    event->type = EVT_MOUSEMOTION;
+    event->mouse_motion_event.relative_x = sdl_event->motion.xrel;
+    event->mouse_motion_event.relative_y = sdl_event->motion.yrel;
     break;
   default:
     event->type = EVT_UNKNOWN;
