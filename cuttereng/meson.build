@@ -33,7 +33,7 @@ cuttereng_lib = library(
   'src/engine.c',
   'src/ecs/ecs.c',
   'src/asset.c',
-  'src/camera.c',
+  'src/graphics/camera.c',
   'src/bytes.c',
   'src/vec.c',
   'src/math/vector.c',

@@ -1,7 +1,7 @@
 #ifndef CUTTERENG_CAMERA_H
 #define CUTTERENG_CAMERA_H
 
-#include "math/matrix.h"
+#include "../math/matrix.h"
 
 typedef struct {
   mat4 projection_matrix;

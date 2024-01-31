@@ -1,6 +1,6 @@
 #include "renderer.h"
 #include "../assert.h"
-#include "../camera.h"
+#include "../graphics/camera.h"
 #include "../hash.h"
 #include "../image.h"
 #include "../log.h"
