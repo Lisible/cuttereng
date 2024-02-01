@@ -101,6 +101,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   mat4 view_projection_matrix = {0};
   mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
   renderer_set_projection(engine->renderer, view_projection_matrix);
+  ecs_query_it_deinit(&camera_query_it);
+  EcsQuery_destroy(query_camera, allocator);
 
   EcsQuery *query_cubes = EcsQuery_new(
       allocator,
@@ -112,6 +114,7 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
     Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
     renderer_draw_mesh(engine->renderer, transform, "water.json");
   }
+  ecs_query_it_deinit(&query_it);
   EcsQuery_destroy(query_cubes, allocator);
 }
 
