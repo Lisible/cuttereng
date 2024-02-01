@@ -1,5 +1,7 @@
 #include "cuttereng.h"
 #include "SDL_events.h"
+#include "SDL_keyboard.h"
+#include "SDL_timer.h"
 #include "assert.h"
 #include "engine.h"
 #include "environment/environment.h"
@@ -44,17 +46,24 @@ void cutter_bootstrap(EcsInitSystem ecs_init_system) {
   Arena frame_arena;
   Allocator frame_allocator = arena_allocator(&frame_arena);
   arena_init(&frame_arena, &system_allocator, 10 * KB);
+
+  float last_frame_time = 0;
   while (engine_is_running(&engine)) {
+    float current_time = SDL_GetTicks();
+    float dt = (current_time - last_frame_time) / 1000.f;
     SDL_Event sdl_event;
     while (SDL_PollEvent(&sdl_event) != 0) {
       Event event;
       event_from_sdl_event(&sdl_event, &event);
       engine_handle_events(&engine, &event);
     }
-    engine_set_current_time(&engine, SDL_GetTicks() / 1000.f);
-    engine_update(&frame_allocator, &engine);
+    engine_set_current_time(&engine, current_time / 1000.f);
+    engine_update(&frame_allocator, &engine, dt);
     engine_render(&frame_allocator, &engine);
     arena_clear(&frame_arena);
+
+    last_frame_time = current_time;
+    ;
   }
   arena_deinit(&frame_arena, &system_allocator);
 

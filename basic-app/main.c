@@ -1,5 +1,7 @@
 #include "graphics/camera.h"
+#include "input.h"
 #include "math/quaternion.h"
+#include "math/vector.h"
 #include <cuttereng.h>
 #include <ecs/ecs.h>
 #include <engine.h>
@@ -12,10 +14,10 @@ void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
 
   const SystemContext *system_context = it->ctx;
+  float dt = system_context->delta_time_secs;
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    LOG_DEBUG("A");
-    transform->position.z += sin(system_context->current_time_secs);
+    transform->position.z += sin(system_context->current_time_secs) * dt;
   }
 }
 
@@ -33,11 +35,74 @@ void system_print_cube_infos(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void system_rotate_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
+  const SystemContext *system_context = it->ctx;
+  InputState *input_state = system_context->input_state;
+  float mouse_motion_x = input_state->last_mouse_motion.x;
+  float mouse_motion_y = input_state->last_mouse_motion.y;
+  if (!input_state->did_mouse_move) {
+    mouse_motion_x = 0.0;
+    mouse_motion_y = 0.0;
+  }
+
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    Quaternion r;
-    quaternion_set_to_axis_angle(&r, &(const v3f){.y = 1.0}, 0.01);
-    quaternion_mul(&transform->rotation, &r);
+    Quaternion y_rotation = {1, {0}};
+    quaternion_set_to_axis_angle(&y_rotation, &(const v3f){.y = 1.0},
+                                 mouse_motion_x * 0.01);
+    Quaternion rotation = {1, {0}};
+    memcpy(&rotation, &transform->rotation, sizeof(Quaternion));
+
+    Quaternion x_rotation = {1, {0}};
+    quaternion_set_to_axis_angle(&x_rotation, &(const v3f){.x = 1.0},
+                                 mouse_motion_y * 0.01);
+
+    Quaternion result = {1.f, {0.f, 0.f, 0.f}};
+    quaternion_mul(&result, &y_rotation);
+    quaternion_mul(&result, &rotation);
+    quaternion_mul(&result, &x_rotation);
+    memcpy(&transform->rotation, &result, sizeof(Quaternion));
+    // TODO fix this
+    input_state->did_mouse_move = false;
+  }
+}
+
+void system_move_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
+  const SystemContext *system_context = it->ctx;
+  InputState *input_state = system_context->input_state;
+  float dt = system_context->delta_time_secs;
+  float speed = 5.0;
+  while (ecs_query_it_next(it)) {
+    Transform *transform = ecs_query_it_get(it, Transform, 0);
+
+    v3f forward = {0.0, 0.0, 1.0};
+    quaternion_apply_to_vector(&transform->rotation, &forward);
+    v3f_mul_scalar(&forward, speed * dt);
+    v3f up = {0.0, 1.0, 0.0};
+    quaternion_apply_to_vector(&transform->rotation, &up);
+    v3f_mul_scalar(&up, speed * dt);
+    v3f right = {1.0, 0.0, 0.0};
+    quaternion_apply_to_vector(&transform->rotation, &right);
+    v3f_mul_scalar(&right, speed * dt);
+
+    if (InputState_is_key_down(input_state, Key_W)) {
+      v3f_add(&transform->position, &forward);
+    }
+    if (InputState_is_key_down(input_state, Key_S)) {
+      v3f_sub(&transform->position, &forward);
+    }
+    if (InputState_is_key_down(input_state, Key_D)) {
+      v3f_add(&transform->position, &right);
+    }
+    if (InputState_is_key_down(input_state, Key_A)) {
+      v3f_sub(&transform->position, &right);
+    }
+    if (InputState_is_key_down(input_state, Key_Q)) {
+      v3f_add(&transform->position, &up);
+    }
+    if (InputState_is_key_down(input_state, Key_E)) {
+      v3f_sub(&transform->position, &up);
+    }
   }
 }
 
@@ -68,6 +133,14 @@ void init_system(EcsCommandQueue *command_queue) {
                                                   ecs_component_id(Camera)},
                                    .component_count = 2},
           .fn = system_rotate_camera});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
+                                                  ecs_component_id(Camera)},
+                                   .component_count = 2},
+          .fn = system_move_camera});
 
   EcsId camera_entity = ecs_command_queue_create_entity(command_queue);
   Camera camera;

@@ -12,7 +12,9 @@
   void name##_sub(name *lhs, const name *rhs);                                 \
   void name##_mul_scalar(name *lhs, T rhs);                                    \
   void name##_div_scalar(name *lhs, T rhs);                                    \
-  void name##_neg(name *v);
+  void name##_neg(name *v);                                                    \
+  T name##_dot(name *lhs, const name *rhs);                                    \
+  void name##_cross(name *lhs, const name *rhs);
 
 #define IMPL_V3(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
@@ -50,6 +52,19 @@
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
     v->z = -v->z;                                                              \
+  }                                                                            \
+  T name##_dot(name *lhs, const name *rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
+    return lhs->x * rhs->x + lhs->y * rhs->y + lhs->z * rhs->z;                \
+  }                                                                            \
+  void name##_cross(name *lhs, const name *rhs) {                              \
+    T lx = lhs->x;                                                             \
+    T ly = lhs->y;                                                             \
+    T lz = lhs->z;                                                             \
+    lhs->x = ly * rhs->z - lz * rhs->y;                                        \
+    lhs->y = lz * rhs->x - lx * rhs->z;                                        \
+    lhs->z = lx * rhs->y - ly * rhs->x;                                        \
   }
 
 DEFINE_V3(int, v3i)

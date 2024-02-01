@@ -14,5 +14,6 @@ void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
 void quaternion_mul(Quaternion *lhs, const Quaternion *rhs);
 void quaternion_rotation_matrix(const Quaternion *quaternion,
                                 mat4 rotation_matrix);
+void quaternion_apply_to_vector(const Quaternion *quaternion, v3f *vector);
 
 #endif // CUTTERENG_MATH_QUATERNION_H

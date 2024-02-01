@@ -30,7 +30,9 @@ typedef struct {
 } Engine;
 
 typedef struct {
+  float delta_time_secs;
   float current_time_secs;
+  InputState *input_state;
 } SystemContext;
 
 void engine_init(Engine *engine, const Configuration *config,
@@ -38,7 +40,7 @@ void engine_init(Engine *engine, const Configuration *config,
 void engine_set_current_time(Engine *engine, float current_time_secs);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
-void engine_update(Allocator *frame_allocator, Engine *engine);
+void engine_update(Allocator *frame_allocator, Engine *engine, float dt);
 void engine_render(Allocator *frame_allocator, Engine *engine);
 bool engine_is_running(Engine *engine);
 

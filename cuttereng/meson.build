@@ -68,6 +68,8 @@ test_vector= executable('test_vector', 'tests/test_runner.c', 'tests/math/vector
 test('test_vector', test_vector)
 test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix.c', dependencies: [cuttereng_dep])
 test('test_matrix', test_matrix)
+test_quaternion= executable('test_quaternion', 'tests/test_runner.c', 'tests/math/quaternion.c', dependencies: [cuttereng_dep])
+test('test_quaternion', test_quaternion)
 test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
 test('test_mesh', test_mesh)
 test_png = executable('test_png', 'tests/test_runner.c', 'tests/png.c', dependencies: [cuttereng_dep])

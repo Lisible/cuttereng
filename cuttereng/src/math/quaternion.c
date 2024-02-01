@@ -1,5 +1,6 @@
 #include "quaternion.h"
 #include "../assert.h"
+#include "src/math/vector.h"
 
 void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
                                   float angle) {
@@ -75,4 +76,35 @@ void quaternion_rotation_matrix(const Quaternion *quaternion,
   rotation_matrix[13] = 0.0;
   rotation_matrix[14] = 0.0;
   rotation_matrix[15] = 1.0;
+}
+
+void quaternion_apply_to_vector(const Quaternion *quaternion, v3f *vector) {
+  ASSERT(quaternion != NULL);
+  ASSERT(vector != NULL);
+  float s = quaternion->scalar_part;
+  v3f u = quaternion->vector_part;
+  v3f v = *vector;
+
+  float u_dot_v = v3f_dot(&u, &v);
+  float u_dot_u = v3f_dot(&u, &u);
+
+  v3f u_cross_v = u;
+  v3f_cross(&u_cross_v, &v);
+
+  v3f u_mul_2udotv = u;
+  v3f_mul_scalar(&u_mul_2udotv, u_dot_v * 2.0);
+
+  v3f v_mul_ssudotu = v;
+  v3f_mul_scalar(&v_mul_ssudotu, s * s - u_dot_u);
+
+  v3f ucrossv_mul_2s = u_cross_v;
+  v3f_mul_scalar(&ucrossv_mul_2s, 2.f * s);
+
+  v3f res = u_mul_2udotv;
+  v3f_add(&res, &v_mul_ssudotu);
+  v3f_add(&res, &ucrossv_mul_2s);
+
+  vector->x = res.x;
+  vector->y = res.y;
+  vector->z = res.z;
 }

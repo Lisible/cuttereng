@@ -1,5 +1,4 @@
 #include "../test.h"
-#include "log.h"
 #include <math/vector.h>
 
 void t_v_add(void) {

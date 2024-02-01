@@ -54,13 +54,15 @@ void engine_set_current_time(Engine *engine, float current_time_secs) {
   engine->current_time_secs = current_time_secs;
 }
 
-void engine_update(Allocator *frame_allocator, Engine *engine) {
+void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
   ASSERT(engine != NULL);
   (void)frame_allocator;
 
-  const SystemContext system_context = {.current_time_secs =
-                                            engine->current_time_secs};
-
+  LOG_DEBUG("Delta time: %fs", dt);
+  const SystemContext system_context = {.delta_time_secs = dt,
+                                        .current_time_secs =
+                                            engine->current_time_secs,
+                                        .input_state = &engine->input_state};
   ecs_run_systems(&engine->ecs, &system_context);
   ecs_process_command_queue(&engine->ecs);
 }
@@ -91,9 +93,11 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   Transform *transform = ecs_query_it_get(&camera_query_it, Transform, 1);
   mat4 projection = {0};
   memcpy(projection, camera->projection_matrix, 16 * sizeof(mat4_value_type));
+  mat4 transform_mat;
+  transform_matrix(transform, transform_mat);
   mat4 inverse_transform_mat;
-  transform_matrix(transform, inverse_transform_mat);
   mat4_transpose(inverse_transform_mat);
+  mat4_inverse(transform_mat, inverse_transform_mat);
   mat4 view_projection_matrix = {0};
   mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
   renderer_set_projection(engine->renderer, view_projection_matrix);
