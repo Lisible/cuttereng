@@ -59,14 +59,53 @@ typedef struct {
   int y;
 } MouseMotion;
 
+typedef enum {
+  ControllerJoystick_Unknown,
+  ControllerJoystick_Left,
+  ControllerJoystick_Right,
+} ControllerJoystick;
+
+#define JOYSTICK_DEADZONE 0.3f
+typedef struct {
+  float x;
+  float y;
+} JoystickState;
+
+typedef enum {
+  ControllerButton_A,
+  ControllerButton_B,
+  ControllerButton_X,
+  ControllerButton_Y,
+  ControllerButton_Back,
+  ControllerButton_Start,
+  ControllerButton_LShoulder,
+  ControllerButton_RShoulder,
+  ControllerButton_Count,
+  ControllerButton_Unknown,
+} ControllerButton;
+
+typedef struct {
+  bool is_down;
+} ButtonState;
+
+typedef struct {
+  JoystickState left_joystick_state;
+  JoystickState right_joystick_state;
+  ButtonState button_states[ControllerButton_Count];
+} ControllerState;
+
 typedef struct {
   KeyState key_states[Key_Count];
+  ControllerState controller;
   MouseMotion last_mouse_motion;
-  bool did_mouse_move;
 } InputState;
 
 void InputState_init(InputState *state);
 void InputState_handle_event(InputState *state, Event *event);
+void InputState_on_frame_end(InputState *state);
 bool InputState_is_key_down(InputState *state, Key key);
-
+bool InputState_is_controller_button_down(InputState *state,
+                                          ControllerButton button);
+const JoystickState *InputState_get_joystick(InputState *state,
+                                             ControllerJoystick joystick);
 #endif // CUTTERENG_INPUT_H

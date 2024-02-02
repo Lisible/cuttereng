@@ -41,7 +41,7 @@ void engine_handle_events(Engine *engine, Event *event) {
   ASSERT(engine != NULL);
   ASSERT(event != NULL);
   switch (event->type) {
-  case EVT_QUIT:
+  case EventType_Quit:
     engine->running = false;
     break;
   default:
@@ -74,6 +74,7 @@ void engine_render(Allocator *frame_allocator, Engine *engine) {
 
   engine_emit_draw_commands(frame_allocator, engine);
   renderer_render(frame_allocator, engine->renderer, engine->current_time_secs);
+  InputState_on_frame_end(&engine->input_state);
 }
 
 bool engine_is_running(Engine *engine) {
