@@ -99,10 +99,6 @@ const JoystickState *InputState_get_joystick(InputState *state,
 }
 void InputState_on_frame_end(InputState *state) {
   ASSERT(state != NULL);
-  state->controller.left_joystick_state.x = 0.f;
-  state->controller.left_joystick_state.y = 0.f;
-  state->controller.right_joystick_state.x = 0.f;
-  state->controller.right_joystick_state.y = 0.f;
   state->last_mouse_motion.x = 0.f;
   state->last_mouse_motion.y = 0.f;
 }

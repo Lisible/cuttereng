@@ -1,4 +1,5 @@
 #include "graphics/camera.h"
+#include "graphics/light.h"
 #include "input.h"
 #include "math/quaternion.h"
 #include "math/vector.h"
@@ -33,20 +34,13 @@ void system_print_cube_infos(EcsCommandQueue *queue, EcsQueryIt *it) {
   }
 }
 
-void system_rotate_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
+void system_rotate_camera_mouse(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
   const SystemContext *system_context = it->ctx;
   InputState *input_state = system_context->input_state;
   JoystickState *right_joystick = &input_state->controller.right_joystick_state;
   float motion_x = input_state->last_mouse_motion.x;
   float motion_y = input_state->last_mouse_motion.y;
-
-  // if (!input_state->did_mouse_move &&
-  //     (fabs(right_joystick->x) > JOYSTICK_DEADZONE ||
-  //      fabs(right_joystick->y) > JOYSTICK_DEADZONE)) {
-  //   motion_x = right_joystick->x;
-  //   motion_y = right_joystick->y;
-  // }
 
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
@@ -68,7 +62,75 @@ void system_rotate_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
   }
 }
 
-void system_move_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
+void system_rotate_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
+  const SystemContext *system_context = it->ctx;
+  InputState *input_state = system_context->input_state;
+  JoystickState *right_joystick = &input_state->controller.right_joystick_state;
+  float motion_x = right_joystick->x;
+  float motion_y = right_joystick->y;
+
+  while (ecs_query_it_next(it)) {
+    Transform *transform = ecs_query_it_get(it, Transform, 0);
+    Quaternion y_rotation = {1, {0}};
+    quaternion_set_to_axis_angle(&y_rotation, &(const v3f){.y = 1.0},
+                                 motion_x * 0.02);
+    Quaternion rotation = {1, {0}};
+    memcpy(&rotation, &transform->rotation, sizeof(Quaternion));
+
+    Quaternion x_rotation = {1, {0}};
+    quaternion_set_to_axis_angle(&x_rotation, &(const v3f){.x = 1.0},
+                                 motion_y * 0.02);
+
+    Quaternion result = {1.f, {0.f, 0.f, 0.f}};
+    quaternion_mul(&result, &y_rotation);
+    quaternion_mul(&result, &rotation);
+    quaternion_mul(&result, &x_rotation);
+    memcpy(&transform->rotation, &result, sizeof(Quaternion));
+  }
+}
+
+void system_move_camera_keyboard(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
+  const SystemContext *system_context = it->ctx;
+  InputState *input_state = system_context->input_state;
+  float dt = system_context->delta_time_secs;
+  float speed = 5.0;
+  while (ecs_query_it_next(it)) {
+    Transform *transform = ecs_query_it_get(it, Transform, 0);
+
+    v3f forward = {0.0, 0.0, 1.0};
+    quaternion_apply_to_vector(&transform->rotation, &forward);
+    v3f_mul_scalar(&forward, dt * speed);
+    v3f up = {0.0, 1.0, 0.0};
+    quaternion_apply_to_vector(&transform->rotation, &up);
+    v3f_mul_scalar(&up, dt * speed);
+    v3f right = {1.0, 0.0, 0.0};
+    quaternion_apply_to_vector(&transform->rotation, &right);
+    v3f_mul_scalar(&right, dt * speed);
+
+    if (InputState_is_key_down(input_state, Key_W)) {
+      v3f_add(&transform->position, &forward);
+    }
+    if (InputState_is_key_down(input_state, Key_S)) {
+      v3f_sub(&transform->position, &forward);
+    }
+    if (InputState_is_key_down(input_state, Key_D)) {
+      v3f_add(&transform->position, &right);
+    }
+    if (InputState_is_key_down(input_state, Key_A)) {
+      v3f_sub(&transform->position, &right);
+    }
+    if (InputState_is_key_down(input_state, Key_Q)) {
+      v3f_add(&transform->position, &up);
+    }
+    if (InputState_is_key_down(input_state, Key_E)) {
+      v3f_sub(&transform->position, &up);
+    }
+  }
+}
+
+void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
   const SystemContext *system_context = it->ctx;
   InputState *input_state = system_context->input_state;
@@ -88,28 +150,19 @@ void system_move_camera(EcsCommandQueue *queue, EcsQueryIt *it) {
     quaternion_apply_to_vector(&transform->rotation, &right);
     v3f_mul_scalar(&right, dt * speed);
 
-    if (InputState_is_key_down(input_state, Key_W) ||
-        left_joystick->y < -JOYSTICK_DEADZONE) {
+    if (left_joystick->y < -JOYSTICK_DEADZONE) {
       v3f_add(&transform->position, &forward);
-    }
-    if (InputState_is_key_down(input_state, Key_S) ||
-        left_joystick->y > JOYSTICK_DEADZONE) {
+    } else if (left_joystick->y > JOYSTICK_DEADZONE) {
       v3f_sub(&transform->position, &forward);
-    }
-    if (InputState_is_key_down(input_state, Key_D) ||
-        left_joystick->x > JOYSTICK_DEADZONE) {
+    } else if (left_joystick->x > JOYSTICK_DEADZONE) {
       v3f_add(&transform->position, &right);
-    }
-    if (InputState_is_key_down(input_state, Key_A) ||
-        left_joystick->x < -JOYSTICK_DEADZONE) {
+    } else if (left_joystick->x < -JOYSTICK_DEADZONE) {
       v3f_sub(&transform->position, &right);
     }
-    if (InputState_is_key_down(input_state, Key_Q) ||
-        InputState_is_controller_button_down(input_state, ControllerButton_A)) {
+    if (InputState_is_controller_button_down(input_state, ControllerButton_A)) {
       v3f_add(&transform->position, &up);
     }
-    if (InputState_is_key_down(input_state, Key_E) ||
-        InputState_is_controller_button_down(input_state, ControllerButton_B)) {
+    if (InputState_is_controller_button_down(input_state, ControllerButton_B)) {
       v3f_sub(&transform->position, &up);
     }
   }
@@ -141,7 +194,7 @@ void init_system(EcsCommandQueue *command_queue) {
               (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
                                                   ecs_component_id(Camera)},
                                    .component_count = 2},
-          .fn = system_rotate_camera});
+          .fn = system_rotate_camera_controller});
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -149,7 +202,23 @@ void init_system(EcsCommandQueue *command_queue) {
               (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
                                                   ecs_component_id(Camera)},
                                    .component_count = 2},
-          .fn = system_move_camera});
+          .fn = system_rotate_camera_mouse});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
+                                                  ecs_component_id(Camera)},
+                                   .component_count = 2},
+          .fn = system_move_camera_controller});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
+                                                  ecs_component_id(Camera)},
+                                   .component_count = 2},
+          .fn = system_move_camera_keyboard});
 
   EcsId camera_entity = ecs_command_queue_create_entity(command_queue);
   Camera camera;
