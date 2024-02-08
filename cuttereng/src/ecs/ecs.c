@@ -76,55 +76,123 @@ char *EcsQuery_component(const EcsQuery *query, size_t component_index) {
   return query->components[component_index];
 }
 
+// FIXME Component stores are not growable so far, this needs to be fixed
+// The data block should be reallocated with a larger capacity, the bitset too.
 struct ComponentStore {
+  Allocator *allocator;
   void *data;
+  u8 *bitset;
   size_t length;
   size_t capacity;
   size_t item_size;
-  // TODO make a growable bitset, maybe hierarchical at some point
-  uint64_t bitset[8];
 };
 
 ComponentStore *component_store_new(Allocator *allocator, size_t item_size) {
-  const size_t INITIAL_CAPACITY = 64;
+  ASSERT(allocator != NULL);
+  const size_t INITIAL_CAPACITY = 32;
   ComponentStore *store = allocator_allocate(allocator, sizeof(ComponentStore));
   if (!store)
     goto err;
 
+  store->allocator = allocator;
   store->capacity = INITIAL_CAPACITY;
   store->length = 0;
   store->item_size = item_size;
-  memset(store->bitset, 0, 8);
-  store->data =
-      allocator_allocate_array(allocator, store->capacity, store->item_size);
-  if (!store->data)
-    goto err;
+  store->data = NULL;
+  if (item_size > 0) {
+    store->data =
+        allocator_allocate_array(allocator, store->capacity, store->item_size);
+    if (!store->data) {
+      LOG_ERROR("ComponentStore allocation failed");
+      goto err;
+    }
+  }
+  store->bitset = allocator_allocate_array(
+      allocator, BITNSLOTS(INITIAL_CAPACITY), sizeof(u8));
+  if (!store->bitset) {
+    LOG_ERROR("ComponentStore bitset allocation failed");
+    goto cleanup_data;
+  }
 
   return store;
-
+cleanup_data:
+  allocator_free(allocator, store->data);
 err:
-  LOG_ERROR("ComponentStore allocation failed");
   return NULL;
 }
 
 void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   ASSERT(store != NULL);
-
-  allocator_free(allocator, store->data);
-  allocator_free(allocator, store);
+  (void)allocator;
+  if (store->data != NULL) {
+    allocator_free(store->allocator, store->data);
+  }
+  allocator_free(store->allocator, store->bitset);
+  allocator_free(store->allocator, store);
 }
 DEF_HASH_TABLE(ComponentStore *, HashTableComponentStore,
                component_store_destroy)
+
+void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
+  ASSERT(store != NULL);
+  LOG_TRACE("Ensuring component store capacity");
+  if (store->capacity > capacity) {
+    LOG_TRACE("Requested capacity is smaller than store capacity");
+    return;
+  }
+
+  size_t new_capacity = store->capacity * 2;
+  while (new_capacity <= capacity) {
+    new_capacity *= 2;
+  }
+
+  if (store->item_size != 0) {
+    LOG_TRACE(
+        "Reallocating component store data buffer from capacity: %d, size: "
+        "%d to capacity: %d, size: %d",
+        store->capacity, store->capacity * store->item_size, new_capacity,
+        new_capacity * store->item_size);
+
+    store->data = allocator_reallocate(store->allocator, store->data,
+                                       store->capacity * store->item_size,
+                                       new_capacity * store->item_size);
+    if (!store->data) {
+      PANIC("Couldn't reallocate component store buffer from capacity %d "
+            "to %d",
+            store->capacity, new_capacity);
+    }
+  }
+
+  LOG_TRACE(
+      "Reallocating component store bitset buffer from size: %d, to size: %d",
+      BITNSLOTS(store->capacity), BITNSLOTS(new_capacity));
+  store->bitset = allocator_reallocate(store->allocator, store->bitset,
+                                       BITNSLOTS(store->capacity) * sizeof(u8),
+                                       BITNSLOTS(new_capacity) * sizeof(u8));
+  if (!store->bitset) {
+    PANIC("Couldn't reallocate component store bitset from capacity %d "
+          "to %d",
+          store->capacity, new_capacity);
+  }
+  store->capacity = new_capacity;
+}
 
 void component_store_set(ComponentStore *store, EcsId entity_id,
                          const void *data) {
   ASSERT(store != NULL);
   ASSERT(data != NULL || store->item_size == 0);
+  LOG_TRACE("Setting component of size %d for entity: %d", store->item_size,
+            entity_id);
+
+  if (entity_id >= store->capacity) {
+    component_store_ensure_capacity(store, entity_id);
+  }
 
   if (store->item_size > 0) {
-    char *dst = (char *)store->data;
-    memcpy(dst + (entity_id * store->item_size), (char *)data,
-           store->item_size * sizeof(char));
+    LOG_DEBUG("entity_id: %d", entity_id);
+    LOG_DEBUG("store->item_size: %d", store->item_size);
+    char *store_data_ptr = &((char *)store->data)[entity_id * store->item_size];
+    memmove(store_data_ptr, (char *)data, store->item_size * sizeof(char));
   }
   BITSET(store->bitset, entity_id);
 }
@@ -399,6 +467,9 @@ bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
     ComponentStore *component_store = HashTableComponentStore_get(
         ecs->component_stores, query->components[component_index]);
     ASSERT(component_store != NULL);
+    if (component_store->capacity <= entity_id) {
+      return false;
+    }
     matches = matches && BITTEST(component_store->bitset, entity_id);
     component_index++;
   }
