@@ -1,7 +1,13 @@
+struct DirectionalLight {
+    direction: vec3<f32>,
+}
+
 struct CommonUniforms {
     projection_from_view: mat4x4<f32>,
     inverse_projection_from_view: mat4x4<f32>,
-    current_time_secs: f32
+    directional_light: DirectionalLight,
+    view_position: vec3<f32>,
+    current_time_secs: f32,
 }
 
 @group(0) @binding(0) var<uniform> u_common: CommonUniforms;
@@ -61,7 +67,7 @@ fn grid(fragment_position: vec3<f32>, scale: f32, coordinates: vec2<f32>, deriva
 }
 
 fn compute_fragment_depth(fragment_position: vec3<f32>) -> f32 {
-	let projected_position = u_common.projection_from_view * vec4<f32>(fragment_position, 1.0);
+	let projected_position = u_common.inverse_projection_from_view* vec4<f32>(fragment_position, 1.0);
 	return (projected_position.z / projected_position.w);
 }
 
@@ -80,4 +86,3 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
     fragment_output.fragment_color = grid(fragment_position, scale, coordinates, derivative) * f32(t > 0.0);
 	return fragment_output;
 }
-

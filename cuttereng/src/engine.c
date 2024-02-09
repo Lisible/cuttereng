@@ -8,6 +8,7 @@
 #include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
 #include "src/graphics/camera.h"
+#include "src/graphics/light.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
 
@@ -101,9 +102,28 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   mat4_inverse(transform_mat, inverse_transform_mat);
   mat4 view_projection_matrix = {0};
   mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
-  renderer_set_projection(engine->renderer, view_projection_matrix);
+  LOG_DEBUG("view_position: %f,%f,%f", transform->position.x,
+            transform->position.y, transform->position.z);
+  renderer_set_view_position(engine->renderer, &transform->position);
+  renderer_set_view_projection(engine->renderer, view_projection_matrix);
   ecs_query_it_deinit(&camera_query_it);
   EcsQuery_destroy(query_camera, allocator);
+
+  EcsQuery *query_directional_light = EcsQuery_new(
+      allocator, &(const EcsQueryDescriptor){
+                     .component_count = 1,
+                     .components = {ecs_component_id(DirectionalLight)}});
+  EcsQueryIt query_directional_light_it =
+      ecs_query(&engine->ecs, query_directional_light);
+  while (ecs_query_it_next(&query_directional_light_it)) {
+    DirectionalLight *directional_light =
+        ecs_query_it_get(&query_directional_light_it, DirectionalLight, 0);
+    renderer_add_light(engine->renderer,
+                       &(const Light){.type = LightType_Directional,
+                                      .directional_light = *directional_light});
+  }
+  ecs_query_it_deinit(&query_directional_light_it);
+  EcsQuery_destroy(query_directional_light, allocator);
 
   EcsQuery *query_cubes = EcsQuery_new(
       allocator,

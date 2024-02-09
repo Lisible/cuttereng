@@ -10,6 +10,7 @@
 #include "render_graph.h"
 #include "shader.h"
 #include "src/filesystem.h"
+#include "src/graphics/light.h"
 #include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
@@ -123,6 +124,7 @@ void load_materials(Allocator *allocator, WGPUDevice device,
                     Assets *assets);
 Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                        float current_time_secs) {
+  LOG_DEBUG("SIZEOF COMMON UNIFORMS: %d", sizeof(CommonUniforms));
   LOG_INFO("Initializing renderer...");
   Renderer *renderer = allocator_allocate(allocator, (sizeof(Renderer)));
   if (!renderer)
@@ -169,9 +171,9 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   required_limits.limits.maxUniformBuffersPerShaderStage = 2;
   required_limits.limits.maxBindingsPerBindGroup = 6;
   required_limits.limits.maxUniformBufferBindingSize = sizeof(CommonUniforms);
-  required_limits.limits.maxBufferSize = 64000;
+  required_limits.limits.maxBufferSize = 248000;
   required_limits.limits.maxVertexBufferArrayStride = sizeof(Vertex);
-  required_limits.limits.maxInterStageShaderComponents = 6;
+  required_limits.limits.maxInterStageShaderComponents = 9;
   required_limits.limits.maxTextureDimension2D = 800;
   required_limits.limits.maxTextureArrayLayers = 1;
   required_limits.limits.maxSampledTexturesPerShaderStage = 3;
@@ -234,82 +236,239 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   Vertex *vertices =
       allocator_allocate_array(allocator, vertex_count, sizeof(Vertex));
   vertices[0] = (Vertex){.position = {-0.5, 0.5, -0.5},
-                         .texture_coordinates = {0.0, 1.0}};
+                         .texture_coordinates = {0.0, 1.0},
+                         .normal = {0.0, 0.0, -1.0}};
   vertices[1] = (Vertex){.position = {-0.5, -0.5, -0.5},
-                         .texture_coordinates = {0.0, 0.0}};
+                         .texture_coordinates = {0.0, 0.0},
+                         .normal = {0.0, 0.0, -1.0}};
   vertices[2] = (Vertex){.position = {0.5, -0.5, -0.5},
-                         .texture_coordinates = {1.0, 0.0}};
+                         .texture_coordinates = {1.0, 0.0},
+                         .normal = {0.0, 0.0, -1.0}};
   vertices[3] = (Vertex){.position = {0.5, -0.5, -0.5},
-                         .texture_coordinates = {1.0, 0.0}};
-  vertices[4] =
-      (Vertex){.position = {0.5, 0.5, -0.5}, .texture_coordinates = {1.0, 1.0}};
+                         .texture_coordinates = {1.0, 0.0},
+                         .normal = {0.0, 0.0, -1.0}};
+  vertices[4] = (Vertex){.position = {0.5, 0.5, -0.5},
+                         .texture_coordinates = {1.0, 1.0},
+                         .normal = {0.0, 0.0, -1.0}};
   vertices[5] = (Vertex){.position = {-0.5, 0.5, -0.5},
-                         .texture_coordinates = {0.0, 1.0}};
-
-  vertices[6] =
-      (Vertex){.position = {0.5, 0.5, -0.5}, .texture_coordinates = {0.0, 1.0}};
+                         .texture_coordinates = {0.0, 1.0},
+                         .normal = {0.0, 0.0, -1.0}};
+  // Right face
+  vertices[6] = (Vertex){.position = {0.5, 0.5, -0.5},
+                         .texture_coordinates = {0.0, 1.0},
+                         .normal = {1.0, 0.0, 0.0}};
   vertices[7] = (Vertex){.position = {0.5, -0.5, -0.5},
-                         .texture_coordinates = {0.0, 0.0}};
-  vertices[8] =
-      (Vertex){.position = {0.5, -0.5, 0.5}, .texture_coordinates = {1.0, 0.0}};
-  vertices[9] =
-      (Vertex){.position = {0.5, -0.5, 0.5}, .texture_coordinates = {1.0, 0.0}};
-  vertices[10] =
-      (Vertex){.position = {0.5, 0.5, 0.5}, .texture_coordinates = {1.0, 1.0}};
-  vertices[11] =
-      (Vertex){.position = {0.5, 0.5, -0.5}, .texture_coordinates = {0.0, 1.0}};
-
-  vertices[12] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {1.0, 1.0}};
-  vertices[13] =
-      (Vertex){.position = {0.5, -0.5, 0.5}, .texture_coordinates = {0.0, 0.0}};
+                         .texture_coordinates = {0.0, 0.0},
+                         .normal = {1.0, 0.0, 0.0}};
+  vertices[8] = (Vertex){.position = {0.5, -0.5, 0.5},
+                         .texture_coordinates = {1.0, 0.0},
+                         .normal = {1.0, 0.0, 0.0}};
+  vertices[9] = (Vertex){.position = {0.5, -0.5, 0.5},
+                         .texture_coordinates = {1.0, 0.0},
+                         .normal = {1.0, 0.0, 0.0}};
+  vertices[10] = (Vertex){.position = {0.5, 0.5, 0.5},
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {1.0, 0.0, 0.0}};
+  vertices[11] = (Vertex){.position = {0.5, 0.5, -0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {1.0, 0.0, 0.0}};
+  // Front face
+  vertices[12] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {0.0, 0.0, 1.0}};
+  vertices[13] = (Vertex){.position = {0.5, -0.5, 0.5},
+                          .texture_coordinates = {0.0, 0.0},
+                          .normal = {0.0, 0.0, 1.0}};
   vertices[14] = (Vertex){.position = {-0.5, -0.5, 0.5},
-                          .texture_coordinates = {1.0, 0.0}};
-  vertices[15] =
-      (Vertex){.position = {0.5, 0.5, 0.5}, .texture_coordinates = {0.0, 1.0}};
-  vertices[16] =
-      (Vertex){.position = {0.5, -0.5, 0.5}, .texture_coordinates = {0.0, 0.0}};
-  vertices[17] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {1.0, 1.0}};
-
-  vertices[18] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {0.0, 1.0}};
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {0.0, 0.0, 1.0}};
+  vertices[15] = (Vertex){.position = {0.5, 0.5, 0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {0.0, 0.0, 1.0}};
+  vertices[16] = (Vertex){.position = {0.5, -0.5, 0.5},
+                          .texture_coordinates = {0.0, 0.0},
+                          .normal = {0.0, 0.0, 1.0}};
+  vertices[17] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {0.0, 0.0, 1.0}};
+  // Left face
+  vertices[18] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {-1.0, 0.0, 0.0}};
   vertices[19] = (Vertex){.position = {-0.5, -0.5, 0.5},
-                          .texture_coordinates = {0.0, 0.0}};
+                          .texture_coordinates = {0.0, 0.0},
+                          .normal = {-1.0, 0.0, 0.0}};
   vertices[20] = (Vertex){.position = {-0.5, -0.5, -0.5},
-                          .texture_coordinates = {1.0, 0.0}};
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {-1.0, 0.0, 0.0}};
   vertices[21] = (Vertex){.position = {-0.5, -0.5, -0.5},
-                          .texture_coordinates = {1.0, 0.0}};
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {-1.0, 0.0, 0.0}};
   vertices[22] = (Vertex){.position = {-0.5, 0.5, -0.5},
-                          .texture_coordinates = {1.0, 1.0}};
-  vertices[23] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {0.0, 1.0}};
-
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {-1.0, 0.0, 0.0}};
+  vertices[23] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {-1.0, 0.0, 0.0}};
+  // Bottom face
   vertices[24] = (Vertex){.position = {-0.5, -0.5, -0.5},
-                          .texture_coordinates = {0.0, 0.0}};
+                          .texture_coordinates = {0.0, 0.0},
+                          .normal = {0.0, -1.0, 0.0}};
   vertices[25] = (Vertex){.position = {-0.5, -0.5, 0.5},
-                          .texture_coordinates = {0.0, 1.0}};
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {0.0, -1.0, 0.0}};
   vertices[26] = (Vertex){.position = {0.5, -0.5, -0.5},
-                          .texture_coordinates = {1.0, 0.0}};
-  vertices[27] =
-      (Vertex){.position = {0.5, -0.5, 0.5}, .texture_coordinates = {1.0, 1.0}};
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {0.0, -1.0, 0.0}};
+  vertices[27] = (Vertex){.position = {0.5, -0.5, 0.5},
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {0.0, -1.0, 0.0}};
   vertices[28] = (Vertex){.position = {0.5, -0.5, -0.5},
-                          .texture_coordinates = {1.0, 0.0}};
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {0.0, -1.0, 0.0}};
   vertices[29] = (Vertex){.position = {-0.5, -0.5, 0.5},
-                          .texture_coordinates = {0.0, 1.0}};
-
-  vertices[30] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {0.0, 1.0}};
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {0.0, -1.0, 0.0}};
+  // Top face
+  vertices[30] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {0.0, 1.0, 0.0}};
   vertices[31] = (Vertex){.position = {-0.5, 0.5, -0.5},
-                          .texture_coordinates = {0.0, 0.0}};
-  vertices[32] =
-      (Vertex){.position = {0.5, 0.5, -0.5}, .texture_coordinates = {1.0, 0.0}};
-  vertices[33] =
-      (Vertex){.position = {0.5, 0.5, -0.5}, .texture_coordinates = {1.0, 0.0}};
-  vertices[34] =
-      (Vertex){.position = {0.5, 0.5, 0.5}, .texture_coordinates = {1.0, 1.0}};
-  vertices[35] =
-      (Vertex){.position = {-0.5, 0.5, 0.5}, .texture_coordinates = {0.0, 1.0}};
+                          .texture_coordinates = {0.0, 0.0},
+                          .normal = {0.0, 1.0, 0.0}};
+  vertices[32] = (Vertex){.position = {0.5, 0.5, -0.5},
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {0.0, 1.0, 0.0}};
+  vertices[33] = (Vertex){.position = {0.5, 0.5, -0.5},
+                          .texture_coordinates = {1.0, 0.0},
+                          .normal = {0.0, 1.0, 0.0}};
+  vertices[34] = (Vertex){.position = {0.5, 0.5, 0.5},
+                          .texture_coordinates = {1.0, 1.0},
+                          .normal = {0.0, 1.0, 0.0}};
+  vertices[35] = (Vertex){.position = {-0.5, 0.5, 0.5},
+                          .texture_coordinates = {0.0, 1.0},
+                          .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[6] = (Vertex){.position = {0.5, 0.5, -0.5},
+  //                        .texture_coordinates = {0.0, 1.0},
+  //                        .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[7] = (Vertex){.position = {0.5, -0.5, -0.5},
+  //                        .texture_coordinates = {0.0, 0.0},
+  //                        .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[8] = (Vertex){.position = {0.5, -0.5, 0.5},
+  //                        .texture_coordinates = {1.0, 0.0},
+  //                        .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[9] = (Vertex){.position = {0.5, -0.5, 0.5},
+  //                        .texture_coordinates = {1.0, 0.0},
+  //                        .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[10] = (Vertex){.position = {0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[11] = (Vertex){.position = {0.5, 0.5, -0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {1.0, 0.0, 0.0}};
+
+  // vertices[12] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[13] = (Vertex){.position = {0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 0.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[14] = (Vertex){.position = {-0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[15] = (Vertex){.position = {0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[16] = (Vertex){.position = {0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 0.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[17] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {0.0, 1.0, 0.0}};
+
+  // vertices[18] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[19] = (Vertex){.position = {-0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 0.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[20] = (Vertex){.position = {-0.5, -0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[21] = (Vertex){.position = {-0.5, -0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[22] = (Vertex){.position = {-0.5, 0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[23] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {-1.0, 0.0, 0.0}};
+
+  // vertices[24] = (Vertex){.position = {-0.5, -0.5, -0.5},
+  //                         .texture_coordinates = {0.0, 0.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[25] = (Vertex){.position = {-0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[26] = (Vertex){.position = {0.5, -0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[27] = (Vertex){.position = {0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[28] = (Vertex){.position = {0.5, -0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[29] = (Vertex){.position = {-0.5, -0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {0.0, -1.0, 0.0}};
+
+  // vertices[30] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
+  // vertices[31] = (Vertex){.position = {-0.5, 0.5, -0.5},
+  //                         .texture_coordinates = {0.0, 0.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
+  // vertices[32] = (Vertex){.position = {0.5, 0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
+  // vertices[33] = (Vertex){.position = {0.5, 0.5, -0.5},
+  //                         .texture_coordinates = {1.0, 0.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
+  // vertices[34] = (Vertex){.position = {0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {1.0, 1.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
+  // vertices[35] = (Vertex){.position = {-0.5, 0.5, 0.5},
+  //                         .texture_coordinates = {0.0, 1.0},
+  //                         .normal = {0.0, 0.0, -1.0}};
+
   // vertices[3] = (Vertex){.position = {0.5, -0.5, -0.5},
   //                        .texture_coordinates = {1.0, 0.0}};
   // vertices[4] =
@@ -335,36 +494,22 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   wgpuQueueWriteBuffer(queue, renderer->resources.mesh_uniforms_buffer, 0,
                        &renderer->resources.mesh_uniforms,
                        sizeof(MeshUniforms));
-  renderer->resources
-      .mesh_uniforms_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBindGroupLayoutDescriptor){
-          .label = "mesh_uniforms_bind_group_layout",
-          .entryCount = 1,
-          .entries =
-              &(const WGPUBindGroupLayoutEntry){
-                  .binding = 0,
-                  .buffer =
-                      (WGPUBufferBindingLayout){
-                          .type = WGPUBufferBindingType_Uniform,
-                          .minBindingSize = sizeof(MeshUniforms),
-                          .hasDynamicOffset = true},
-                  .sampler =
-                      (WGPUSamplerBindingLayout){
-                          .type = WGPUSamplerBindingType_Undefined},
-                  .storageTexture =
-                      (WGPUStorageTextureBindingLayout){
-                          .access = WGPUStorageTextureAccess_Undefined,
-                          .format = WGPUTextureFormat_Undefined,
-                          .viewDimension = WGPUTextureViewDimension_Undefined,
-                      },
-                  .texture =
-                      (WGPUTextureBindingLayout){
-                          .multisampled = false,
-                          .sampleType = WGPUTextureSampleType_Undefined,
-                          .viewDimension = WGPUTextureViewDimension_Undefined},
-                  .visibility = WGPUShaderStage_Vertex},
-      });
+  renderer->resources.mesh_uniforms_bind_group_layout =
+      wgpuDeviceCreateBindGroupLayout(
+          renderer->ctx.wgpu_device,
+          &(const WGPUBindGroupLayoutDescriptor){
+              .label = "mesh_uniforms_bind_group_layout",
+              .entryCount = 1,
+              .entries =
+                  &(const WGPUBindGroupLayoutEntry){
+                      .binding = 0,
+                      .buffer =
+                          (WGPUBufferBindingLayout){
+                              .type = WGPUBufferBindingType_Uniform,
+                              .minBindingSize = sizeof(MeshUniforms),
+                              .hasDynamicOffset = true},
+                      .visibility = WGPUShaderStage_Vertex},
+          });
 
   renderer->resources.mesh_uniforms_bind_group = wgpuDeviceCreateBindGroup(
       renderer->ctx.wgpu_device,
@@ -385,6 +530,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
          identity_matrix, 16 * sizeof(mat4_value_type));
 
+  renderer->resources.light_count = 0;
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
   renderer->resources.common_uniforms_buffer = wgpuDeviceCreateBuffer(
       renderer->ctx.wgpu_device,
@@ -409,20 +555,6 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                           .type = WGPUBufferBindingType_Uniform,
                           .minBindingSize = sizeof(CommonUniforms),
                           .hasDynamicOffset = false},
-                  .sampler =
-                      (WGPUSamplerBindingLayout){
-                          .type = WGPUSamplerBindingType_Undefined},
-                  .storageTexture =
-                      (WGPUStorageTextureBindingLayout){
-                          .access = WGPUStorageTextureAccess_Undefined,
-                          .format = WGPUTextureFormat_Undefined,
-                          .viewDimension = WGPUTextureViewDimension_Undefined,
-                      },
-                  .texture =
-                      (WGPUTextureBindingLayout){
-                          .multisampled = false,
-                          .sampleType = WGPUTextureSampleType_Undefined,
-                          .viewDimension = WGPUTextureViewDimension_Undefined},
                   .visibility =
                       WGPUShaderStage_Vertex | WGPUShaderStage_Fragment}});
   renderer->resources.common_uniforms_bind_group = wgpuDeviceCreateBindGroup(
@@ -757,12 +889,13 @@ void deferred_lighting_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
                                      DrawCommandQueue *command_queue,
                                      GPUMesh *mesh, u32 mesh_stride,
                                      void *custom_data) {
-  (void)res;
   (void)command_queue;
   (void)mesh;
   (void)mesh_stride;
   DeferredLightingPassData *pass_data = custom_data;
   wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
+                                    res->common_uniforms_bind_group, 0, NULL);
+  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 1,
                                     pass_data->g_buffer_bind_group, 0, NULL);
   wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
 }
@@ -878,8 +1011,10 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
       frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
       &(const RenderPassDescriptor){
           .identifier = "deferred_lighting_pass",
-          .bind_group_layouts = {g_buffer_bind_group_layout},
-          .bind_group_layout_count = 1,
+          .bind_group_layouts =
+              {renderer->resources.common_uniforms_bind_group_layout,
+               g_buffer_bind_group_layout},
+          .bind_group_layout_count = 2,
           .render_attachments = {(RenderPassRenderAttachment){
               .type = RenderPassRenderAttachmentType_ColorAttachment,
               .render_attachment_handle = &deferred_lighting_result,
@@ -891,7 +1026,7 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .read_resource_count = 4,
           .shader_module_identifier = "deferred_lighting.wgsl",
           .pass_data = &deferred_lighting_pass_data,
-          .dispatch_fn = composition_pass_dispatch});
+          .dispatch_fn = deferred_lighting_pass_dispatch});
 
   render_graph_add_pass(
       frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
@@ -988,6 +1123,14 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .pass_data = &composition_pass_data,
           .dispatch_fn = composition_pass_dispatch});
 
+  for (size_t light_index = 0; light_index < renderer->resources.light_count;
+       light_index++) {
+    Light *light = &renderer->resources.lights[light_index];
+    if (light->type == LightType_Directional) {
+      renderer->resources.common_uniforms.directional_light =
+          light->directional_light;
+    }
+  }
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
   wgpuQueueWriteBuffer(wgpu_queue, renderer->resources.common_uniforms_buffer,
                        0, &renderer->resources.common_uniforms,
@@ -1040,6 +1183,7 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
         renderer->draw_commands.data[draw_command_index].material_identifier);
   }
   DrawCommandQueue_clear(&renderer->draw_commands);
+  renderer->resources.light_count = 0;
 }
 
 void GBuffer_init(GBuffer *g_buffer, WGPUDevice device,
@@ -1048,13 +1192,13 @@ void GBuffer_init(GBuffer *g_buffer, WGPUDevice device,
   ASSERT(render_graph != NULL);
   g_buffer->base_color = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA8UnormSrgb);
+      WGPUTextureFormat_RGBA8Unorm);
   g_buffer->normal = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA8UnormSrgb);
+      WGPUTextureFormat_RGBA16Float);
   g_buffer->position = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA8UnormSrgb);
+      WGPUTextureFormat_RGBA16Float);
 }
 WGPUBindGroupLayout GBuffer_create_bind_group_layout(WGPUDevice device) {
   return wgpuDeviceCreateBindGroupLayout(
@@ -1135,15 +1279,27 @@ GBuffer_create_bind_group(GBuffer *g_buffer, RenderGraph *render_graph,
           .entryCount = 6});
 }
 
-void renderer_set_projection(Renderer *renderer, mat4 projection) {
-  mat4 projection_matrix = {0};
-  memcpy(projection_matrix, projection, 16 * sizeof(mat4_value_type));
-  mat4_transpose(projection_matrix);
+void renderer_set_view_projection(Renderer *renderer, mat4 view_projection) {
+  ASSERT(renderer != NULL);
+  mat4 view_projection_matrix = {0};
+  memcpy(view_projection_matrix, view_projection, 16 * sizeof(mat4_value_type));
+  mat4_transpose(view_projection_matrix);
   memcpy(renderer->resources.common_uniforms.projection_from_view,
-         projection_matrix, 16 * sizeof(mat4_value_type));
+         view_projection_matrix, 16 * sizeof(mat4_value_type));
 
   mat4 inverse_projection_matrix = {0};
-  mat4_inverse(projection_matrix, inverse_projection_matrix);
+  mat4_inverse(view_projection_matrix, inverse_projection_matrix);
   memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
-         projection_matrix, 16 * sizeof(mat4_value_type));
+         view_projection_matrix, 16 * sizeof(mat4_value_type));
+}
+void renderer_add_light(Renderer *renderer, const Light *light) {
+  ASSERT(renderer != NULL);
+  ASSERT(light != NULL);
+  ASSERT(renderer->resources.light_count < MAX_LIGHT_COUNT);
+  renderer->resources.lights[renderer->resources.light_count] = *light;
+  renderer->resources.light_count++;
+}
+
+void renderer_set_view_position(Renderer *renderer, v3f *view_position) {
+  renderer->resources.common_uniforms.view_position = *view_position;
 }

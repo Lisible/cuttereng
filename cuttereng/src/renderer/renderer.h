@@ -2,6 +2,7 @@
 #define CUTTERENG_RENDERER_RENDERER_H
 
 #include "../asset.h"
+#include "../graphics/light.h"
 #include "../hash.h"
 #include "../math/matrix.h"
 #include "../memory.h"
@@ -12,6 +13,7 @@
 #include <SDL.h>
 #include <webgpu/webgpu.h>
 #define MAX_FILENAME_LENGTH 255
+#define MAX_LIGHT_COUNT 1
 #define SHADER_DIR "shaders/"
 #define MATERIAL_DIR "materials/"
 #define TEXTURE_DIR "textures/"
@@ -26,8 +28,10 @@ DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
 typedef struct {
   mat4 projection_from_view;
   mat4 inverse_projection_from_view;
+  DirectionalLight directional_light;
+  float _pad;
+  v3f view_position;
   float current_time_secs;
-  float _pad[15];
 } CommonUniforms;
 
 typedef struct {
@@ -45,7 +49,7 @@ struct RendererContext {
 };
 typedef struct RendererContext RendererContext;
 
-#define MAX_MESH_DRAW_PER_FRAME 1000
+#define MAX_MESH_DRAW_PER_FRAME 2048
 
 typedef struct {
   RenderGraphResourceHandle base_color;
@@ -85,6 +89,9 @@ struct RendererResources {
   GBuffer g_buffer;
   WGPUBindGroupLayout g_buffer_bind_group_layout;
   WGPUBindGroup g_buffer_bind_group;
+
+  Light lights[MAX_LIGHT_COUNT];
+  size_t light_count;
 };
 typedef struct RendererResources RendererResources;
 
@@ -104,7 +111,9 @@ typedef struct {
 Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
                        float current_time_secs);
 void renderer_destroy(Renderer *renderer);
-void renderer_set_projection(Renderer *renderer, mat4 projection);
+void renderer_add_light(Renderer *renderer, const Light *light);
+void renderer_set_view_position(Renderer *renderer, v3f *view_position);
+void renderer_set_view_projection(Renderer *renderer, mat4 view_projection);
 void renderer_draw_mesh(Renderer *renderer, Transform *transform,
                         char *material_identifier);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,

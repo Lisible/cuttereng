@@ -10,27 +10,35 @@
 #include <transform.h>
 
 typedef struct Moving Moving;
+typedef struct Rotating Rotating;
 
 void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
 
   const SystemContext *system_context = it->ctx;
-  float dt = system_context->delta_time_secs;
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    transform->position.z += sin(system_context->current_time_secs) * dt;
+    transform->position.y = sin(system_context->current_time_secs * 5.0 +
+                                transform->position.x + transform->position.z);
   }
 }
+void system_move_light(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
 
-void system_print_cube_infos(EcsCommandQueue *queue, EcsQueryIt *it) {
+  const SystemContext *system_context = it->ctx;
+  while (ecs_query_it_next(it)) {
+    DirectionalLight *light = ecs_query_it_get(it, DirectionalLight, 0);
+    light->direction.x = sin(system_context->current_time_secs * 1.0);
+    light->direction.z = cos(system_context->current_time_secs * 1.0);
+  }
+}
+void system_rotate_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
   while (ecs_query_it_next(it)) {
-    EcsId entity_id = ecs_query_it_entity_id(it);
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    LOG_DEBUG("Entity %d has position (%f, %f, %f)", entity_id,
-              transform->position.x, transform->position.y,
-              transform->position.z);
-    LOG_DEBUG("Entity %d has cube", entity_id);
+    Quaternion rot;
+    quaternion_set_to_axis_angle(&rot, &(const v3f){.y = 1.0}, 0.03);
+    quaternion_mul(&transform->rotation, &rot);
   }
 }
 
@@ -38,7 +46,6 @@ void system_rotate_camera_mouse(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
   const SystemContext *system_context = it->ctx;
   InputState *input_state = system_context->input_state;
-  JoystickState *right_joystick = &input_state->controller.right_joystick_state;
   float motion_x = input_state->last_mouse_motion.x;
   float motion_y = input_state->last_mouse_motion.y;
 
@@ -183,10 +190,20 @@ void init_system(EcsCommandQueue *command_queue) {
       command_queue,
       &(const EcsSystemDescriptor){
           .query =
+              (EcsQueryDescriptor){
+                  .components = {ecs_component_id(DirectionalLight),
+                                 ecs_component_id(Moving)},
+                  .component_count = 2},
+          .fn = system_move_light});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
               (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
-                                                  ecs_component_id(Cube)},
-                                   .component_count = 2},
-          .fn = system_print_cube_infos});
+                                                  ecs_component_id(Cube),
+                                                  ecs_component_id(Rotating)},
+                                   .component_count = 3},
+          .fn = system_rotate_cubes});
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -234,24 +251,17 @@ void init_system(EcsCommandQueue *command_queue) {
                                      DirectionalLight,
                                      {.direction = {0.0, -0.3, 1.0}});
 
-  EcsId first_entity = ecs_command_queue_create_entity(command_queue);
-  Transform first_entity_transform = TRANSFORM_DEFAULT;
-  first_entity_transform.position.z = 10.0;
-  first_entity_transform.position.x = -3.0;
-  first_entity_transform.position.y = 0.0;
-  ecs_command_queue_insert_component_with_ptr(
-      command_queue, first_entity, Transform, &first_entity_transform);
-  ecs_command_queue_insert_tag_component(command_queue, first_entity, Cube);
-  ecs_command_queue_insert_tag_component(command_queue, first_entity, Moving);
-
-  EcsId second_entity = ecs_command_queue_create_entity(command_queue);
-  Transform second_entity_transform = TRANSFORM_DEFAULT;
-  second_entity_transform.position.z = 3.0;
-  second_entity_transform.position.x = 1.0;
-  second_entity_transform.position.y = 0.0;
-  ecs_command_queue_insert_component_with_ptr(
-      command_queue, second_entity, Transform, &second_entity_transform);
-  ecs_command_queue_insert_tag_component(command_queue, second_entity, Cube);
+  for (int i = 0; i < 1024; i++) {
+    EcsId cube = ecs_command_queue_create_entity(command_queue);
+    Transform cube_transform = TRANSFORM_DEFAULT;
+    cube_transform.position.z = 3 + i / 32.f;
+    cube_transform.position.x = i % 32;
+    cube_transform.position.y = 0.0;
+    ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
+                                                &cube_transform);
+    ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
+    ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
+  }
 }
 
 int main(int argc, char **argv) {

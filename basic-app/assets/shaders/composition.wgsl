@@ -37,5 +37,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     if sample.a < 0.01 {
         discard;
     }
-    return vec4<f32>(sample.rgb, 1.0);
+    return sample;
 }

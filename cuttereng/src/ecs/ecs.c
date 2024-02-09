@@ -466,8 +466,8 @@ bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
          query->components[component_index] != NULL) {
     ComponentStore *component_store = HashTableComponentStore_get(
         ecs->component_stores, query->components[component_index]);
-    ASSERT(component_store != NULL);
-    if (component_store->capacity <= entity_id) {
+
+    if (!component_store || component_store->capacity <= entity_id) {
       return false;
     }
     matches = matches && BITTEST(component_store->bitset, entity_id);

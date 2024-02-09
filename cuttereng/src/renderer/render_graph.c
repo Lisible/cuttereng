@@ -379,6 +379,7 @@ void render_graph_execute(RenderGraph *render_graph,
 
   for (size_t pass = 0; pass < render_graph->pass_count; pass++) {
     RenderPass *render_pass = &render_graph->passes[pass];
+    LOG_DEBUG("Executing pass: %s", render_pass->identifier);
     WGPURenderPassColorAttachment
         color_attachments[RENDER_PASS_MAX_COLOR_TARGET_STATES];
 
