@@ -50,8 +50,11 @@ DEFINE_MAT4(double, mat4d)
 typedef float mat4_value_type;
 
 void mat4_set_to_identity(mat4 mat);
+void mat4_set_to_orthographic(mat4 mat, float near, float far, float left,
+                              float right, float top, float bottom);
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far);
+void mat4_look_at(mat4 mat, const v3f *eye, const v3f *center, const v3f *up);
 void mat4_set_to_translation(mat4 mat, const v3f *translation);
 void mat4_set_to_scale(mat4 mat, const v3f *scale);
 void mat4_inverse(mat4 mat, mat4 out_mat);

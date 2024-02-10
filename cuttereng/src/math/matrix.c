@@ -1,6 +1,7 @@
 #include "matrix.h"
 #include "../assert.h"
 #include "math.h"
+#include "vector.h"
 #include <string.h>
 
 IMPL_MAT4(int, mat4i)
@@ -24,6 +25,29 @@ void mat4_set_to_identity(mat4 mat) {
   mat[13] = 0.0;
   mat[14] = 0.0;
   mat[15] = 1.0;
+}
+void mat4_set_to_orthographic(mat4 mat, float near, float far, float left,
+                              float right, float top, float bottom) {
+  ASSERT(mat != NULL);
+  mat[0] = 2.f / (right - left);
+  mat[1] = 0.f;
+  mat[2] = 0.f;
+  mat[3] = 0.f;
+
+  mat[4] = 0.f;
+  mat[5] = 2.f / (top - bottom);
+  mat[6] = 0.f;
+  mat[7] = 0.f;
+
+  mat[8] = 0.f;
+  mat[9] = 0.f;
+  mat[10] = 1.f / (near - far);
+  mat[11] = 0.f;
+
+  mat[12] = (right + left) / (left - right);
+  mat[13] = (top + bottom) / (bottom - top);
+  mat[14] = near / (near - far);
+  mat[15] = 1.f;
 }
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
@@ -51,6 +75,38 @@ void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
   mat[13] = 0.0;
   mat[14] = 1.0 / focalLength;
   mat[15] = 0.0;
+}
+void mat4_look_at(mat4 mat, const v3f *eye, const v3f *center, const v3f *up) {
+  v3f z = *eye;
+  v3f_sub(&z, center);
+  if (v3f_length(&z) > 0.f)
+    v3f_normalize(&z);
+
+  v3f y = *up;
+  v3f x = y;
+  v3f_cross(&x, &z);
+  if (v3f_length(&x) > 0.f)
+    v3f_normalize(&x);
+  y = z;
+  v3f_cross(&y, &x);
+  if (v3f_length(&y) > 0.f)
+    v3f_normalize(&y);
+  mat[0] = x.x;
+  mat[1] = y.x;
+  mat[2] = z.x;
+  mat[3] = 0.f;
+  mat[4] = x.y;
+  mat[5] = y.y;
+  mat[6] = z.y;
+  mat[7] = 0.f;
+  mat[8] = x.z;
+  mat[9] = y.z;
+  mat[10] = z.z;
+  mat[11] = 0.f;
+  mat[12] = -v3f_dot(&x, eye);
+  mat[13] = -v3f_dot(&y, eye);
+  mat[14] = -v3f_dot(&z, eye);
+  mat[15] = 1.f;
 }
 void mat4_set_to_translation(mat4 mat, const v3f *translation) {
   ASSERT(mat != NULL);
