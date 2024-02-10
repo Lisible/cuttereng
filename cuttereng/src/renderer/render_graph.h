@@ -153,8 +153,15 @@ typedef struct {
 } RenderPassRenderAttachment;
 
 typedef struct {
+  char *module_identifier;
+  bool has_no_fragment_shader;
+} RenderPassShaderModuleDescriptor;
+
+typedef enum { CullMode_Back = 0, CullMode_Front, CullMode_None } CullMode;
+
+typedef struct {
   char *identifier;
-  char *shader_module_identifier;
+  RenderPassShaderModuleDescriptor shader_module;
   WGPUBindGroupLayout bind_group_layouts[RENDER_PASS_MAX_BIND_GROUP_LAYOUTS];
   size_t bind_group_layout_count;
   RenderPassRenderAttachment
@@ -169,6 +176,7 @@ typedef struct {
   void *pass_data;
   bool has_no_render_pipeline;
   bool uses_vertex_buffer;
+  CullMode cull_mode;
 } RenderPassDescriptor;
 
 char *render_pass_descriptor_generate_identifier(
@@ -182,7 +190,7 @@ RenderGraphResourceHandle render_graph_register_texture_view(
 RenderGraphResourceHandle
 render_graph_create_texture(RenderGraph *render_graph,
                             RenderGraphResourceUsage usage, WGPUDevice device,
-                            WGPUTextureFormat format);
+                            WGPUTextureFormat format, u32 width, u32 height);
 RenderGraphPassId
 render_graph_add_pass(Allocator *allocator, RenderGraph *render_graph,
                       RendererContext *ctx, RendererResources *res,

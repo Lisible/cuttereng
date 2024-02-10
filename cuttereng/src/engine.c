@@ -23,8 +23,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   assets_register_loader(engine->assets, Image, &image_loader,
                          &image_destructor);
 
-  engine->renderer = renderer_new(&system_allocator, window, engine->assets,
-                                  engine->current_time_secs);
+  engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
 }

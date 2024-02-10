@@ -5,6 +5,7 @@
 #include "../renderer/renderer.h"
 #include <webgpu/webgpu.h>
 
+WGPUCullMode wgpu_cull_mode_from_cull_mode(CullMode cull_mode);
 void render_graph_init(RenderGraph *render_graph) {
   render_graph->pass_count = 0;
   render_graph->resource_count = 0;
@@ -47,12 +48,12 @@ RenderGraphResourceHandle render_graph_register_texture_view(
 RenderGraphResourceHandle
 render_graph_create_texture(RenderGraph *render_graph,
                             RenderGraphResourceUsage usage, WGPUDevice device,
-                            WGPUTextureFormat format) {
+                            WGPUTextureFormat format, u32 width, u32 height) {
   RenderGraphResourceId resource_id = render_graph->resource_count;
   ASSERT(resource_id < RENDER_GRAPH_MAX_RESOURCES);
 
   WGPUTextureFormat *view_format = &format;
-  if (format == WGPUTextureFormat_Depth24Plus) {
+  if (format == WGPUTextureFormat_Depth32Float) {
     view_format = NULL;
   }
   WGPUTexture texture = wgpuDeviceCreateTexture(
@@ -63,7 +64,7 @@ render_graph_create_texture(RenderGraph *render_graph,
                   .viewFormats = view_format,
                   .mipLevelCount = 1,
                   .sampleCount = 1,
-                  .size = {800, 600, 1},
+                  .size = {width, height, 1},
                   .usage = WGPUTextureUsage_RenderAttachment |
                            WGPUTextureUsage_TextureBinding});
   if (!texture) {
@@ -72,7 +73,7 @@ render_graph_create_texture(RenderGraph *render_graph,
 
   WGPUTextureView texture_view = wgpuTextureCreateView(
       texture, &(const WGPUTextureViewDescriptor){
-                   .aspect = format == WGPUTextureFormat_Depth24Plus
+                   .aspect = format == WGPUTextureFormat_Depth32Float
                                  ? WGPUTextureAspect_DepthOnly
                                  : WGPUTextureAspect_All,
                    .dimension = WGPUTextureViewDimension_2D,
@@ -111,14 +112,14 @@ char *render_pass_descriptor_generate_identifier(
   ASSERT(render_pass_descriptor != NULL);
   static const size_t BOOLEAN_IDENTIFIER_LENGTH = 1;
   size_t identifier_length =
-      strlen(render_pass_descriptor->shader_module_identifier);
+      strlen(render_pass_descriptor->shader_module.module_identifier);
   identifier_length += BOOLEAN_IDENTIFIER_LENGTH;
   identifier_length++; // Null terminator
 
   char *identifier =
       allocator_allocate_array(allocator, identifier_length, sizeof(char));
-  identifier =
-      strcat(identifier, render_pass_descriptor->shader_module_identifier);
+  identifier = strcat(identifier,
+                      render_pass_descriptor->shader_module.module_identifier);
   if (render_pass_descriptor->uses_vertex_buffer) {
     identifier = strcat(identifier, "t");
   } else {
@@ -145,7 +146,8 @@ void create_pipeline(RenderGraph *render_graph,
           .bindGroupLayouts = render_pass_descriptor->bind_group_layouts});
 
   WGPUShaderModule shader_module = HashTableShaderModule_get(
-      res->shader_modules, render_pass_descriptor->shader_module_identifier);
+      res->shader_modules,
+      render_pass_descriptor->shader_module.module_identifier);
 
   WGPUVertexAttribute vertex_attributes[] = {
       {.format = WGPUVertexFormat_Float32x3, .offset = 0, .shaderLocation = 0},
@@ -212,7 +214,7 @@ void create_pipeline(RenderGraph *render_graph,
       depth_stencil_state = &(WGPUDepthStencilState){
           .depthCompare = WGPUCompareFunction_Less,
           .depthWriteEnabled = true,
-          .format = WGPUTextureFormat_Depth24Plus,
+          .format = WGPUTextureFormat_Depth32Float,
           .stencilWriteMask = 0,
           .stencilReadMask = 0,
           .stencilBack = {.compare = WGPUCompareFunction_Always,
@@ -226,20 +228,28 @@ void create_pipeline(RenderGraph *render_graph,
     }
   }
 
+  WGPUFragmentState *fragment_state =
+      &(WGPUFragmentState){.nextInChain = NULL,
+                           .constantCount = 0,
+                           .constants = NULL,
+                           .targets = color_target_states,
+                           .targetCount = color_target_state_count,
+                           .entryPoint = "fs_main",
+                           .module = shader_module};
+  if (render_pass_descriptor->shader_module.has_no_fragment_shader) {
+    fragment_state = NULL;
+  }
+
+  WGPUCullMode cull_mode =
+      wgpu_cull_mode_from_cull_mode(render_pass_descriptor->cull_mode);
+
   WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
       ctx->wgpu_device,
       &(const WGPURenderPipelineDescriptor){
           .label = render_pass_descriptor->identifier,
           .layout = pipeline_layout,
           .vertex = vertex_state,
-          .fragment =
-              &(WGPUFragmentState){.nextInChain = NULL,
-                                   .constantCount = 0,
-                                   .constants = NULL,
-                                   .targets = color_target_states,
-                                   .targetCount = color_target_state_count,
-                                   .entryPoint = "fs_main",
-                                   .module = shader_module},
+          .fragment = fragment_state,
           .depthStencil = depth_stencil_state,
           .multisample =
               (WGPUMultisampleState){.nextInChain = NULL,
@@ -249,7 +259,7 @@ void create_pipeline(RenderGraph *render_graph,
           .primitive = (WGPUPrimitiveState){
               .nextInChain = NULL,
               .topology = WGPUPrimitiveTopology_TriangleList,
-              .cullMode = WGPUCullMode_Back,
+              .cullMode = cull_mode,
               .frontFace = WGPUFrontFace_CCW,
               .stripIndexFormat = WGPUIndexFormat_Undefined
 
@@ -481,5 +491,17 @@ void render_graph_resource_deinit(RenderGraphResource *resource) {
     break;
   default:
     PANIC("Unsupported resource type");
+  }
+}
+
+WGPUCullMode wgpu_cull_mode_from_cull_mode(CullMode cull_mode) {
+  switch (cull_mode) {
+  case CullMode_None:
+    return WGPUCullMode_None;
+  case CullMode_Front:
+    return WGPUCullMode_Front;
+  case CullMode_Back:
+  default:
+    return WGPUCullMode_Back;
   }
 }

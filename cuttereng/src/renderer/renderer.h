@@ -28,6 +28,7 @@ DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
 typedef struct {
   mat4 projection_from_view;
   mat4 inverse_projection_from_view;
+  mat4 light_space_projection_from_view_from_local;
   DirectionalLight directional_light;
   float _pad;
   v3f view_position;
@@ -38,6 +39,11 @@ typedef struct {
   float world_from_local[16];
 } MeshUniforms;
 
+typedef struct {
+  u32 width;
+  u32 height;
+} SurfaceSize;
+
 struct RendererContext {
   WGPURequiredLimits wgpu_limits;
   WGPUInstance wgpu_instance;
@@ -46,6 +52,7 @@ struct RendererContext {
   WGPUDevice wgpu_device;
   WGPUTextureFormat wgpu_render_surface_texture_format;
   WGPUTextureFormat depth_texture_format;
+  SurfaceSize surface_size;
 };
 typedef struct RendererContext RendererContext;
 
@@ -55,10 +62,11 @@ typedef struct {
   RenderGraphResourceHandle base_color;
   RenderGraphResourceHandle normal;
   RenderGraphResourceHandle position;
+  RenderGraphResourceHandle directional_light_space_depth_map;
 } GBuffer;
 
 void GBuffer_init(GBuffer *g_buffer, WGPUDevice device,
-                  RenderGraph *render_graph);
+                  RenderGraph *render_graph, u32 width, u32 height);
 WGPUBindGroupLayout GBuffer_create_bind_group_layout(WGPUDevice device);
 WGPUBindGroup
 GBuffer_create_bind_group(GBuffer *gbuffer, RenderGraph *render_graph,
@@ -108,8 +116,8 @@ typedef struct {
   DrawCommandQueue draw_commands;
 } Renderer;
 
-Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
-                       float current_time_secs);
+Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
+                       Assets *assets);
 void renderer_destroy(Renderer *renderer);
 void renderer_add_light(Renderer *renderer, const Light *light);
 void renderer_set_view_position(Renderer *renderer, v3f *view_position);

@@ -44,8 +44,8 @@ void mat4_set_to_orthographic(mat4 mat, float near, float far, float left,
   mat[10] = 1.f / (near - far);
   mat[11] = 0.f;
 
-  mat[12] = (right + left) / (left - right);
-  mat[13] = (top + bottom) / (bottom - top);
+  mat[12] = -(right + left) / (right - left);
+  mat[13] = -(top + bottom) / (top - bottom);
   mat[14] = near / (near - far);
   mat[15] = 1.f;
 }

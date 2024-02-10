@@ -8,7 +8,7 @@ typedef enum {
 } LightType;
 
 typedef struct {
-  v3f direction;
+  v3f position;
 } DirectionalLight;
 
 typedef struct {

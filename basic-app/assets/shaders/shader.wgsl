@@ -1,14 +1,17 @@
 struct DirectionalLight {
-    direction: vec3<f32>,
+    position: vec3<f32>,
 }
+
 
 struct CommonUniforms {
     projection_from_view: mat4x4<f32>,
     inverse_projection_from_view: mat4x4<f32>,
+    light_space_projection_from_view_from_local: mat4x4<f32>,
     directional_light: DirectionalLight,
     view_position: vec3<f32>,
     current_time_secs: f32,
 }
+
 struct MeshUniforms {
     world_from_local: mat4x4<f32>,
 }
@@ -21,7 +24,7 @@ struct VertexInput {
 
 struct VertexOutput {
     @builtin(position) position: vec4<f32>,
-    @location(0) world_position: vec3<f32>,
+    @location(0) world_position: vec4<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) texture_coordinates: vec2<f32>,
 }
@@ -36,8 +39,8 @@ struct VertexOutput {
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.world_position =  (u_mesh.world_from_local * vec4<f32>(in.position, 1.0)).xyz;
-    out.position = u_common.projection_from_view * vec4<f32>(out.world_position, 1.0);
+    out.world_position =  (u_mesh.world_from_local * vec4<f32>(in.position, 1.0));
+    out.position = u_common.projection_from_view * out.world_position;
     out.texture_coordinates = in.texture_coordinates;
     // out.normal = in.normal;
     out.normal =(u_mesh.world_from_local * vec4<f32>(in.normal, 0.0)).xyz;
@@ -55,6 +58,6 @@ fn fs_main(in: VertexOutput) -> FragmentOutput {
     var out: FragmentOutput;
     out.base_color = textureSample(u_material_base_color_texture, u_material_base_color_sampler, in.texture_coordinates);
     out.normal = vec4<f32>(in.normal.xyz, 1.0);
-    out.position = vec4<f32>(in.world_position.xyz, 1.0);
+    out.position = in.world_position;
     return out;
 }

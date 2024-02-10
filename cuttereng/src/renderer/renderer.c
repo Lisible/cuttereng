@@ -122,9 +122,31 @@ void load_materials(Allocator *allocator, WGPUDevice device,
                     HashTableMaterial *materials, HashTableTexture *textures,
                     WGPUBindGroupLayout material_bind_group_layout,
                     Assets *assets);
-Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
-                       float current_time_secs) {
-  LOG_DEBUG("SIZEOF COMMON UNIFORMS: %d", sizeof(CommonUniforms));
+
+void log_adapter_features(WGPUAdapter adapter, Allocator *allocator);
+void get_adapter_required_limits(WGPUAdapter adapter,
+                                 WGPUSupportedLimits *supported_limits,
+                                 WGPURequiredLimits *out_required_limits);
+void configure_surface(RendererContext *ctx);
+void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue);
+WGPUTexture create_depth_texture(WGPUDevice device,
+                                 WGPUTextureFormat *depth_texture_format);
+void initialize_common_uniforms(CommonUniforms *uniforms);
+WGPUBuffer create_common_uniforms_buffer(WGPUDevice device);
+WGPUBindGroupLayout create_common_uniforms_bind_group_layout(WGPUDevice device);
+WGPUBindGroup create_common_uniforms_bind_group(
+    WGPUDevice device, WGPUBindGroupLayout common_uniforms_bind_group_layout,
+    WGPUBuffer common_uniforms_buffer);
+
+WGPUBuffer create_mesh_uniforms_buffer(WGPUDevice device);
+WGPUBindGroupLayout create_mesh_uniforms_bind_group_layout(WGPUDevice device);
+WGPUBindGroup create_mesh_uniforms_bind_group(
+    WGPUDevice device, WGPUBindGroupLayout mesh_uniforms_bind_group_layout,
+    WGPUBuffer mesh_uniforms_buffer);
+WGPUBindGroupLayout create_material_bind_group_layout(WGPUDevice device);
+
+Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
+                       Assets *assets) {
   LOG_INFO("Initializing renderer...");
   Renderer *renderer = allocator_allocate(allocator, (sizeof(Renderer)));
   if (!renderer)
@@ -140,20 +162,10 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
   }
 
   renderer->ctx.wgpu_adapter = request_adapter(renderer->ctx.wgpu_instance);
-  if (!renderer->ctx.wgpu_adapter)
+  if (!renderer->ctx.wgpu_adapter) {
     goto cleanup_instance;
-
-  size_t adapter_feature_count =
-      wgpuAdapterEnumerateFeatures(renderer->ctx.wgpu_adapter, NULL);
-  WGPUFeatureName *adapter_features = allocator_allocate_array(
-      allocator, adapter_feature_count, sizeof(WGPUFeatureName));
-  wgpuAdapterEnumerateFeatures(renderer->ctx.wgpu_adapter, adapter_features);
-
-  LOG_INFO("Adapter features: ");
-  for (size_t i = 0; i < adapter_feature_count; i++) {
-    LOG_INFO("\t%d", adapter_features[i]);
   }
-  allocator_free(allocator, adapter_features);
+  log_adapter_features(renderer->ctx.wgpu_adapter, renderer->allocator);
 
   renderer->ctx.wgpu_surface = NULL;
   renderer_initialize_for_window(renderer, window);
@@ -161,28 +173,10 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
     goto cleanup_adapter;
   }
 
-  WGPUSupportedLimits supported_limits = {.nextInChain = NULL};
-  wgpuAdapterGetLimits(renderer->ctx.wgpu_adapter, &supported_limits);
-
+  WGPUSupportedLimits supported_limits = {0};
   WGPURequiredLimits required_limits = {0};
-  required_limits.limits.maxVertexAttributes = 3;
-  required_limits.limits.maxVertexBuffers = 1;
-  required_limits.limits.maxBindGroups = 3;
-  required_limits.limits.maxUniformBuffersPerShaderStage = 2;
-  required_limits.limits.maxBindingsPerBindGroup = 6;
-  required_limits.limits.maxUniformBufferBindingSize = sizeof(CommonUniforms);
-  required_limits.limits.maxBufferSize = 248000;
-  required_limits.limits.maxVertexBufferArrayStride = sizeof(Vertex);
-  required_limits.limits.maxInterStageShaderComponents = 9;
-  required_limits.limits.maxTextureDimension2D = 800;
-  required_limits.limits.maxTextureArrayLayers = 1;
-  required_limits.limits.maxSampledTexturesPerShaderStage = 3;
-  required_limits.limits.maxSamplersPerShaderStage = 3;
-  required_limits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
-  required_limits.limits.minStorageBufferOffsetAlignment =
-      supported_limits.limits.minStorageBufferOffsetAlignment;
-  required_limits.limits.minUniformBufferOffsetAlignment =
-      supported_limits.limits.minUniformBufferOffsetAlignment;
+  get_adapter_required_limits(renderer->ctx.wgpu_adapter, &supported_limits,
+                              &required_limits);
 
   WGPUDeviceDescriptor wgpu_device_descriptor = {
       .nextInChain = NULL,
@@ -209,171 +203,13 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window, Assets *assets,
 
   WGPUQueue queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
   wgpuQueueOnSubmittedWorkDone(queue, on_queue_submitted_work_done, NULL);
+  renderer->ctx.surface_size.width = 800;
+  renderer->ctx.surface_size.height = 600;
 
-  WGPUSurfaceCapabilities surface_capabilities = {0};
-  wgpuSurfaceGetCapabilities(renderer->ctx.wgpu_surface,
-                             renderer->ctx.wgpu_adapter, &surface_capabilities);
-  renderer->ctx.wgpu_render_surface_texture_format =
-      surface_capabilities.formats[0];
+  configure_surface(&renderer->ctx);
+  renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth32Float;
 
-  WGPUSurfaceConfiguration wgpu_surface_configuration = {
-      .width = 800,
-      .height = 600,
-      .device = renderer->ctx.wgpu_device,
-      .usage = WGPUTextureUsage_RenderAttachment,
-      .format = renderer->ctx.wgpu_render_surface_texture_format,
-      .presentMode = WGPUPresentMode_Fifo,
-      .alphaMode = surface_capabilities.alphaModes[0]};
-  wgpuSurfaceCapabilitiesFreeMembers(surface_capabilities);
-  wgpuSurfaceConfigure(renderer->ctx.wgpu_surface, &wgpu_surface_configuration);
-
-  assets_register_loader(assets, Shader, &shader_asset_loader,
-                         &shader_asset_destructor);
-  assets_register_loader(assets, Material, &material_loader,
-                         &material_destructor);
-
-  DrawCommandQueue_init(allocator, &renderer->draw_commands);
-  cube_mesh_init(renderer->ctx.wgpu_device, queue,
-                 &renderer->resources.cube_mesh);
-  renderer->resources.mesh_uniform_count = 0;
-  renderer->resources.mesh_uniforms_buffer = wgpuDeviceCreateBuffer(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBufferDescriptor){
-          .label = "mesh_uniforms_buffer",
-          .size = MAX_MESH_DRAW_PER_FRAME * sizeof(MeshUniforms),
-          .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform});
-  wgpuQueueWriteBuffer(queue, renderer->resources.mesh_uniforms_buffer, 0,
-                       &renderer->resources.mesh_uniforms,
-                       sizeof(MeshUniforms));
-  renderer->resources.mesh_uniforms_bind_group_layout =
-      wgpuDeviceCreateBindGroupLayout(
-          renderer->ctx.wgpu_device,
-          &(const WGPUBindGroupLayoutDescriptor){
-              .label = "mesh_uniforms_bind_group_layout",
-              .entryCount = 1,
-              .entries =
-                  &(const WGPUBindGroupLayoutEntry){
-                      .binding = 0,
-                      .buffer =
-                          (WGPUBufferBindingLayout){
-                              .type = WGPUBufferBindingType_Uniform,
-                              .minBindingSize = sizeof(MeshUniforms),
-                              .hasDynamicOffset = true},
-                      .visibility = WGPUShaderStage_Vertex},
-          });
-
-  renderer->resources.mesh_uniforms_bind_group = wgpuDeviceCreateBindGroup(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBindGroupDescriptor){
-          .label = "mesh_uniforms_bind_group",
-          .layout = renderer->resources.mesh_uniforms_bind_group_layout,
-          .entryCount = 1,
-          .entries = &(const WGPUBindGroupEntry){
-              .binding = 0,
-              .buffer = renderer->resources.mesh_uniforms_buffer,
-              .offset = 0,
-              .size = sizeof(MeshUniforms)}});
-
-  mat4 identity_matrix = {0};
-  mat4_set_to_identity(identity_matrix);
-  memcpy(renderer->resources.common_uniforms.projection_from_view,
-         identity_matrix, 16 * sizeof(mat4_value_type));
-  memcpy(renderer->resources.common_uniforms.inverse_projection_from_view,
-         identity_matrix, 16 * sizeof(mat4_value_type));
-
-  renderer->resources.light_count = 0;
-  renderer->resources.common_uniforms.current_time_secs = current_time_secs;
-  renderer->resources.common_uniforms_buffer = wgpuDeviceCreateBuffer(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBufferDescriptor){.label = "common_uniforms_buffer",
-                                    .size = sizeof(CommonUniforms),
-                                    .usage = WGPUBufferUsage_CopyDst |
-                                             WGPUBufferUsage_Uniform,
-                                    .mappedAtCreation = false});
-  wgpuQueueWriteBuffer(queue, renderer->resources.common_uniforms_buffer, 0,
-                       &renderer->resources.common_uniforms,
-                       sizeof(CommonUniforms));
-  renderer->resources.common_uniforms_bind_group_layout =
-      wgpuDeviceCreateBindGroupLayout(
-          renderer->ctx.wgpu_device,
-          &(const WGPUBindGroupLayoutDescriptor){
-              .label = "common_uniforms_bind_group_layout",
-              .entryCount = 1,
-              .entries = &(const WGPUBindGroupLayoutEntry){
-                  .binding = 0,
-                  .buffer =
-                      (WGPUBufferBindingLayout){
-                          .type = WGPUBufferBindingType_Uniform,
-                          .minBindingSize = sizeof(CommonUniforms),
-                          .hasDynamicOffset = false},
-                  .visibility =
-                      WGPUShaderStage_Vertex | WGPUShaderStage_Fragment}});
-  renderer->resources.common_uniforms_bind_group = wgpuDeviceCreateBindGroup(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBindGroupDescriptor){
-          .label = "common_uniforms_bind_group",
-          .layout = renderer->resources.common_uniforms_bind_group_layout,
-          .entryCount = 1,
-          .entries =
-              &(const WGPUBindGroupEntry){
-                  .binding = 0,
-                  .buffer = renderer->resources.common_uniforms_buffer,
-                  .offset = 0,
-                  .size = sizeof(CommonUniforms)}
-
-      });
-
-  renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth24Plus;
-  renderer->resources.depth_texture = wgpuDeviceCreateTexture(
-      renderer->ctx.wgpu_device,
-      &(const WGPUTextureDescriptor){
-          .dimension = WGPUTextureDimension_2D,
-          .format = renderer->ctx.depth_texture_format,
-          .mipLevelCount = 1,
-          .sampleCount = 1,
-          .size = {800, 600, 1},
-          .usage = WGPUTextureUsage_RenderAttachment,
-          .viewFormatCount = 1,
-          .viewFormats = &renderer->ctx.depth_texture_format,
-      });
-  renderer->resources.pipelines = HashTableRenderPipeline_create(allocator, 32);
-  renderer->resources.shader_modules =
-      HashTableShaderModule_create(allocator, 32);
-  renderer->resources.textures = HashTableTexture_create(allocator, 512);
-  renderer->resources.materials = HashTableMaterial_create(allocator, 32);
-  load_shader_modules(allocator, renderer->resources.shader_modules,
-                      renderer->ctx.wgpu_device, assets);
-  load_textures(allocator, renderer->resources.textures,
-                renderer->ctx.wgpu_device, queue, assets);
-
-  renderer->resources
-      .material_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBindGroupLayoutDescriptor){
-          .entryCount = 4,
-          .entries = (const WGPUBindGroupLayoutEntry[]){
-              (const WGPUBindGroupLayoutEntry){
-                  .binding = 0,
-                  .visibility = WGPUShaderStage_Fragment,
-                  .texture = {.sampleType = WGPUTextureSampleType_Float,
-                              .viewDimension = WGPUTextureViewDimension_2D}},
-              (const WGPUBindGroupLayoutEntry){
-                  .binding = 1,
-                  .visibility = WGPUShaderStage_Fragment,
-                  .sampler = {.type = WGPUSamplerBindingType_Filtering}},
-              (const WGPUBindGroupLayoutEntry){
-                  .binding = 2,
-                  .visibility = WGPUShaderStage_Fragment,
-                  .texture = {.sampleType = WGPUTextureSampleType_Float,
-                              .viewDimension = WGPUTextureViewDimension_2D}},
-              (const WGPUBindGroupLayoutEntry){
-                  .binding = 3,
-                  .visibility = WGPUShaderStage_Fragment,
-                  .sampler = {.type = WGPUSamplerBindingType_Filtering}},
-          }});
-  load_materials(allocator, renderer->ctx.wgpu_device,
-                 renderer->resources.materials, renderer->resources.textures,
-                 renderer->resources.material_bind_group_layout, assets);
+  initialize_resources(renderer, assets, queue);
   wgpuQueueRelease(queue);
 
   return renderer;
@@ -631,6 +467,24 @@ void mesh_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
   }
 }
 
+void directional_light_space_depth_map_pass_dispatch(
+    WGPURenderPassEncoder render_pass_encoder, RendererResources *res,
+    DrawCommandQueue *command_queue, GPUMesh *mesh, u32 mesh_stride,
+    void *custom_data) {
+  (void)custom_data;
+  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
+                                    res->common_uniforms_bind_group, 0, NULL);
+  gpu_mesh_bind(render_pass_encoder, mesh);
+  for (size_t command_index = 0;
+       command_index < DrawCommandQueue_length(command_queue);
+       command_index++) {
+    u32 stride = mesh_stride * command_index;
+    wgpuRenderPassEncoderSetBindGroup(
+        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
+  }
+}
+
 typedef struct {
   WGPUBindGroup g_buffer_bind_group;
 } DeferredLightingPassData;
@@ -705,12 +559,15 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           RenderGraphResourceUsage_ColorAttachment,
           WGPUTextureFormat_BGRA8UnormSrgb);
 
+  u32 width = 800;
+  u32 height = 600;
   RenderGraphResourceHandle depth_texture = render_graph_create_texture(
       &render_graph, RenderGraphResourceUsage_DepthStencilAttachment,
-      renderer->ctx.wgpu_device, WGPUTextureFormat_Depth24Plus);
+      renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float, width, height);
 
   GBuffer g_buffer;
-  GBuffer_init(&g_buffer, renderer->ctx.wgpu_device, &render_graph);
+  GBuffer_init(&g_buffer, renderer->ctx.wgpu_device, &render_graph, width,
+               height);
   WGPUBindGroupLayout g_buffer_bind_group_layout =
       GBuffer_create_bind_group_layout(renderer->ctx.wgpu_device);
   WGPUBindGroup g_buffer_bind_group = GBuffer_create_bind_group(
@@ -749,13 +606,34 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                    .store_op = WGPUStoreOp_Store}},
           .render_attachment_count = 4,
           .uses_vertex_buffer = true,
-          .shader_module_identifier = "shader.wgsl",
+          .shader_module = {.module_identifier = "shader.wgsl"},
           .dispatch_fn = mesh_pass_dispatch});
+
+  render_graph_add_pass(
+      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
+      &(const RenderPassDescriptor){
+          .identifier = "directional_light_space_depth_map_pass",
+          .bind_group_layouts =
+              {renderer->resources.common_uniforms_bind_group_layout,
+               renderer->resources.mesh_uniforms_bind_group_layout},
+          .bind_group_layout_count = 2,
+          .render_attachments = {(RenderPassRenderAttachment){
+              .type = RenderPassRenderAttachmentType_DepthAttachment,
+              .render_attachment_handle =
+                  &g_buffer.directional_light_space_depth_map}},
+          .render_attachment_count = 1,
+          .uses_vertex_buffer = true,
+          .cull_mode = CullMode_Front,
+          .shader_module = {.module_identifier =
+                                "directional_light_space_depth_map.wgsl",
+                            .has_no_fragment_shader = true},
+          .dispatch_fn = directional_light_space_depth_map_pass_dispatch});
 
   RenderGraphResourceHandle deferred_lighting_result =
       render_graph_create_texture(
           &render_graph, RenderGraphResourceUsage_ColorAttachment,
-          renderer->ctx.wgpu_device, WGPUTextureFormat_RGBA8UnormSrgb);
+          renderer->ctx.wgpu_device, WGPUTextureFormat_RGBA8UnormSrgb,
+          renderer->ctx.surface_size.width, renderer->ctx.surface_size.height);
   DeferredLightingPassData deferred_lighting_pass_data = {
       .g_buffer_bind_group = g_buffer_bind_group};
   render_graph_add_pass(
@@ -773,9 +651,11 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
               .store_op = WGPUStoreOp_Store}},
           .render_attachment_count = 1,
           .read_resources = {&g_buffer.base_color, &g_buffer.normal,
-                             &g_buffer.position, &surface_texture_handle},
-          .read_resource_count = 4,
-          .shader_module_identifier = "deferred_lighting.wgsl",
+                             &g_buffer.position,
+                             &g_buffer.directional_light_space_depth_map,
+                             &surface_texture_handle},
+          .read_resource_count = 5,
+          .shader_module = {.module_identifier = "deferred_lighting.wgsl"},
           .pass_data = &deferred_lighting_pass_data,
           .dispatch_fn = deferred_lighting_pass_dispatch});
 
@@ -792,26 +672,8 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .render_attachment_count = 1,
           .read_resource_count = 0,
           .uses_vertex_buffer = false,
-          .shader_module_identifier = "skybox.wgsl",
+          .shader_module = {.module_identifier = "skybox.wgsl"},
           .dispatch_fn = skybox_pass_dispatch});
-
-  // render_graph_add_pass(
-  //     frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-  //     &(const RenderPassDescriptor){
-  //         .identifier = "debug_grid_pass",
-  //         .bind_group_layouts =
-  //             {renderer->resources.common_uniforms_bind_group_layout},
-  //         .bind_group_layout_count = 1,
-  //         .render_attachments = {(RenderPassRenderAttachment){
-  //             .type = RenderPassRenderAttachmentType_ColorAttachment,
-  //             .render_attachment_handle = &surface_texture_handle,
-  //             .load_op = WGPULoadOp_Load,
-  //             .store_op = WGPUStoreOp_Store}},
-  //         .render_attachment_count = 1,
-  //         .read_resource_count = 0,
-  //         .uses_vertex_buffer = false,
-  //         .shader_module_identifier = "debug_grid.wgsl",
-  //         .dispatch_fn = debug_grid_pass_dispatch});
 
   WGPUBindGroupLayout deferred_lighting_result_bind_group_layout =
       wgpuDeviceCreateBindGroupLayout(
@@ -870,7 +732,7 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .read_resources = {&deferred_lighting_result,
                              &surface_texture_handle},
           .read_resource_count = 2,
-          .shader_module_identifier = "composition.wgsl",
+          .shader_module = {.module_identifier = "composition.wgsl"},
           .pass_data = &composition_pass_data,
           .dispatch_fn = composition_pass_dispatch});
 
@@ -880,6 +742,29 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
     if (light->type == LightType_Directional) {
       renderer->resources.common_uniforms.directional_light =
           light->directional_light;
+
+      // computing the light space view proj matrix
+      mat4 light_space_projection;
+      mat4_set_to_orthographic(light_space_projection, 1.0, 20.0, -20.0, 20.0,
+                               14.0, -14.0);
+
+      v3f target = {0};
+      // v3f target = light->directional_light.position;
+      // v3f_add(&target, &light->directional_light.direction);
+
+      mat4 light_space_view;
+      mat4_look_at(light_space_view, &light->directional_light.position,
+                   &target, &(const v3f){.y = 1.0});
+      mat4_transpose(light_space_view);
+
+      mat4 light_space_projection_from_view_from_local = MAT4_IDENTITY;
+      mat4_mul(light_space_projection, light_space_view,
+               light_space_projection_from_view_from_local);
+      mat4_transpose(light_space_projection_from_view_from_local);
+      memcpy(renderer->resources.common_uniforms
+                 .light_space_projection_from_view_from_local,
+             light_space_projection_from_view_from_local,
+             16 * sizeof(mat4_value_type));
     }
   }
   renderer->resources.common_uniforms.current_time_secs = current_time_secs;
@@ -938,18 +823,21 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
 }
 
 void GBuffer_init(GBuffer *g_buffer, WGPUDevice device,
-                  RenderGraph *render_graph) {
+                  RenderGraph *render_graph, u32 width, u32 height) {
   ASSERT(g_buffer != NULL);
   ASSERT(render_graph != NULL);
   g_buffer->base_color = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA8Unorm);
+      WGPUTextureFormat_RGBA8Unorm, width, height);
   g_buffer->normal = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA16Float);
+      WGPUTextureFormat_RGBA16Float, width, height);
   g_buffer->position = render_graph_create_texture(
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
-      WGPUTextureFormat_RGBA16Float);
+      WGPUTextureFormat_RGBA16Float, width, height);
+  g_buffer->directional_light_space_depth_map = render_graph_create_texture(
+      render_graph, RenderGraphResourceUsage_DepthStencilAttachment, device,
+      WGPUTextureFormat_Depth32Float, width, height);
 }
 WGPUBindGroupLayout GBuffer_create_bind_group_layout(WGPUDevice device) {
   return wgpuDeviceCreateBindGroupLayout(
@@ -986,8 +874,20 @@ WGPUBindGroupLayout GBuffer_create_bind_group_layout(WGPUDevice device) {
                   (WGPUBindGroupLayoutEntry){
                       .binding = 5,
                       .visibility = WGPUShaderStage_Fragment,
-                      .sampler = {.type = WGPUSamplerBindingType_Filtering}}},
-          .entryCount = 6});
+                      .sampler = {.type = WGPUSamplerBindingType_Filtering}},
+                  (WGPUBindGroupLayoutEntry){
+                      .binding = 6,
+                      .visibility = WGPUShaderStage_Fragment,
+                      .texture = {.sampleType =
+                                      WGPUTextureSampleType_UnfilterableFloat,
+                                  .viewDimension =
+                                      WGPUTextureViewDimension_2D}},
+                  (WGPUBindGroupLayoutEntry){
+                      .binding = 7,
+                      .visibility = WGPUShaderStage_Fragment,
+                      .sampler = {.type =
+                                      WGPUSamplerBindingType_NonFiltering}}},
+          .entryCount = 8});
 }
 WGPUBindGroup
 GBuffer_create_bind_group(GBuffer *g_buffer, RenderGraph *render_graph,
@@ -1026,8 +926,24 @@ GBuffer_create_bind_group(GBuffer *g_buffer, RenderGraph *render_graph,
                   (WGPUBindGroupEntry){
                       .binding = 5,
                       .sampler = render_graph->resources[g_buffer->position.id]
-                                     .owned_texture.texture_sampler}},
-          .entryCount = 6});
+                                     .owned_texture.texture_sampler},
+                  (WGPUBindGroupEntry){
+                      .binding = 6,
+                      .textureView =
+                          render_graph
+                              ->resources
+                                  [g_buffer->directional_light_space_depth_map
+                                       .id]
+                              .owned_texture.texture_view},
+                  (WGPUBindGroupEntry){
+                      .binding = 7,
+                      .sampler =
+                          render_graph
+                              ->resources
+                                  [g_buffer->directional_light_space_depth_map
+                                       .id]
+                              .owned_texture.texture_sampler}},
+          .entryCount = 8});
 }
 
 void renderer_set_view_projection(Renderer *renderer, mat4 view_projection) {
@@ -1053,4 +969,263 @@ void renderer_add_light(Renderer *renderer, const Light *light) {
 
 void renderer_set_view_position(Renderer *renderer, v3f *view_position) {
   renderer->resources.common_uniforms.view_position = *view_position;
+}
+void initialize_common_uniforms(CommonUniforms *uniforms) {
+  uniforms->current_time_secs = 0;
+  uniforms->view_position = (v3f){0};
+
+  mat4 identity_matrix = {0};
+  mat4_set_to_identity(identity_matrix);
+  memcpy(uniforms->projection_from_view, identity_matrix,
+         16 * sizeof(mat4_value_type));
+  memcpy(uniforms->inverse_projection_from_view, identity_matrix,
+         16 * sizeof(mat4_value_type));
+  memcpy(uniforms->light_space_projection_from_view_from_local, identity_matrix,
+         16 * sizeof(mat4_value_type));
+
+  uniforms->directional_light = (DirectionalLight){0};
+}
+
+WGPUBuffer create_common_uniforms_buffer(WGPUDevice device) {
+  return wgpuDeviceCreateBuffer(
+      device, &(const WGPUBufferDescriptor){.label = "common_uniforms_buffer",
+                                            .size = sizeof(CommonUniforms),
+                                            .usage = WGPUBufferUsage_CopyDst |
+                                                     WGPUBufferUsage_Uniform,
+                                            .mappedAtCreation = false});
+}
+
+void log_adapter_features(WGPUAdapter adapter, Allocator *allocator) {
+  size_t adapter_feature_count = wgpuAdapterEnumerateFeatures(adapter, NULL);
+  WGPUFeatureName *adapter_features = allocator_allocate_array(
+      allocator, adapter_feature_count, sizeof(WGPUFeatureName));
+  wgpuAdapterEnumerateFeatures(adapter, adapter_features);
+
+  LOG_INFO("Adapter features: ");
+  for (size_t i = 0; i < adapter_feature_count; i++) {
+    LOG_INFO("\t%d", adapter_features[i]);
+  }
+  allocator_free(allocator, adapter_features);
+}
+
+void get_adapter_required_limits(WGPUAdapter adapter,
+                                 WGPUSupportedLimits *supported_limits,
+                                 WGPURequiredLimits *out_required_limits) {
+  ASSERT(out_required_limits != NULL);
+  wgpuAdapterGetLimits(adapter, supported_limits);
+
+  out_required_limits->limits.maxVertexAttributes = 3;
+  out_required_limits->limits.maxVertexBuffers = 1;
+  out_required_limits->limits.maxBindGroups = 3;
+  out_required_limits->limits.maxUniformBuffersPerShaderStage = 2;
+  out_required_limits->limits.maxBindingsPerBindGroup = 8;
+  out_required_limits->limits.maxUniformBufferBindingSize =
+      sizeof(CommonUniforms);
+  out_required_limits->limits.maxBufferSize = 248000;
+  out_required_limits->limits.maxVertexBufferArrayStride = sizeof(Vertex);
+  out_required_limits->limits.maxInterStageShaderComponents = 9;
+  out_required_limits->limits.maxTextureDimension2D = 1920;
+  out_required_limits->limits.maxTextureArrayLayers = 1;
+  out_required_limits->limits.maxSampledTexturesPerShaderStage = 4;
+  out_required_limits->limits.maxSamplersPerShaderStage = 4;
+  out_required_limits->limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
+  out_required_limits->limits.minStorageBufferOffsetAlignment =
+      supported_limits->limits.minStorageBufferOffsetAlignment;
+  out_required_limits->limits.minUniformBufferOffsetAlignment =
+      supported_limits->limits.minUniformBufferOffsetAlignment;
+}
+
+void configure_surface(RendererContext *ctx) {
+  WGPUSurfaceCapabilities surface_capabilities = {0};
+  wgpuSurfaceGetCapabilities(ctx->wgpu_surface, ctx->wgpu_adapter,
+                             &surface_capabilities);
+  ctx->wgpu_render_surface_texture_format = surface_capabilities.formats[0];
+  WGPUSurfaceConfiguration wgpu_surface_configuration = {
+      .width = ctx->surface_size.width,
+      .height = ctx->surface_size.height,
+      .device = ctx->wgpu_device,
+      .usage = WGPUTextureUsage_RenderAttachment,
+      .format = ctx->wgpu_render_surface_texture_format,
+      .presentMode = WGPUPresentMode_Fifo,
+      .alphaMode = surface_capabilities.alphaModes[0]};
+  wgpuSurfaceCapabilitiesFreeMembers(surface_capabilities);
+  wgpuSurfaceConfigure(ctx->wgpu_surface, &wgpu_surface_configuration);
+}
+
+WGPUBuffer create_mesh_uniforms_buffer(WGPUDevice device) {
+  return wgpuDeviceCreateBuffer(
+      device, &(const WGPUBufferDescriptor){
+                  .label = "mesh_uniforms_buffer",
+                  .size = MAX_MESH_DRAW_PER_FRAME * sizeof(MeshUniforms),
+                  .usage = WGPUBufferUsage_CopyDst | WGPUBufferUsage_Uniform});
+}
+
+WGPUBindGroupLayout create_mesh_uniforms_bind_group_layout(WGPUDevice device) {
+  return wgpuDeviceCreateBindGroupLayout(
+      device, &(const WGPUBindGroupLayoutDescriptor){
+                  .label = "mesh_uniforms_bind_group_layout",
+                  .entryCount = 1,
+                  .entries =
+                      &(const WGPUBindGroupLayoutEntry){
+                          .binding = 0,
+                          .buffer =
+                              (WGPUBufferBindingLayout){
+                                  .type = WGPUBufferBindingType_Uniform,
+                                  .minBindingSize = sizeof(MeshUniforms),
+                                  .hasDynamicOffset = true},
+                          .visibility = WGPUShaderStage_Vertex},
+              });
+}
+
+WGPUBindGroup create_mesh_uniforms_bind_group(
+    WGPUDevice device, WGPUBindGroupLayout mesh_uniforms_bind_group_layout,
+    WGPUBuffer mesh_uniforms_buffer) {
+  return wgpuDeviceCreateBindGroup(
+      device, &(const WGPUBindGroupDescriptor){
+                  .label = "mesh_uniforms_bind_group",
+                  .layout = mesh_uniforms_bind_group_layout,
+                  .entryCount = 1,
+                  .entries = &(const WGPUBindGroupEntry){
+                      .binding = 0,
+                      .buffer = mesh_uniforms_buffer,
+                      .offset = 0,
+                      .size = sizeof(MeshUniforms)}});
+}
+WGPUBindGroupLayout
+create_common_uniforms_bind_group_layout(WGPUDevice device) {
+
+  return wgpuDeviceCreateBindGroupLayout(
+      device, &(const WGPUBindGroupLayoutDescriptor){
+                  .label = "common_uniforms_bind_group_layout",
+                  .entryCount = 1,
+                  .entries = &(const WGPUBindGroupLayoutEntry){
+                      .binding = 0,
+                      .buffer =
+                          (WGPUBufferBindingLayout){
+                              .type = WGPUBufferBindingType_Uniform,
+                              .minBindingSize = sizeof(CommonUniforms),
+                              .hasDynamicOffset = false},
+                      .visibility =
+                          WGPUShaderStage_Vertex | WGPUShaderStage_Fragment}});
+}
+
+WGPUBindGroup create_common_uniforms_bind_group(
+    WGPUDevice device, WGPUBindGroupLayout common_uniforms_bind_group_layout,
+    WGPUBuffer common_uniforms_buffer) {
+  return wgpuDeviceCreateBindGroup(
+      device,
+      &(const WGPUBindGroupDescriptor){
+          .label = "common_uniforms_bind_group",
+          .layout = common_uniforms_bind_group_layout,
+          .entryCount = 1,
+          .entries =
+              &(const WGPUBindGroupEntry){.binding = 0,
+                                          .buffer = common_uniforms_buffer,
+                                          .offset = 0,
+                                          .size = sizeof(CommonUniforms)}
+
+      });
+}
+
+WGPUTexture create_depth_texture(WGPUDevice device,
+                                 WGPUTextureFormat *depth_texture_format) {
+  return wgpuDeviceCreateTexture(device,
+                                 &(const WGPUTextureDescriptor){
+                                     .dimension = WGPUTextureDimension_2D,
+                                     .format = *depth_texture_format,
+                                     .mipLevelCount = 1,
+                                     .sampleCount = 1,
+                                     .size = {800, 600, 1},
+                                     .usage = WGPUTextureUsage_RenderAttachment,
+                                     .viewFormatCount = 1,
+                                     .viewFormats = depth_texture_format,
+                                 });
+}
+
+WGPUBindGroupLayout create_material_bind_group_layout(WGPUDevice device) {
+  return wgpuDeviceCreateBindGroupLayout(
+      device,
+      &(const WGPUBindGroupLayoutDescriptor){
+          .entryCount = 4,
+          .entries = (const WGPUBindGroupLayoutEntry[]){
+              (const WGPUBindGroupLayoutEntry){
+                  .binding = 0,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .texture = {.sampleType = WGPUTextureSampleType_Float,
+                              .viewDimension = WGPUTextureViewDimension_2D}},
+              (const WGPUBindGroupLayoutEntry){
+                  .binding = 1,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .sampler = {.type = WGPUSamplerBindingType_Filtering}},
+              (const WGPUBindGroupLayoutEntry){
+                  .binding = 2,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .texture = {.sampleType = WGPUTextureSampleType_Float,
+                              .viewDimension = WGPUTextureViewDimension_2D}},
+              (const WGPUBindGroupLayoutEntry){
+                  .binding = 3,
+                  .visibility = WGPUShaderStage_Fragment,
+                  .sampler = {.type = WGPUSamplerBindingType_Filtering}},
+          }});
+}
+
+void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
+  ASSERT(renderer != NULL);
+  ASSERT(assets != NULL);
+  ASSERT(queue != NULL);
+
+  renderer->resources.depth_texture = create_depth_texture(
+      renderer->ctx.wgpu_device, &renderer->ctx.depth_texture_format);
+
+  DrawCommandQueue_init(renderer->allocator, &renderer->draw_commands);
+  cube_mesh_init(renderer->ctx.wgpu_device, queue,
+                 &renderer->resources.cube_mesh);
+
+  initialize_common_uniforms(&renderer->resources.common_uniforms);
+  renderer->resources.common_uniforms_buffer =
+      create_common_uniforms_buffer(renderer->ctx.wgpu_device);
+  wgpuQueueWriteBuffer(queue, renderer->resources.common_uniforms_buffer, 0,
+                       &renderer->resources.common_uniforms,
+                       sizeof(CommonUniforms));
+  renderer->resources.common_uniforms_bind_group_layout =
+      create_common_uniforms_bind_group_layout(renderer->ctx.wgpu_device);
+  renderer->resources.common_uniforms_bind_group =
+      create_common_uniforms_bind_group(
+          renderer->ctx.wgpu_device,
+          renderer->resources.common_uniforms_bind_group_layout,
+          renderer->resources.common_uniforms_buffer);
+  renderer->resources.material_bind_group_layout =
+      create_material_bind_group_layout(renderer->ctx.wgpu_device);
+
+  renderer->resources.mesh_uniform_count = 0;
+  renderer->resources.mesh_uniforms_buffer =
+      create_mesh_uniforms_buffer(renderer->ctx.wgpu_device);
+  renderer->resources.mesh_uniforms_bind_group_layout =
+      create_mesh_uniforms_bind_group_layout(renderer->ctx.wgpu_device);
+  renderer->resources.mesh_uniforms_bind_group =
+      create_mesh_uniforms_bind_group(
+          renderer->ctx.wgpu_device,
+          renderer->resources.mesh_uniforms_bind_group_layout,
+          renderer->resources.mesh_uniforms_buffer);
+
+  renderer->resources.pipelines =
+      HashTableRenderPipeline_create(renderer->allocator, 32);
+  renderer->resources.shader_modules =
+      HashTableShaderModule_create(renderer->allocator, 32);
+  renderer->resources.textures =
+      HashTableTexture_create(renderer->allocator, 512);
+  renderer->resources.materials =
+      HashTableMaterial_create(renderer->allocator, 32);
+
+  assets_register_loader(assets, Shader, &shader_asset_loader,
+                         &shader_asset_destructor);
+  assets_register_loader(assets, Material, &material_loader,
+                         &material_destructor);
+  load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
+                      renderer->ctx.wgpu_device, assets);
+  load_textures(renderer->allocator, renderer->resources.textures,
+                renderer->ctx.wgpu_device, queue, assets);
+  load_materials(renderer->allocator, renderer->ctx.wgpu_device,
+                 renderer->resources.materials, renderer->resources.textures,
+                 renderer->resources.material_bind_group_layout, assets);
 }
