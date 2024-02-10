@@ -39,6 +39,7 @@ typedef struct {
   size_t index_count;
 } GPUMesh;
 
+void cube_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *mesh);
 bool gpu_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *gpu_mesh,
                    Mesh *mesh);
 void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh);
