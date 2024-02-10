@@ -1,5 +1,6 @@
 #include "vector.h"
 #include "../assert.h"
+#include <math.h>
 
 IMPL_V3(int, v3i)
 IMPL_V3(float, v3f)
