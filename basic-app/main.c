@@ -243,25 +243,49 @@ void init_system(EcsCommandQueue *command_queue) {
   ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
                                               Camera, &camera);
   Transform camera_transform = TRANSFORM_DEFAULT;
+  camera_transform.position.y = 1.0;
   ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
                                               Transform, &camera_transform);
 
   EcsId directional_light = ecs_command_queue_create_entity(command_queue);
   ecs_command_queue_insert_component(command_queue, directional_light,
                                      DirectionalLight,
-                                     {.direction = {0.0, -0.3, 1.0}});
+                                     {.direction = {-0.3, -0.1, 0.0}});
 
-  for (int i = 0; i < 1024; i++) {
-    EcsId cube = ecs_command_queue_create_entity(command_queue);
-    Transform cube_transform = TRANSFORM_DEFAULT;
-    cube_transform.position.z = 3 + i / 32.f;
-    cube_transform.position.x = i % 32;
-    cube_transform.position.y = 0.0;
-    ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
-                                                &cube_transform);
-    ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
-    ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
-  }
+  EcsId ground = ecs_command_queue_create_entity(command_queue);
+  Transform ground_transform = TRANSFORM_DEFAULT;
+  ground_transform.position.x = -0.5;
+  ground_transform.position.y = 0.0;
+  ground_transform.position.z = -0.5;
+  ground_transform.scale.x = 100.0;
+  ground_transform.scale.y = 0.01;
+  ground_transform.scale.z = 100.0;
+  ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
+                                              &ground_transform);
+  ecs_command_queue_insert_tag_component(command_queue, ground, Cube);
+
+  EcsId cube = ecs_command_queue_create_entity(command_queue);
+  Transform cube_transform = TRANSFORM_DEFAULT;
+  cube_transform.position.x = 0.0;
+  cube_transform.position.y = 1.0;
+  cube_transform.position.z = 3.0;
+  ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
+                                              &cube_transform);
+  ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
+  ecs_command_queue_insert_tag_component(command_queue, cube, Rotating);
+
+  // for (int i = 0; i < 1024; i++) {
+  //   EcsId cube = ecs_command_queue_create_entity(command_queue);
+  //   Transform cube_transform = TRANSFORM_DEFAULT;
+  //   cube_transform.position.z = 3 + i / 32.f;
+  //   cube_transform.position.x = i % 32;
+  //   cube_transform.position.y = 0.0;
+  //   ecs_command_queue_insert_component_with_ptr(command_queue, cube,
+  //   Transform,
+  //                                               &cube_transform);
+  //   ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
+  //   ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
+  // }
 }
 
 int main(int argc, char **argv) {
