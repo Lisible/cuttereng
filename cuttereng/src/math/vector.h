@@ -94,6 +94,7 @@ typedef float v3_value_type;
   void name##_sub(name *lhs, const name *rhs);                                 \
   void name##_mul_scalar(name *lhs, T rhs);                                    \
   void name##_div_scalar(name *lhs, T rhs);                                    \
+  T name##_length(const name *v);                                              \
   void name##_neg(name *v);
 
 #define IMPL_V2(T, name)                                                       \
@@ -122,6 +123,7 @@ typedef float v3_value_type;
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
   }                                                                            \
+  T name##_length(const name *v) { return sqrt(v->x * v->x + v->y * v->y); }   \
                                                                                \
   void name##_neg(name *v) {                                                   \
     ASSERT(v != NULL);                                                         \

@@ -153,30 +153,30 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
   const SystemContext *system_context = it->ctx;
   InputState *input_state = system_context->input_state;
   JoystickState *left_joystick = &input_state->controller.left_joystick_state;
+  v3f direction_vector = {.x = left_joystick->x, .z = -left_joystick->y};
   float dt = system_context->delta_time_secs;
-  float speed = 5.0;
+  float base_speed = 5.0;
+  if (InputState_is_controller_button_down(input_state,
+                                           ControllerButton_LShoulder)) {
+    base_speed *= 3.0;
+  }
+  float vertical_speed = base_speed;
+  float speed = base_speed * v3f_length(&direction_vector);
+
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
 
-    v3f forward = {0.0, 0.0, 1.0};
-    quaternion_apply_to_vector(&transform->rotation, &forward);
-    v3f_mul_scalar(&forward, dt * speed);
+    quaternion_apply_to_vector(&transform->rotation, &direction_vector);
+    v3f_mul_scalar(&direction_vector, dt * speed);
+    if (fabs(left_joystick->x) > JOYSTICK_DEADZONE ||
+        fabs(left_joystick->y) > JOYSTICK_DEADZONE) {
+      v3f_add(&transform->position, &direction_vector);
+    }
+
     v3f up = {0.0, 1.0, 0.0};
     quaternion_apply_to_vector(&transform->rotation, &up);
-    v3f_mul_scalar(&up, dt * speed);
-    v3f right = {1.0, 0.0, 0.0};
-    quaternion_apply_to_vector(&transform->rotation, &right);
-    v3f_mul_scalar(&right, dt * speed);
+    v3f_mul_scalar(&up, dt * vertical_speed);
 
-    if (left_joystick->y < -JOYSTICK_DEADZONE) {
-      v3f_add(&transform->position, &forward);
-    } else if (left_joystick->y > JOYSTICK_DEADZONE) {
-      v3f_sub(&transform->position, &forward);
-    } else if (left_joystick->x > JOYSTICK_DEADZONE) {
-      v3f_add(&transform->position, &right);
-    } else if (left_joystick->x < -JOYSTICK_DEADZONE) {
-      v3f_sub(&transform->position, &right);
-    }
     if (InputState_is_controller_button_down(input_state, ControllerButton_A)) {
       v3f_add(&transform->position, &up);
     }
@@ -275,7 +275,7 @@ void init_system(EcsCommandQueue *command_queue) {
   EcsId ground = ecs_command_queue_create_entity(command_queue);
   Transform ground_transform = TRANSFORM_DEFAULT;
   ground_transform.position.x = 0.0;
-  ground_transform.position.y = 0.0;
+  ground_transform.position.y = -1.0;
   ground_transform.position.z = 0.0;
   ground_transform.scale.x = 40.0;
   ground_transform.scale.y = 1.0;
@@ -294,11 +294,11 @@ void init_system(EcsCommandQueue *command_queue) {
   // ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
   // ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
 
-  for (int i = 0; i < 256; i++) {
+  for (int i = 0; i < 1024; i++) {
     EcsId cube = ecs_command_queue_create_entity(command_queue);
     Transform cube_transform = TRANSFORM_DEFAULT;
-    cube_transform.position.z = i / 16.f;
-    cube_transform.position.x = i % 16;
+    cube_transform.position.z = i / 32.f;
+    cube_transform.position.x = i % 32;
     cube_transform.position.y = 2.0;
     ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
                                                 &cube_transform);
