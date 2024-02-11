@@ -53,6 +53,7 @@ struct RendererContext {
   WGPUTextureFormat wgpu_render_surface_texture_format;
   WGPUTextureFormat depth_texture_format;
   SurfaceSize surface_size;
+  float resolution_factor;
 };
 typedef struct RendererContext RendererContext;
 

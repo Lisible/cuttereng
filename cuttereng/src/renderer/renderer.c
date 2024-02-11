@@ -208,6 +208,7 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
 
   configure_surface(&renderer->ctx);
   renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth32Float;
+  renderer->ctx.resolution_factor = 0.4;
 
   initialize_resources(renderer, assets, queue);
   wgpuQueueRelease(queue);
@@ -559,15 +560,18 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           RenderGraphResourceUsage_ColorAttachment,
           WGPUTextureFormat_BGRA8UnormSrgb);
 
-  u32 width = 800;
-  u32 height = 600;
+  u32 internal_width =
+      renderer->ctx.resolution_factor * renderer->ctx.surface_size.width;
+  u32 internal_height =
+      renderer->ctx.resolution_factor * renderer->ctx.surface_size.height;
   RenderGraphResourceHandle depth_texture = render_graph_create_texture(
       &render_graph, RenderGraphResourceUsage_DepthStencilAttachment,
-      renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float, width, height);
+      renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float, internal_width,
+      internal_height);
 
   GBuffer g_buffer;
-  GBuffer_init(&g_buffer, renderer->ctx.wgpu_device, &render_graph, width,
-               height);
+  GBuffer_init(&g_buffer, renderer->ctx.wgpu_device, &render_graph,
+               internal_width, internal_height);
   WGPUBindGroupLayout g_buffer_bind_group_layout =
       GBuffer_create_bind_group_layout(renderer->ctx.wgpu_device);
   WGPUBindGroup g_buffer_bind_group = GBuffer_create_bind_group(
