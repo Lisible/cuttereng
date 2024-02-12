@@ -208,7 +208,8 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
 
   configure_surface(&renderer->ctx);
   renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth32Float;
-  renderer->ctx.resolution_factor = 0.4;
+  // renderer->ctx.resolution_factor = 0.4;
+  renderer->ctx.resolution_factor = 1.0;
 
   initialize_resources(renderer, assets, queue);
   wgpuQueueRelease(queue);
@@ -487,6 +488,23 @@ void directional_light_space_depth_map_pass_dispatch(
 }
 
 typedef struct {
+  WGPUBindGroup directional_light_depth_map;
+} DirectionalLightShadowMapToGBufferPassData;
+
+void directional_light_shadow_map_to_gbuffer_pass_dispatch(
+    WGPURenderPassEncoder render_pass_encoder, RendererResources *res,
+    DrawCommandQueue *command_queue, GPUMesh *mesh, u32 mesh_stride,
+    void *custom_data) {
+  (void)res;
+  (void)command_queue;
+  (void)mesh;
+  (void)mesh_stride;
+  DirectionalLightShadowMapToGBufferPassData *data = custom_data;
+  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
+                                    data->directional_light_depth_map, 0, NULL);
+  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
+}
+typedef struct {
   WGPUBindGroup g_buffer_bind_group;
 } DeferredLightingPassData;
 
@@ -613,6 +631,60 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .shader_module = {.module_identifier = "shader.wgsl"},
           .dispatch_fn = mesh_pass_dispatch});
 
+  u32 depth_map_resolution = 1024;
+  RenderGraphResourceHandle directional_light_space_depth_map =
+      render_graph_create_texture(
+          &render_graph, RenderGraphResourceUsage_DepthStencilAttachment,
+          renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float,
+          depth_map_resolution, depth_map_resolution);
+
+  WGPUBindGroupLayout directional_light_space_depth_map_bind_group_layout =
+      wgpuDeviceCreateBindGroupLayout(
+          renderer->ctx.wgpu_device,
+          &(const WGPUBindGroupLayoutDescriptor){
+              .label = "directional_light_space_depth_map_bind_group_layout",
+              .entryCount = 2,
+              .entries = (const WGPUBindGroupLayoutEntry[]){
+                  (WGPUBindGroupLayoutEntry){
+                      .binding = 0,
+                      .visibility = WGPUShaderStage_Fragment,
+                      .texture =
+                          (WGPUTextureBindingLayout){
+                              .sampleType =
+                                  WGPUTextureSampleType_UnfilterableFloat,
+                              .viewDimension = WGPUTextureViewDimension_2D}},
+                  (WGPUBindGroupLayoutEntry){
+                      .binding = 1,
+                      .visibility = WGPUShaderStage_Fragment,
+                      .sampler =
+                          (WGPUSamplerBindingLayout){
+                              .type = WGPUSamplerBindingType_NonFiltering}},
+              }});
+
+  RenderGraphOwnedTextureResource
+      *directional_light_space_depth_map_texture_resource =
+          &render_graph.resources[directional_light_space_depth_map.id]
+               .owned_texture;
+  WGPUBindGroup directional_light_space_depth_map_bind_group =
+      wgpuDeviceCreateBindGroup(
+          renderer->ctx.wgpu_device,
+          &(const WGPUBindGroupDescriptor){
+              .label = "directional_light_space_depth_map_bind_group",
+              .layout = directional_light_space_depth_map_bind_group_layout,
+              .entryCount = 2,
+              .entries = (const WGPUBindGroupEntry[]){
+                  (WGPUBindGroupEntry){
+                      .binding = 0,
+                      .textureView =
+                          directional_light_space_depth_map_texture_resource
+                              ->texture_view},
+                  (WGPUBindGroupEntry){
+                      .binding = 1,
+                      .sampler =
+                          directional_light_space_depth_map_texture_resource
+                              ->texture_sampler},
+              }});
+
   render_graph_add_pass(
       frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
       &(const RenderPassDescriptor){
@@ -623,8 +695,7 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
           .bind_group_layout_count = 2,
           .render_attachments = {(RenderPassRenderAttachment){
               .type = RenderPassRenderAttachmentType_DepthAttachment,
-              .render_attachment_handle =
-                  &g_buffer.directional_light_space_depth_map}},
+              .render_attachment_handle = &directional_light_space_depth_map}},
           .render_attachment_count = 1,
           .uses_vertex_buffer = true,
           .cull_mode = CullMode_Front,
@@ -632,6 +703,34 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                                 "directional_light_space_depth_map.wgsl",
                             .has_no_fragment_shader = true},
           .dispatch_fn = directional_light_space_depth_map_pass_dispatch});
+
+  DirectionalLightShadowMapToGBufferPassData
+      directional_light_shadow_map_to_gbuffer_pass_data = {
+          .directional_light_depth_map =
+              directional_light_space_depth_map_bind_group};
+  render_graph_add_pass(
+      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
+      &(const RenderPassDescriptor){
+          .identifier = "directional_light_shadow_map_to_gbuffer",
+          .bind_group_layouts =
+              {directional_light_space_depth_map_bind_group_layout},
+          .bind_group_layout_count = 1,
+          .render_attachments = {(RenderPassRenderAttachment){
+              .type = RenderPassRenderAttachmentType_ColorAttachment,
+              .load_op = WGPULoadOp_Clear,
+              .store_op = WGPUStoreOp_Store,
+              .render_attachment_handle =
+                  &g_buffer.directional_light_space_depth_map}},
+          .render_attachment_count = 1,
+          .uses_vertex_buffer = false,
+          .shader_module =
+              {
+                  .module_identifier =
+                      "directional_light_shadow_map_to_gbuffer.wgsl",
+              },
+          .pass_data = &directional_light_shadow_map_to_gbuffer_pass_data,
+          .dispatch_fn =
+              directional_light_shadow_map_to_gbuffer_pass_dispatch});
 
   RenderGraphResourceHandle deferred_lighting_result =
       render_graph_create_texture(
@@ -840,8 +939,8 @@ void GBuffer_init(GBuffer *g_buffer, WGPUDevice device,
       render_graph, RenderGraphResourceUsage_ColorAttachment, device,
       WGPUTextureFormat_RGBA16Float, width, height);
   g_buffer->directional_light_space_depth_map = render_graph_create_texture(
-      render_graph, RenderGraphResourceUsage_DepthStencilAttachment, device,
-      WGPUTextureFormat_Depth32Float, width, height);
+      render_graph, RenderGraphResourceUsage_ColorAttachment, device,
+      WGPUTextureFormat_RGBA8Unorm, width, height);
 }
 WGPUBindGroupLayout GBuffer_create_bind_group_layout(WGPUDevice device) {
   return wgpuDeviceCreateBindGroupLayout(
@@ -1028,7 +1127,7 @@ void get_adapter_required_limits(WGPUAdapter adapter,
   out_required_limits->limits.maxBufferSize = 248000;
   out_required_limits->limits.maxVertexBufferArrayStride = sizeof(Vertex);
   out_required_limits->limits.maxInterStageShaderComponents = 9;
-  out_required_limits->limits.maxTextureDimension2D = 1920;
+  out_required_limits->limits.maxTextureDimension2D = 4096;
   out_required_limits->limits.maxTextureArrayLayers = 1;
   out_required_limits->limits.maxSampledTexturesPerShaderStage = 4;
   out_required_limits->limits.maxSamplersPerShaderStage = 4;
