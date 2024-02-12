@@ -1178,6 +1178,7 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
   ASSERT(assets != NULL);
   ASSERT(queue != NULL);
 
+  renderer->resources.light_count = 0;
   renderer->resources.depth_texture = create_depth_texture(
       renderer->ctx.wgpu_device, &renderer->ctx.depth_texture_format);
 
