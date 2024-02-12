@@ -245,7 +245,6 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
 
   output_value->type = JSON_ARRAY;
   output_value->array = array;
-
   return true;
 
 cleanup:

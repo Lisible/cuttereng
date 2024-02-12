@@ -5,6 +5,7 @@
 #include "../log.h"
 #include "../math/matrix.h"
 #include "../memory.h"
+#include "font.h"
 #include "material.h"
 #include "mesh.h"
 #include "render_graph.h"
@@ -227,6 +228,23 @@ err:
   return NULL;
 }
 
+void load_bitmap_fonts(Allocator *allocator, Assets *assets) {
+  DirectoryListing *dl =
+      filesystem_list_files_in_directory(allocator, "assets/fonts");
+  for (size_t i = 0; i < dl->entry_count; i++) {
+    char font_path[sizeof(FONT_DIR) + MAX_FILENAME_LENGTH] = FONT_DIR;
+    strcat(font_path, dl->entries[i]);
+    LOG_DEBUG("Loading font %s", dl->entries[i]);
+    BitmapFont *font = assets_fetch(assets, BitmapFont, font_path);
+    if (!font) {
+      LOG_ERROR("Couldn't load font %s", dl->entries[i]);
+      continue;
+    }
+
+    // TODO something idk
+  }
+  filesystem_directory_listing_destroy(allocator, dl);
+}
 Material *load_material(Assets *assets, char *material_path) {
   return assets_fetch(assets, Material, material_path);
 }
@@ -1350,10 +1368,13 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
                          &shader_asset_destructor);
   assets_register_loader(assets, Material, &material_loader,
                          &material_destructor);
+  assets_register_loader(assets, BitmapFont, &bitmap_font_loader,
+                         &bitmap_font_destructor);
   load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
                       renderer->ctx.wgpu_device, assets);
   load_textures(renderer->allocator, renderer->resources.textures,
                 renderer->ctx.wgpu_device, queue, assets);
+  load_bitmap_fonts(renderer->allocator, assets);
   load_materials(renderer->allocator, renderer->ctx.wgpu_device,
                  renderer->resources.materials, renderer->resources.textures,
                  renderer->resources.material_bind_group_layout, assets);

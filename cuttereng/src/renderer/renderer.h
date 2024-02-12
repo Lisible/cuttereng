@@ -16,6 +16,7 @@
 #define MAX_LIGHT_COUNT 1
 #define SHADER_DIR "shaders/"
 #define MATERIAL_DIR "materials/"
+#define FONT_DIR "fonts/"
 #define TEXTURE_DIR "textures/"
 
 DECL_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline)

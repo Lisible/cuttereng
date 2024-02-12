@@ -45,6 +45,7 @@ cuttereng_lib = library(
   'src/renderer/shader.c',
   'src/renderer/mesh.c',
   'src/renderer/material.c',
+  'src/renderer/font.c',
   'src/image.c',
   'src/zlib.c',
   'src/deflate.c',
