@@ -912,6 +912,9 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
   wgpuBindGroupRelease(deferred_lighting_result_bind_group);
   wgpuBindGroupLayoutRelease(g_buffer_bind_group_layout);
   wgpuBindGroupRelease(g_buffer_bind_group);
+  wgpuBindGroupLayoutRelease(
+      directional_light_space_depth_map_bind_group_layout);
+  wgpuBindGroupRelease(directional_light_space_depth_map_bind_group);
   render_graph_deinit(&render_graph);
 
   for (size_t draw_command_index = 0;
