@@ -46,6 +46,18 @@ typedef enum {
   Key_8,
   Key_9,
   Key_0,
+  Key_F1,
+  Key_F2,
+  Key_F3,
+  Key_F4,
+  Key_F5,
+  Key_F6,
+  Key_F7,
+  Key_F8,
+  Key_F9,
+  Key_F10,
+  Key_F11,
+  Key_F12,
   Key_Count,
   Key_Unknown
 } Key;

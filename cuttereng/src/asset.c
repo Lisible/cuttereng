@@ -9,6 +9,7 @@
 #define ASSETS_BASE_PATH "assets/"
 
 DECL_HASH_TABLE(void *, HashTableAsset)
+// FIXME there needs to be a destructor, this will leak on asset reload
 DEF_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
 
 typedef struct {

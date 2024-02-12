@@ -148,6 +148,30 @@ Key key_from_sdl_keysym(SDL_Keycode keycode) {
     return Key_Y;
   case SDLK_z:
     return Key_Z;
+  case SDLK_F1:
+    return Key_F1;
+  case SDLK_F2:
+    return Key_F2;
+  case SDLK_F3:
+    return Key_F3;
+  case SDLK_F4:
+    return Key_F4;
+  case SDLK_F5:
+    return Key_F5;
+  case SDLK_F6:
+    return Key_F6;
+  case SDLK_F7:
+    return Key_F7;
+  case SDLK_F8:
+    return Key_F8;
+  case SDLK_F9:
+    return Key_F9;
+  case SDLK_F10:
+    return Key_F10;
+  case SDLK_F11:
+    return Key_F11;
+  case SDLK_F12:
+    return Key_F12;
   default:
     return Key_Unknown;
   }

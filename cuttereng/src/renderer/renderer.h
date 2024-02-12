@@ -127,6 +127,8 @@ void renderer_draw_mesh(Renderer *renderer, Transform *transform,
                         char *material_identifier);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                      float current_time_secs);
+void renderer_clear_caches(Renderer *renderer);
+void renderer_load_resources(Renderer *renderer, Assets *assets);
 
 void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window);
 

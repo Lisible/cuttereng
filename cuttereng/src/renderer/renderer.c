@@ -1076,6 +1076,28 @@ void renderer_add_light(Renderer *renderer, const Light *light) {
 void renderer_set_view_position(Renderer *renderer, v3f *view_position) {
   renderer->resources.common_uniforms.view_position = *view_position;
 }
+void renderer_clear_caches(Renderer *renderer) {
+  ASSERT(renderer != NULL);
+  HashTableRenderPipeline_clear(renderer->resources.pipelines);
+  HashTableMaterial_clear(renderer->resources.materials);
+  HashTableTexture_clear(renderer->resources.textures);
+  HashTableShaderModule_clear(renderer->resources.shader_modules);
+}
+
+void renderer_load_resources(Renderer *renderer, Assets *assets) {
+  ASSERT(renderer != NULL);
+  ASSERT(assets != NULL);
+
+  WGPUQueue queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
+  load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
+                      renderer->ctx.wgpu_device, assets);
+  load_textures(renderer->allocator, renderer->resources.textures,
+                renderer->ctx.wgpu_device, queue, assets);
+  load_materials(renderer->allocator, renderer->ctx.wgpu_device,
+                 renderer->resources.materials, renderer->resources.textures,
+                 renderer->resources.material_bind_group_layout, assets);
+  wgpuQueueRelease(queue);
+}
 void initialize_common_uniforms(CommonUniforms *uniforms) {
   uniforms->current_time_secs = 0;
   uniforms->view_position = (v3f){0};

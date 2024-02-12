@@ -37,10 +37,19 @@ void engine_deinit(Engine *engine) {
   allocator_free(&system_allocator, (char *)engine->application_title);
 }
 
+void engine_reload_assets(Engine *engine) { assets_clear(engine->assets); }
+
 void engine_handle_events(Engine *engine, Event *event) {
   ASSERT(engine != NULL);
   ASSERT(event != NULL);
   switch (event->type) {
+  case EventType_KeyDown:
+    if (event->key_event.key == Key_F1) {
+      engine_reload_assets(engine);
+      renderer_clear_caches(engine->renderer);
+      renderer_load_resources(engine->renderer, engine->assets);
+    }
+    break;
   case EventType_Quit:
     engine->running = false;
     break;
