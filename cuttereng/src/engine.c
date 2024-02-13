@@ -73,7 +73,8 @@ void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
   const SystemContext system_context = {.delta_time_secs = dt,
                                         .current_time_secs =
                                             engine->current_time_secs,
-                                        .input_state = &engine->input_state};
+                                        .input_state = &engine->input_state,
+                                        .assets = engine->assets};
   ecs_run_systems(&engine->ecs, &system_context);
   ecs_process_command_queue(&engine->ecs);
 }

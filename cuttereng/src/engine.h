@@ -33,6 +33,7 @@ typedef struct {
   float delta_time_secs;
   float current_time_secs;
   InputState *input_state;
+  Assets *assets;
 } SystemContext;
 
 void engine_init(Engine *engine, const Configuration *config,
