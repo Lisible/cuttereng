@@ -48,6 +48,8 @@ void engine_handle_events(Engine *engine, Event *event) {
       engine_reload_assets(engine);
       renderer_clear_caches(engine->renderer);
       renderer_load_resources(engine->renderer, engine->assets);
+    } else {
+      InputState_handle_event(&engine->input_state, event);
     }
     break;
   case EventType_Quit:

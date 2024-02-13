@@ -12,7 +12,7 @@
 typedef struct Moving Moving;
 typedef struct Rotating Rotating;
 
-float i = 0.0;
+float light_angle = 0.0;
 
 void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
@@ -30,17 +30,20 @@ void system_move_light(EcsCommandQueue *queue, EcsQueryIt *it) {
 
   const SystemContext *system_context = it->ctx;
   if (InputState_is_key_down(system_context->input_state, Key_P)) {
-    i += 0.01;
+    LOG_DEBUG("Pressing P");
+    light_angle += 0.05;
   } else if (InputState_is_key_down(system_context->input_state, Key_O)) {
-    i -= 0.01;
+    light_angle -= 0.05;
   }
+
+  LOG_DEBUG("i: %f", light_angle);
 
   while (ecs_query_it_next(it)) {
     DirectionalLight *light = ecs_query_it_get(it, DirectionalLight, 0);
-    // light->position.z = 7.0 * sin(system_context->current_time_secs * 1.0);
-    // light->position.y = 7.0 * cos(system_context->current_time_secs * 1.0);
-    light->position.x = 10.0 * sin(i);
-    light->position.z = 10.0 * cos(i);
+    light->position.x = 10.0 * sin(light_angle);
+    light->position.z = 10.0 * cos(light_angle);
+    LOG_DEBUG("Updated light position: %f %f %f", light->position.x,
+              light->position.y, light->position.z);
   }
 }
 void system_rotate_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
@@ -283,16 +286,6 @@ void init_system(EcsCommandQueue *command_queue) {
   ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
                                               &ground_transform);
   ecs_command_queue_insert_tag_component(command_queue, ground, Cube);
-
-  // EcsId cube = ecs_command_queue_create_entity(command_queue);
-  // Transform cube_transform = TRANSFORM_DEFAULT;
-  // cube_transform.position.x = 0.0;
-  // cube_transform.position.y = 2.0;
-  // cube_transform.position.z = 0.0;
-  // ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
-  //                                             &cube_transform);
-  // ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
-  // ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
 
   for (int i = 0; i < 1024; i++) {
     EcsId cube = ecs_command_queue_create_entity(command_queue);
