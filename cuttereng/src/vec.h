@@ -90,6 +90,14 @@
   DECL_VEC(T, name)                                                            \
   DEF_VEC(T, name, initial_capacity)
 
+#define VEC_FOR_EACH(vec, elt_identifier, T, ...)                              \
+  do {                                                                         \
+    for (size_t i = 0; i < (vec)->length; i++) {                               \
+      T *elt_identifier = &(vec)->data[i];                                     \
+      __VA_ARGS__                                                              \
+    }                                                                          \
+  } while (0);
+
 DECL_VEC(u8, u8vec)
 
 #endif // CUTTERENG_VEC_H

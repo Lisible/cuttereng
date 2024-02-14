@@ -107,7 +107,7 @@ void arena_deinit(Arena *arena, Allocator *allocator) {
   allocator_free(allocator, arena->data);
 }
 
-char *memory_clone_string(Allocator *allocator, char *str) {
+char *memory_clone_string(Allocator *allocator, const char *str) {
   size_t string_length = strlen(str) + 1;
   char *duplicate_string =
       allocator_allocate_array(allocator, string_length, sizeof(char));

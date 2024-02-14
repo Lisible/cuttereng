@@ -5,19 +5,20 @@
 #include "image.h"
 #include "log.h"
 #include "memory.h"
+#include "renderer/material.h"
 #include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
 #include "src/graphics/camera.h"
 #include "src/graphics/light.h"
+#include "src/graphics/mesh_instance.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
 
 void engine_init(Engine *engine, const Configuration *configuration,
-                 EcsInitSystem ecs_init_system, SDL_Window *window) {
+                 EcsSystemFn ecs_init_system, SDL_Window *window) {
   ASSERT(engine != NULL);
   ASSERT(configuration != NULL);
   ASSERT(window != NULL);
-  ecs_init(&system_allocator, &engine->ecs, ecs_init_system);
   InputState_init(&engine->input_state);
   engine->assets = assets_new(&system_allocator);
   assets_register_loader(engine->assets, Image, &image_loader,
@@ -26,6 +27,11 @@ void engine_init(Engine *engine, const Configuration *configuration,
   engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
+  ecs_init(&system_allocator, &engine->ecs, ecs_init_system,
+           &(SystemContext){.input_state = &engine->input_state,
+                            .assets = engine->assets,
+                            .current_time_secs = engine->current_time_secs,
+                            .delta_time_secs = 0});
 }
 
 void engine_deinit(Engine *engine) {
@@ -85,7 +91,8 @@ void engine_render(Allocator *frame_allocator, Engine *engine) {
   LOG_TRACE("render");
 
   engine_emit_draw_commands(frame_allocator, engine);
-  renderer_render(frame_allocator, engine->renderer, engine->current_time_secs);
+  renderer_render(frame_allocator, engine->renderer, engine->assets,
+                  engine->current_time_secs);
   InputState_on_frame_end(&engine->input_state);
 }
 
@@ -136,18 +143,27 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   ecs_query_it_deinit(&query_directional_light_it);
   EcsQuery_destroy(query_directional_light, allocator);
 
-  EcsQuery *query_cubes = EcsQuery_new(
-      allocator,
-      &(const EcsQueryDescriptor){
-          .components = {ecs_component_id(Transform), ecs_component_id(Cube)},
-          .component_count = 2});
-  EcsQueryIt query_it = ecs_query(&engine->ecs, query_cubes);
-  while (ecs_query_it_next(&query_it)) {
-    Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
-    renderer_draw_mesh(engine->renderer, transform, "water.json");
+  {
+    EcsQuery *query_meshes = EcsQuery_new(
+        allocator, &(const EcsQueryDescriptor){
+                       .components = {ecs_component_id(Transform),
+                                      ecs_component_id(MeshInstance),
+                                      ecs_component_id(ShaderMaterial)},
+                       .component_count = 3});
+    EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
+    while (ecs_query_it_next(&query_it)) {
+      Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
+      MeshInstance *mesh_instance =
+          ecs_query_it_get(&query_it, MeshInstance, 1);
+      ShaderMaterial *shader_material =
+          ecs_query_it_get(&query_it, ShaderMaterial, 2);
+      renderer_draw_mesh_with_shader_material(
+          engine->renderer, transform, mesh_instance->mesh_id,
+          shader_material->shader_identifier);
+    }
+    ecs_query_it_deinit(&query_it);
+    EcsQuery_destroy(query_meshes, allocator);
   }
-  ecs_query_it_deinit(&query_it);
-  EcsQuery_destroy(query_cubes, allocator);
 }
 
 bool configuration_from_json(Json *configuration_json,

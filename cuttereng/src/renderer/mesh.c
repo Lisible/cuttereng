@@ -127,7 +127,6 @@ void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
                Index *indices, size_t index_count) {
   ASSERT(mesh != NULL);
   ASSERT(vertices != NULL);
-  ASSERT(indices != NULL);
   mesh->vertices = vertices;
   mesh->vertex_count = vertex_count;
   mesh->indices = indices;
@@ -223,3 +222,11 @@ void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh) {
                                         gpu_mesh->index_count * sizeof(Index));
   }
 }
+void mesh_destructor_fn(Allocator *allocator, void *asset) {
+  ASSERT(allocator != NULL);
+  ASSERT(asset != NULL);
+  Mesh *mesh = asset;
+  mesh_deinit(allocator, mesh);
+  allocator_free(allocator, mesh);
+}
+AssetDestructor mesh_destructor = {.fn = mesh_destructor_fn};

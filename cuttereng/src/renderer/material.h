@@ -3,8 +3,18 @@
 
 #include "../asset.h"
 #include "../memory.h"
-#include "renderer.h"
 #include <webgpu/webgpu.h>
+
+typedef struct HashTableTexture HashTableTexture;
+
+typedef enum {
+  MaterialType_Basic,
+  MaterialType_Shader,
+} MaterialType;
+
+typedef struct {
+  char *shader_identifier;
+} ShaderMaterial;
 
 typedef struct {
   /// Identifier of the base color texture

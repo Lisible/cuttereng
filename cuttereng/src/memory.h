@@ -34,6 +34,6 @@ void *arena_allocate_array(Arena *arena, size_t count, size_t item_size);
 void arena_clear(Arena *arena);
 void arena_deinit(Arena *arena, Allocator *allocator);
 
-char *memory_clone_string(Allocator *allocator, char *str);
+char *memory_clone_string(Allocator *allocator, const char *str);
 
 #endif

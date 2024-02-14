@@ -20,7 +20,7 @@ static const size_t KB = 1000;
 
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
-void cutter_bootstrap(EcsInitSystem ecs_init_system) {
+void cutter_bootstrap(EcsSystemFn ecs_init_system) {
   LOG_INFO("Bootstrapping...");
   char *configuration_file_path =
       env_get_configuration_file_path(&system_allocator);
@@ -52,7 +52,7 @@ void cutter_bootstrap(EcsInitSystem ecs_init_system) {
 
   Arena frame_arena;
   Allocator frame_allocator = arena_allocator(&frame_arena);
-  arena_init(&frame_arena, &system_allocator, 10 * KB);
+  arena_init(&frame_arena, &system_allocator, 1000 * KB);
 
   float last_frame_time = 0;
   while (engine_is_running(&engine)) {
@@ -78,7 +78,6 @@ void cutter_bootstrap(EcsInitSystem ecs_init_system) {
     arena_clear(&frame_arena);
 
     last_frame_time = current_time;
-    ;
   }
   arena_deinit(&frame_arena, &system_allocator);
 

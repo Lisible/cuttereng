@@ -78,7 +78,6 @@ struct EcsCommandQueue {
   Allocator *allocator;
 };
 
-typedef void (*EcsInitSystem)(EcsCommandQueue *);
 void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue,
                             Ecs *ecs);
 void ecs_command_queue_deinit(EcsCommandQueue *queue);
@@ -104,7 +103,7 @@ void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
 #define ecs_command_queue_insert_tag_component(queue, entity, component_type)  \
   ecs_command_queue_insert_tag_component_(queue, entity, #component_type);
 
-void ecs_default_init_system(EcsCommandQueue *queue);
+void ecs_default_init_system(EcsCommandQueue *queue, EcsQueryIt *it);
 
 DECL_VEC(EcsSystem, EcsSystemVec)
 
@@ -117,7 +116,8 @@ struct Ecs {
   EcsCommandQueue command_queue;
 };
 
-void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system);
+void ecs_init(Allocator *allocator, Ecs *ecs, EcsSystemFn init_system,
+              void *system_context);
 void ecs_deinit(Ecs *ecs);
 void ecs_register_system(Ecs *ecs,
                          const EcsSystemDescriptor *system_descriptor);

@@ -445,9 +445,14 @@ void render_graph_execute(RenderGraph *render_graph,
           res->pipelines, render_pass->pipeline_identifier);
       wgpuRenderPassEncoderSetPipeline(render_pass_encoder, pass_pipeline);
       uint32_t mesh_stride = 64;
-      render_pass->dispatch_fn(render_pass_encoder, res, draw_command_queue,
-                               &res->cube_mesh, mesh_stride,
-                               render_pass->pass_data);
+
+      RenderPassDispatchContext dispatch_ctx = {
+          .pass_encoder = render_pass_encoder,
+          .resources = res,
+          .command_queue = draw_command_queue,
+          .mesh_stride = mesh_stride,
+          .pass_data = render_pass->pass_data};
+      render_pass->dispatch_fn(&dispatch_ctx);
     }
     wgpuRenderPassEncoderEnd(render_pass_encoder);
     wgpuRenderPassEncoderRelease(render_pass_encoder);

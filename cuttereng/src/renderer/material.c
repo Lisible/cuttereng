@@ -1,6 +1,7 @@
 #include "material.h"
 #include "../assert.h"
 #include "../json.h"
+#include "renderer.h"
 #include "webgpu/webgpu.h"
 #include <string.h>
 

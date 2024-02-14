@@ -9,7 +9,7 @@
 #define RENDER_PASS_MAX_COLOR_TARGET_STATES 3
 #define RENDER_PASS_MAX_RENDER_ATTACHMENTS                                     \
   (RENDER_PASS_MAX_COLOR_TARGET_STATES + RENDER_PASS_MAX_DEPTH_TARGET_STATES)
-#define RENDER_GRAPH_MAX_PASS_COUNT 6
+#define RENDER_GRAPH_MAX_PASS_COUNT 7
 #define RENDER_PASS_MAX_BIND_GROUP_LAYOUTS 3
 #define RENDER_GRAPH_MAX_TEXTURES 4
 #define RENDER_GRAPH_MAX_TEXTURE_VIEWS 5
@@ -48,8 +48,15 @@ typedef struct {
   bool clear;
 } RenderPassColorAttachment;
 
-typedef void (*DispatchFn)(WGPURenderPassEncoder, RendererResources *,
-                           DrawCommandQueue *, GPUMesh *, u32, void *);
+typedef struct {
+  WGPURenderPassEncoder pass_encoder;
+  RendererResources *resources;
+  DrawCommandQueue *command_queue;
+  u32 mesh_stride;
+  void *pass_data;
+} RenderPassDispatchContext;
+
+typedef void (*DispatchFn)(const RenderPassDispatchContext *);
 
 typedef enum {
   RenderGraphWriteResourceType_Texture

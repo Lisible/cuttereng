@@ -8,16 +8,18 @@
 
 void HashTable_noop_destructor(Allocator *allocator, void *value);
 #define DECL_HASH_TABLE(V, name)                                               \
-  typedef struct {                                                             \
+  struct name##KV {                                                            \
     char *key;                                                                 \
     V value;                                                                   \
-  } name##KV;                                                                  \
-  typedef struct {                                                             \
+  };                                                                           \
+  typedef struct name##KV name##KV;                                            \
+  struct name {                                                                \
     name##KV *items;                                                           \
     size_t capacity;                                                           \
     size_t length;                                                             \
     Allocator *allocator;                                                      \
-  } name;                                                                      \
+  };                                                                           \
+  typedef struct name name;                                                    \
   name *name##_create(Allocator *allocator, size_t initial_capacity);          \
   void name##_destroy(name *table);                                            \
   char *name##_set(name *table, char *key, V value);                           \

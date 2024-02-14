@@ -1,8 +1,10 @@
 #include "graphics/camera.h"
 #include "graphics/light.h"
+#include "graphics/mesh_instance.h"
 #include "input.h"
 #include "math/quaternion.h"
 #include "math/vector.h"
+#include "renderer/material.h"
 #include <cuttereng.h>
 #include <ecs/ecs.h>
 #include <engine.h>
@@ -189,8 +191,40 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
   }
 }
 
-void init_system(EcsCommandQueue *command_queue) {
+void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   LOG_DEBUG("Initializing");
+  const SystemContext *system_context = it->ctx;
+
+  Mesh *mesh = allocator_allocate(it->allocator, sizeof(Mesh));
+
+  int water_side_quad_count = 100;
+  size_t vertex_count = water_side_quad_count * water_side_quad_count * 6;
+  Vertex *vertices =
+      allocator_allocate_array(it->allocator, vertex_count, sizeof(Vertex));
+  size_t v = 0;
+  for (int j = 0; j < water_side_quad_count; j++) {
+    for (int i = 0; i < water_side_quad_count; i++) {
+      vertices[v++] =
+          (Vertex){.position = {i, 0.0, j + 1.0}, .normal = {.y = 1.0}};
+      vertices[v++] = (Vertex){.position = {i, 0.0, j}, .normal = {.y = 1.0}};
+      vertices[v++] =
+          (Vertex){.position = {i + 1.0, 0.0, j}, .normal = {.y = 1.0}};
+      vertices[v++] = (Vertex){.position =
+                                   {
+                                       i + 1.0,
+                                       0.0,
+                                       j,
+                                   },
+                               .normal = {.y = 1.0}};
+      vertices[v++] =
+          (Vertex){.position = {i + 1.0, 0.0, j + 1.0}, .normal = {.y = 1.0}};
+      vertices[v++] =
+          (Vertex){.position = {i, 0.0, j + 1.0}, .normal = {.y = 1.0}};
+    }
+  }
+  mesh_init(mesh, vertices, vertex_count, NULL, 0);
+  assets_store(system_context->assets, Mesh, "proc_water", mesh);
+
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -265,7 +299,7 @@ void init_system(EcsCommandQueue *command_queue) {
   EcsId directional_light = ecs_command_queue_create_entity(command_queue);
   ecs_command_queue_insert_component(command_queue, directional_light,
                                      DirectionalLight,
-                                     {.position = {0.0, 3.0, 10.0}});
+                                     {.position = {0.0, 20.0, -10.0}});
 
   Transform directional_light_transform = TRANSFORM_DEFAULT;
   directional_light_transform.position.y = 1.0;
@@ -275,29 +309,17 @@ void init_system(EcsCommandQueue *command_queue) {
   ecs_command_queue_insert_tag_component(command_queue, directional_light,
                                          Moving);
 
-  EcsId ground = ecs_command_queue_create_entity(command_queue);
-  Transform ground_transform = TRANSFORM_DEFAULT;
-  ground_transform.position.x = 0.0;
-  ground_transform.position.y = -1.0;
-  ground_transform.position.z = 0.0;
-  ground_transform.scale.x = 40.0;
-  ground_transform.scale.y = 1.0;
-  ground_transform.scale.z = 40.0;
-  ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
-                                              &ground_transform);
-  ecs_command_queue_insert_tag_component(command_queue, ground, Cube);
-
-  for (int i = 0; i < 1024; i++) {
-    EcsId cube = ecs_command_queue_create_entity(command_queue);
-    Transform cube_transform = TRANSFORM_DEFAULT;
-    cube_transform.position.z = i / 32.f;
-    cube_transform.position.x = i % 32;
-    cube_transform.position.y = 2.0;
-    ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
-                                                &cube_transform);
-    ecs_command_queue_insert_tag_component(command_queue, cube, Cube);
-    ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
-  }
+  EcsId quad = ecs_command_queue_create_entity(command_queue);
+  Transform quad_transform = TRANSFORM_DEFAULT;
+  quad_transform.position.x = -water_side_quad_count / 2.0;
+  quad_transform.position.z = 2.0;
+  quad_transform.position.y = -5.0;
+  ecs_command_queue_insert_component_with_ptr(command_queue, quad, Transform,
+                                              &quad_transform);
+  ecs_command_queue_insert_component(command_queue, quad, MeshInstance,
+                                     {.mesh_id = "proc_water"});
+  ecs_command_queue_insert_component(command_queue, quad, ShaderMaterial,
+                                     {.shader_identifier = "water.wgsl"});
 }
 
 int main(int argc, char **argv) {

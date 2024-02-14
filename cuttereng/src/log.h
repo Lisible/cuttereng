@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 typedef enum { TRACE, DBG, WARN, ERROR, INFO } LogLevel;
-#define LOG_LEVEL DBG
+#define LOG_LEVEL TRACE
 
 #define LOG_TRACE(format_str, ...) LOG(TRACE, format_str, ##__VA_ARGS__)
 #define LOG_DEBUG(format_str, ...) LOG(DBG, format_str, ##__VA_ARGS__)

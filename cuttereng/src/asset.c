@@ -92,6 +92,16 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
     return NULL;
   }
 
+  assets_store_(assets, asset_type, asset_path, asset);
+  return asset;
+}
+void assets_store_(Assets *assets, char *asset_type, char *asset_identifier,
+                   void *asset) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_identifier != NULL);
+  ASSERT(asset != NULL);
+
   AssetStore *asset_store =
       HashTableAssetStore_get(assets->asset_stores, asset_type);
   if (!asset_store) {
@@ -102,10 +112,9 @@ void *assets_load_asset(Assets *assets, char *asset_type, char *asset_path) {
     asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type);
   }
 
-  asset_store_set(asset_store, asset_path, asset);
-
-  LOG_DEBUG("Asset %s of type %s successfully loaded", asset_path, asset_type);
-  return asset;
+  asset_store_set(asset_store, asset_identifier, asset);
+  LOG_DEBUG("Asset %s of type %s successfully stored", asset_identifier,
+            asset_type);
 }
 
 void assets_clear(Assets *assets) {
@@ -163,6 +172,14 @@ void assets_remove_(Assets *assets, const char *asset_type,
   AssetStore *asset_store =
       HashTableAssetStore_get(assets->asset_stores, asset_type);
   asset_store_remove(asset_store, asset_path);
+}
+void assets_set_destructor_(Assets *assets, char *asset_type,
+                            AssetDestructor *asset_destructor) {
+  ASSERT(assets != NULL);
+  ASSERT(asset_type != NULL);
+  ASSERT(asset_destructor != NULL);
+  HashTableAssetDestructor_set(assets->destructors, asset_type,
+                               asset_destructor);
 }
 
 void assets_destroy(Assets *assets) {

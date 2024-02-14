@@ -8,6 +8,7 @@
 #include "../memory.h"
 #include "../transform.h"
 #include "../vec.h"
+#include "material.h"
 #include "mesh.h"
 #include "render_graph.h"
 #include <SDL.h>
@@ -25,6 +26,7 @@ DECL_HASH_TABLE(WGPUTexture, HashTableTexture)
 
 typedef struct GPUMaterial GPUMaterial;
 DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
+DECL_HASH_TABLE(GPUMesh *, HashTableGPUMesh)
 
 typedef struct {
   mat4 projection_from_view;
@@ -82,6 +84,7 @@ struct RendererResources {
   HashTableShaderModule *shader_modules;
   HashTableTexture *textures;
   HashTableMaterial *materials;
+  HashTableGPUMesh *meshes;
   WGPUBindGroupLayout material_bind_group_layout;
 
   CommonUniforms common_uniforms;
@@ -89,7 +92,6 @@ struct RendererResources {
   WGPUBindGroupLayout common_uniforms_bind_group_layout;
   WGPUBindGroup common_uniforms_bind_group;
 
-  GPUMesh cube_mesh;
   MeshUniforms mesh_uniforms[MAX_MESH_DRAW_PER_FRAME];
   size_t mesh_uniform_count;
   WGPUBuffer mesh_uniforms_buffer;
@@ -106,16 +108,45 @@ struct RendererResources {
 typedef struct RendererResources RendererResources;
 
 typedef struct {
+  MaterialType type;
+  union {
+    char *material_identifier;
+    char *material_shader;
+  };
+} DrawCommandMaterial;
+void DrawCommandMaterial_deinit(Allocator *allocator,
+                                DrawCommandMaterial *command_material);
+
+typedef struct {
   Transform transform;
-  char *material_identifier;
+  DrawCommandMaterial material;
+  char *mesh_identifier;
 } DrawCommand;
 
+void DrawCommand_deinit(Allocator *allocator, DrawCommand *command);
+
 DECL_VEC(DrawCommand, DrawCommandQueue)
+
+typedef void (*RendererRenderPipelineFn)(
+    RendererContext *ctx, RendererResources *res, void *render_pipeline_state,
+    DrawCommandQueue *draw_commands, Allocator *frame_allocator,
+    RenderGraph *render_graph, WGPUQueue wgpu_queue,
+    WGPUTextureView surface_texture_view, float current_time_secs);
+
+typedef void (*RendererRenderPipelineCleanupFn)(void *pipeline_state);
+
+typedef struct {
+  void *pipeline_state;
+  RendererRenderPipelineFn fn;
+  RendererRenderPipelineCleanupFn cleanup_fn;
+} RendererRenderPipeline;
+
 typedef struct {
   Allocator *allocator;
   RendererContext ctx;
   RendererResources resources;
   DrawCommandQueue draw_commands;
+  RendererRenderPipeline *render_pipeline;
 } Renderer;
 
 Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
@@ -125,9 +156,13 @@ void renderer_add_light(Renderer *renderer, const Light *light);
 void renderer_set_view_position(Renderer *renderer, v3f *view_position);
 void renderer_set_view_projection(Renderer *renderer, mat4 view_projection);
 void renderer_draw_mesh(Renderer *renderer, Transform *transform,
-                        char *material_identifier);
+                        const char *mesh_id, char *material_identifier);
+void renderer_draw_mesh_with_shader_material(Renderer *renderer,
+                                             Transform *transform,
+                                             const char *mesh_id,
+                                             const char *shader_identifier);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
-                     float current_time_secs);
+                     Assets *assets, float current_time_secs);
 void renderer_clear_caches(Renderer *renderer);
 void renderer_load_resources(Renderer *renderer, Assets *assets);
 

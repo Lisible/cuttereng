@@ -3,6 +3,6 @@
 
 #include "ecs/ecs.h"
 
-void cutter_bootstrap(EcsInitSystem init_system);
+void cutter_bootstrap(EcsSystemFn init_system);
 
 #endif // CUTTERENG_H

@@ -326,8 +326,12 @@ void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue) {
   ecs->reserved_entity_count = 0;
 }
 
-void ecs_default_init_system(EcsCommandQueue *queue) { (void)queue; }
-void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system) {
+void ecs_default_init_system(EcsCommandQueue *queue, EcsQueryIt *it) {
+  (void)queue;
+  (void)it;
+}
+void ecs_init(Allocator *allocator, Ecs *ecs, EcsSystemFn init_system,
+              void *system_context) {
   ASSERT(allocator != NULL);
   ASSERT(ecs != NULL);
 
@@ -337,7 +341,8 @@ void ecs_init(Allocator *allocator, Ecs *ecs, EcsInitSystem init_system) {
   ecs->component_stores = HashTableComponentStore_create(allocator, 16);
   EcsSystemVec_init(allocator, &ecs->systems);
   ecs_command_queue_init(allocator, &ecs->command_queue, ecs);
-  init_system(&ecs->command_queue);
+  EcsQueryIt it = {.allocator = ecs->allocator, .ctx = system_context};
+  init_system(&ecs->command_queue, &it);
 }
 void ecs_deinit(Ecs *ecs) {
   ecs_command_queue_deinit(&ecs->command_queue);

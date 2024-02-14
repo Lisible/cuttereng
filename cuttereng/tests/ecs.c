@@ -15,14 +15,14 @@ typedef struct {
 
 void t_ecs_init(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   T_ASSERT_EQ(ecs_get_entity_count(&ecs), 0);
   ecs_deinit(&ecs);
 }
 
 void t_ecs_create_entity(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId id = ecs_create_entity(&ecs);
   T_ASSERT_EQ(ecs_get_entity_count(&ecs), 1);
   T_ASSERT_EQ(id, 0);
@@ -34,7 +34,7 @@ void t_ecs_create_entity(void) {
 
 void t_ecs_insert_component(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   T_ASSERT(ecs_has_component(&ecs, entity, Position));
@@ -44,7 +44,7 @@ void t_ecs_insert_component(void) {
 
 void t_ecs_get_component(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -69,7 +69,7 @@ void t_ecs_get_component(void) {
 
 void t_ecs_count_matching(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -101,7 +101,7 @@ void t_ecs_count_matching(void) {
 
 void t_ecs_query(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   EcsId entity2 = ecs_create_entity(&ecs);
@@ -131,7 +131,7 @@ void t_ecs_query(void) {
 
 void t_ecs_query_two_components(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});
@@ -189,7 +189,7 @@ void move_right_system(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void t_ecs_register_system(void) {
   Ecs ecs;
-  ecs_init(&system_allocator, &ecs, ecs_default_init_system);
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
   EcsId entity = ecs_create_entity(&ecs);
   ecs_insert_component(&ecs, entity, Position, {.x = 4, .y = 22});
   ecs_insert_component(&ecs, entity, Velocity, {.x = 123, .y = 865});

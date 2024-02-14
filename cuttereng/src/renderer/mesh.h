@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_RENDERER_MESH_H
 #define CUTTERENG_RENDERER_MESH_H
 
+#include "../asset.h"
 #include "../common.h"
 #include "../math/vector.h"
 #include "../memory.h"
@@ -20,6 +21,8 @@ typedef struct {
   Index *indices;
   size_t index_count;
 } Mesh;
+void mesh_destructor_fn(Allocator *allocator, void *asset);
+extern AssetDestructor mesh_destructor;
 
 /// Initializes a mesh with the given vertices and indices
 ///

@@ -5,6 +5,7 @@
 #include "../log.h"
 #include "../math/matrix.h"
 #include "../memory.h"
+#include "default_pipeline.h"
 #include "font.h"
 #include "material.h"
 #include "mesh.h"
@@ -12,6 +13,7 @@
 #include "shader.h"
 #include "src/filesystem.h"
 #include "src/graphics/light.h"
+#include "src/vec.h"
 #include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
@@ -40,6 +42,13 @@ void HashTableMaterial_destructor(Allocator *allocator, void *value) {
   gpu_material_destroy(allocator, value);
 }
 DEF_HASH_TABLE(GPUMaterial *, HashTableMaterial, HashTableMaterial_destructor)
+
+void HashTableGPUMesh_destructor(Allocator *allocator, void *value) {
+  (void)allocator;
+  gpu_mesh_deinit(value);
+  allocator_free(allocator, (GPUMesh *)value);
+}
+DEF_HASH_TABLE(GPUMesh *, HashTableGPUMesh, HashTableGPUMesh_destructor)
 
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
 
@@ -211,6 +220,8 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
   renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth32Float;
   // renderer->ctx.resolution_factor = 0.4;
   renderer->ctx.resolution_factor = 1.0;
+  renderer->render_pipeline =
+      renderer_default_render_pipeline_create(allocator);
 
   initialize_resources(renderer, assets, queue);
   wgpuQueueRelease(queue);
@@ -367,11 +378,13 @@ void load_textures(Allocator *allocator, HashTableTexture *textures,
 void renderer_destroy(Renderer *renderer) {
   ASSERT(renderer != NULL);
 
+  renderer_default_render_pipeline_destroy(renderer->allocator,
+                                           renderer->render_pipeline);
   HashTableRenderPipeline_destroy(renderer->resources.pipelines);
   HashTableShaderModule_destroy(renderer->resources.shader_modules);
   HashTableTexture_destroy(renderer->resources.textures);
   HashTableMaterial_destroy(renderer->resources.materials);
-  gpu_mesh_deinit(&renderer->resources.cube_mesh);
+  HashTableGPUMesh_destroy(renderer->resources.meshes);
   wgpuBindGroupLayoutRelease(renderer->resources.material_bind_group_layout);
   wgpuBindGroupLayoutRelease(
       renderer->resources.mesh_uniforms_bind_group_layout);
@@ -384,13 +397,8 @@ void renderer_destroy(Renderer *renderer) {
   wgpuBufferDestroy(renderer->resources.common_uniforms_buffer);
   wgpuBufferRelease(renderer->resources.common_uniforms_buffer);
 
-  for (size_t draw_command_index = 0;
-       draw_command_index < renderer->draw_commands.length;
-       draw_command_index++) {
-    allocator_free(
-        renderer->allocator,
-        renderer->draw_commands.data[draw_command_index].material_identifier);
-  }
+  VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand,
+               { DrawCommand_deinit(renderer->allocator, command); });
   DrawCommandQueue_deinit(&renderer->draw_commands);
 
   wgpuTextureDestroy(renderer->resources.depth_texture);
@@ -403,15 +411,31 @@ void renderer_destroy(Renderer *renderer) {
 }
 
 void renderer_draw_mesh(Renderer *renderer, Transform *transform,
+                        const char *mesh_identifier,
                         char *material_identifier) {
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
   DrawCommand draw_command;
-  size_t material_identifier_length = strlen(material_identifier) + 1;
-  draw_command.material_identifier =
-      allocator_allocate(renderer->allocator, material_identifier_length);
-  memcpy(draw_command.material_identifier, material_identifier,
-         material_identifier_length);
+  draw_command.mesh_identifier =
+      memory_clone_string(renderer->allocator, mesh_identifier);
+  draw_command.material.type = MaterialType_Basic;
+  draw_command.material.material_identifier =
+      memory_clone_string(renderer->allocator, material_identifier);
+  memcpy(&draw_command.transform, transform, sizeof(Transform));
+  DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
+}
+void renderer_draw_mesh_with_shader_material(Renderer *renderer,
+                                             Transform *transform,
+                                             const char *mesh_identifier,
+                                             const char *shader_identifier) {
+  ASSERT(renderer != NULL);
+  ASSERT(transform != NULL);
+  DrawCommand draw_command;
+  draw_command.mesh_identifier =
+      memory_clone_string(renderer->allocator, mesh_identifier);
+  draw_command.material.type = MaterialType_Shader;
+  draw_command.material.material_shader =
+      memory_clone_string(renderer->allocator, shader_identifier);
   memcpy(&draw_command.transform, transform, sizeof(Transform));
   DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
 }
@@ -438,135 +462,16 @@ void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window) {
   renderer->ctx.wgpu_surface = wgpu_surface;
 }
 
-void skybox_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
-                          RendererResources *res,
-                          DrawCommandQueue *command_queue, GPUMesh *mesh,
-                          u32 mesh_stride, void *custom_data) {
-  (void)custom_data;
-  (void)res;
-  (void)command_queue;
-  (void)mesh;
-  (void)mesh_stride;
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
+void load_mesh_in_cache(Renderer *renderer, Assets *assets, WGPUQueue queue,
+                        char *mesh_identifier) {
+  GPUMesh *gpu_mesh = allocator_allocate(renderer->allocator, sizeof(GPUMesh));
+  Mesh *mesh = assets_fetch(assets, Mesh, mesh_identifier);
+  gpu_mesh_init(renderer->ctx.wgpu_device, queue, gpu_mesh, mesh);
+  HashTableGPUMesh_set(renderer->resources.meshes, mesh_identifier, gpu_mesh);
 }
 
-void debug_grid_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
-                              RendererResources *res,
-                              DrawCommandQueue *command_queue, GPUMesh *mesh,
-                              u32 mesh_stride, void *custom_data) {
-  (void)custom_data;
-  (void)res;
-  (void)command_queue;
-  (void)mesh;
-  (void)mesh_stride;
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
-                                    res->common_uniforms_bind_group, 0, NULL);
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
-}
-
-void mesh_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
-                        RendererResources *res, DrawCommandQueue *command_queue,
-                        GPUMesh *mesh, u32 mesh_stride, void *custom_data) {
-  (void)custom_data;
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
-                                    res->common_uniforms_bind_group, 0, NULL);
-  gpu_mesh_bind(render_pass_encoder, mesh);
-  for (size_t command_index = 0;
-       command_index < DrawCommandQueue_length(command_queue);
-       command_index++) {
-    DrawCommand *command = &command_queue->data[command_index];
-    u32 stride = mesh_stride * command_index;
-    wgpuRenderPassEncoderSetBindGroup(
-        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
-
-    GPUMaterial *material =
-        HashTableMaterial_get(res->materials, command->material_identifier);
-    wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 2,
-                                      material->bind_group, 0, 0);
-    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
-  }
-}
-
-void directional_light_space_depth_map_pass_dispatch(
-    WGPURenderPassEncoder render_pass_encoder, RendererResources *res,
-    DrawCommandQueue *command_queue, GPUMesh *mesh, u32 mesh_stride,
-    void *custom_data) {
-  (void)custom_data;
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
-                                    res->common_uniforms_bind_group, 0, NULL);
-  gpu_mesh_bind(render_pass_encoder, mesh);
-  for (size_t command_index = 0;
-       command_index < DrawCommandQueue_length(command_queue);
-       command_index++) {
-    u32 stride = mesh_stride * command_index;
-    wgpuRenderPassEncoderSetBindGroup(
-        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
-    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
-  }
-}
-
-typedef struct {
-  WGPUBindGroup directional_light_depth_map;
-} DirectionalLightShadowMapToGBufferPassData;
-
-void directional_light_shadow_map_to_gbuffer_pass_dispatch(
-    WGPURenderPassEncoder render_pass_encoder, RendererResources *res,
-    DrawCommandQueue *command_queue, GPUMesh *mesh, u32 mesh_stride,
-    void *custom_data) {
-  (void)res;
-  (void)command_queue;
-  (void)mesh;
-  (void)mesh_stride;
-  DirectionalLightShadowMapToGBufferPassData *data = custom_data;
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
-                                    data->directional_light_depth_map, 0, NULL);
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
-}
-typedef struct {
-  WGPUBindGroup g_buffer_bind_group;
-} DeferredLightingPassData;
-
-void deferred_lighting_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
-                                     RendererResources *res,
-                                     DrawCommandQueue *command_queue,
-                                     GPUMesh *mesh, u32 mesh_stride,
-                                     void *custom_data) {
-  (void)command_queue;
-  (void)mesh;
-  (void)mesh_stride;
-  DeferredLightingPassData *pass_data = custom_data;
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0,
-                                    res->common_uniforms_bind_group, 0, NULL);
-  wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 1,
-                                    pass_data->g_buffer_bind_group, 0, NULL);
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
-}
-
-typedef struct {
-  WGPUBindGroup deferred_lighting_result_bind_group;
-} CompositionPassData;
-
-void composition_pass_dispatch(WGPURenderPassEncoder render_pass_encoder,
-                               RendererResources *res,
-                               DrawCommandQueue *command_queue, GPUMesh *mesh,
-                               u32 mesh_stride, void *custom_data) {
-  (void)res;
-  (void)command_queue;
-  (void)mesh;
-  (void)mesh_stride;
-  CompositionPassData *pass_data = custom_data;
-  wgpuRenderPassEncoderSetBindGroup(
-      render_pass_encoder, 0, pass_data->deferred_lighting_result_bind_group, 0,
-      NULL);
-  wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
-}
-
-uint32_t ceilToNextMultiple(uint32_t value, uint32_t step) {
-  uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-  return step * divide_and_ceil;
-}
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
-                     float current_time_secs) {
+                     Assets *assets, float current_time_secs) {
   WGPUQueue wgpu_queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
   WGPUSurfaceTexture surface_texture;
   wgpuSurfaceGetCurrentTexture(renderer->ctx.wgpu_surface, &surface_texture);
@@ -590,358 +495,45 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
 
   RenderGraph render_graph;
   render_graph_init(&render_graph);
-  RenderGraphResourceHandle surface_texture_handle =
-      render_graph_register_texture_view(
-          &render_graph, renderer->ctx.wgpu_device, surface_texture_view,
-          RenderGraphResourceUsage_ColorAttachment,
-          WGPUTextureFormat_BGRA8UnormSrgb);
 
-  u32 internal_width =
-      renderer->ctx.resolution_factor * renderer->ctx.surface_size.width;
-  u32 internal_height =
-      renderer->ctx.resolution_factor * renderer->ctx.surface_size.height;
-  RenderGraphResourceHandle depth_texture = render_graph_create_texture(
-      &render_graph, RenderGraphResourceUsage_DepthStencilAttachment,
-      renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float, internal_width,
-      internal_height);
-
-  GBuffer g_buffer;
-  GBuffer_init(&g_buffer, renderer->ctx.wgpu_device, &render_graph,
-               internal_width, internal_height);
-  WGPUBindGroupLayout g_buffer_bind_group_layout =
-      GBuffer_create_bind_group_layout(renderer->ctx.wgpu_device);
-  WGPUBindGroup g_buffer_bind_group = GBuffer_create_bind_group(
-      &g_buffer, &render_graph, renderer->ctx.wgpu_device,
-      g_buffer_bind_group_layout);
-
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "g_buffer_pass",
-          .bind_group_layouts =
-              {renderer->resources.common_uniforms_bind_group_layout,
-               renderer->resources.mesh_uniforms_bind_group_layout,
-               renderer->resources.material_bind_group_layout},
-          .bind_group_layout_count = 3,
-          .render_attachments =
-              {(RenderPassRenderAttachment){
-                   .type = RenderPassRenderAttachmentType_ColorAttachment,
-                   .render_attachment_handle = &g_buffer.base_color,
-                   .load_op = WGPULoadOp_Clear,
-                   .store_op = WGPUStoreOp_Store},
-               (RenderPassRenderAttachment){
-                   .type = RenderPassRenderAttachmentType_ColorAttachment,
-                   .render_attachment_handle = &g_buffer.normal,
-                   .load_op = WGPULoadOp_Clear,
-                   .store_op = WGPUStoreOp_Store},
-               (RenderPassRenderAttachment){
-                   .type = RenderPassRenderAttachmentType_ColorAttachment,
-                   .render_attachment_handle = &g_buffer.position,
-                   .load_op = WGPULoadOp_Clear,
-                   .store_op = WGPUStoreOp_Store},
-               (RenderPassRenderAttachment){
-                   .type = RenderPassRenderAttachmentType_DepthAttachment,
-                   .render_attachment_handle = &depth_texture,
-                   .load_op = WGPULoadOp_Clear,
-                   .store_op = WGPUStoreOp_Store}},
-          .render_attachment_count = 4,
-          .uses_vertex_buffer = true,
-          .shader_module = {.module_identifier = "shader.wgsl"},
-          .dispatch_fn = mesh_pass_dispatch});
-
-  u32 depth_map_resolution = 1024;
-  RenderGraphResourceHandle directional_light_space_depth_map =
-      render_graph_create_texture(
-          &render_graph, RenderGraphResourceUsage_DepthStencilAttachment,
-          renderer->ctx.wgpu_device, WGPUTextureFormat_Depth32Float,
-          depth_map_resolution, depth_map_resolution);
-
-  WGPUBindGroupLayout directional_light_space_depth_map_bind_group_layout =
-      wgpuDeviceCreateBindGroupLayout(
-          renderer->ctx.wgpu_device,
-          &(const WGPUBindGroupLayoutDescriptor){
-              .label = "directional_light_space_depth_map_bind_group_layout",
-              .entryCount = 2,
-              .entries = (const WGPUBindGroupLayoutEntry[]){
-                  (WGPUBindGroupLayoutEntry){
-                      .binding = 0,
-                      .visibility = WGPUShaderStage_Fragment,
-                      .texture =
-                          (WGPUTextureBindingLayout){
-                              .sampleType =
-                                  WGPUTextureSampleType_UnfilterableFloat,
-                              .viewDimension = WGPUTextureViewDimension_2D}},
-                  (WGPUBindGroupLayoutEntry){
-                      .binding = 1,
-                      .visibility = WGPUShaderStage_Fragment,
-                      .sampler =
-                          (WGPUSamplerBindingLayout){
-                              .type = WGPUSamplerBindingType_NonFiltering}},
-              }});
-
-  RenderGraphOwnedTextureResource
-      *directional_light_space_depth_map_texture_resource =
-          &render_graph.resources[directional_light_space_depth_map.id]
-               .owned_texture;
-  WGPUBindGroup directional_light_space_depth_map_bind_group =
-      wgpuDeviceCreateBindGroup(
-          renderer->ctx.wgpu_device,
-          &(const WGPUBindGroupDescriptor){
-              .label = "directional_light_space_depth_map_bind_group",
-              .layout = directional_light_space_depth_map_bind_group_layout,
-              .entryCount = 2,
-              .entries = (const WGPUBindGroupEntry[]){
-                  (WGPUBindGroupEntry){
-                      .binding = 0,
-                      .textureView =
-                          directional_light_space_depth_map_texture_resource
-                              ->texture_view},
-                  (WGPUBindGroupEntry){
-                      .binding = 1,
-                      .sampler =
-                          directional_light_space_depth_map_texture_resource
-                              ->texture_sampler},
-              }});
-
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "directional_light_space_depth_map_pass",
-          .bind_group_layouts =
-              {renderer->resources.common_uniforms_bind_group_layout,
-               renderer->resources.mesh_uniforms_bind_group_layout},
-          .bind_group_layout_count = 2,
-          .render_attachments = {(RenderPassRenderAttachment){
-              .type = RenderPassRenderAttachmentType_DepthAttachment,
-              .render_attachment_handle = &directional_light_space_depth_map}},
-          .render_attachment_count = 1,
-          .uses_vertex_buffer = true,
-          .cull_mode = CullMode_Front,
-          .shader_module = {.module_identifier =
-                                "directional_light_space_depth_map.wgsl",
-                            .has_no_fragment_shader = true},
-          .dispatch_fn = directional_light_space_depth_map_pass_dispatch});
-
-  DirectionalLightShadowMapToGBufferPassData
-      directional_light_shadow_map_to_gbuffer_pass_data = {
-          .directional_light_depth_map =
-              directional_light_space_depth_map_bind_group};
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "directional_light_shadow_map_to_gbuffer",
-          .bind_group_layouts =
-              {directional_light_space_depth_map_bind_group_layout},
-          .bind_group_layout_count = 1,
-          .render_attachments = {(RenderPassRenderAttachment){
-              .type = RenderPassRenderAttachmentType_ColorAttachment,
-              .load_op = WGPULoadOp_Clear,
-              .store_op = WGPUStoreOp_Store,
-              .render_attachment_handle =
-                  &g_buffer.directional_light_space_depth_map}},
-          .render_attachment_count = 1,
-          .uses_vertex_buffer = false,
-          .shader_module =
-              {
-                  .module_identifier =
-                      "directional_light_shadow_map_to_gbuffer.wgsl",
-              },
-          .pass_data = &directional_light_shadow_map_to_gbuffer_pass_data,
-          .dispatch_fn =
-              directional_light_shadow_map_to_gbuffer_pass_dispatch});
-
-  RenderGraphResourceHandle deferred_lighting_result =
-      render_graph_create_texture(
-          &render_graph, RenderGraphResourceUsage_ColorAttachment,
-          renderer->ctx.wgpu_device, WGPUTextureFormat_RGBA8UnormSrgb,
-          renderer->ctx.surface_size.width, renderer->ctx.surface_size.height);
-  DeferredLightingPassData deferred_lighting_pass_data = {
-      .g_buffer_bind_group = g_buffer_bind_group};
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "deferred_lighting_pass",
-          .bind_group_layouts =
-              {renderer->resources.common_uniforms_bind_group_layout,
-               g_buffer_bind_group_layout},
-          .bind_group_layout_count = 2,
-          .render_attachments = {(RenderPassRenderAttachment){
-              .type = RenderPassRenderAttachmentType_ColorAttachment,
-              .render_attachment_handle = &deferred_lighting_result,
-              .load_op = WGPULoadOp_Load,
-              .store_op = WGPUStoreOp_Store}},
-          .render_attachment_count = 1,
-          .read_resources = {&g_buffer.base_color, &g_buffer.normal,
-                             &g_buffer.position,
-                             &g_buffer.directional_light_space_depth_map,
-                             &surface_texture_handle},
-          .read_resource_count = 5,
-          .shader_module = {.module_identifier = "deferred_lighting.wgsl"},
-          .pass_data = &deferred_lighting_pass_data,
-          .dispatch_fn = deferred_lighting_pass_dispatch});
-
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "skybox_pass",
-          .bind_group_layout_count = 0,
-          .render_attachments = {(RenderPassRenderAttachment){
-              .type = RenderPassRenderAttachmentType_ColorAttachment,
-              .render_attachment_handle = &surface_texture_handle,
-              .load_op = WGPULoadOp_Clear,
-              .store_op = WGPUStoreOp_Store}},
-          .render_attachment_count = 1,
-          .read_resource_count = 0,
-          .uses_vertex_buffer = false,
-          .shader_module = {.module_identifier = "skybox.wgsl"},
-          .dispatch_fn = skybox_pass_dispatch});
-
-  WGPUBindGroupLayout deferred_lighting_result_bind_group_layout =
-      wgpuDeviceCreateBindGroupLayout(
-          renderer->ctx.wgpu_device,
-          &(const WGPUBindGroupLayoutDescriptor){
-              .entryCount = 2,
-              .entries = (const WGPUBindGroupLayoutEntry[]){
-                  (WGPUBindGroupLayoutEntry){
-                      .binding = 0,
-                      .visibility = WGPUShaderStage_Fragment,
-                      .texture =
-                          (WGPUTextureBindingLayout){
-                              .sampleType = WGPUTextureSampleType_Float,
-                              .viewDimension = WGPUTextureViewDimension_2D}},
-                  (WGPUBindGroupLayoutEntry){
-                      .binding = 1,
-                      .visibility = WGPUShaderStage_Fragment,
-                      .sampler =
-                          (WGPUSamplerBindingLayout){
-                              .type = WGPUSamplerBindingType_Filtering},
-                  }}});
-
-  WGPUBindGroup deferred_lighting_result_bind_group = wgpuDeviceCreateBindGroup(
-      renderer->ctx.wgpu_device,
-      &(const WGPUBindGroupDescriptor){
-          .entryCount = 2,
-          .entries =
-              (const WGPUBindGroupEntry[]){
-                  (WGPUBindGroupEntry){
-                      .binding = 0,
-                      .textureView =
-                          render_graph.resources[deferred_lighting_result.id]
-                              .owned_texture.texture_view},
-                  (WGPUBindGroupEntry){
-                      .binding = 1,
-                      .sampler =
-                          render_graph.resources[deferred_lighting_result.id]
-                              .owned_texture.texture_sampler}},
-          .layout = deferred_lighting_result_bind_group_layout});
-
-  CompositionPassData composition_pass_data = {
-      .deferred_lighting_result_bind_group =
-          deferred_lighting_result_bind_group};
-  render_graph_add_pass(
-      frame_allocator, &render_graph, &renderer->ctx, &renderer->resources,
-      &(const RenderPassDescriptor){
-          .identifier = "composition_pass",
-          .bind_group_layouts = {deferred_lighting_result_bind_group_layout},
-          .bind_group_layout_count = 1,
-          .render_attachments = {(RenderPassRenderAttachment){
-              .type = RenderPassRenderAttachmentType_ColorAttachment,
-              .render_attachment_handle = &surface_texture_handle,
-              .load_op = WGPULoadOp_Load,
-              .store_op = WGPUStoreOp_Store}},
-          .render_attachment_count = 1,
-          .read_resources = {&deferred_lighting_result,
-                             &surface_texture_handle},
-          .read_resource_count = 2,
-          .shader_module = {.module_identifier = "composition.wgsl"},
-          .pass_data = &composition_pass_data,
-          .dispatch_fn = composition_pass_dispatch});
-
-  for (size_t light_index = 0; light_index < renderer->resources.light_count;
-       light_index++) {
-    Light *light = &renderer->resources.lights[light_index];
-    if (light->type == LightType_Directional) {
-      renderer->resources.common_uniforms.directional_light =
-          light->directional_light;
-
-      // computing the light space view proj matrix
-      mat4 light_space_projection;
-      mat4_set_to_orthographic(light_space_projection, 1.0, 20.0, -20.0, 20.0,
-                               14.0, -14.0);
-
-      v3f target = {0};
-      // v3f target = light->directional_light.position;
-      // v3f_add(&target, &light->directional_light.direction);
-
-      mat4 light_space_view;
-      mat4_look_at(light_space_view, &light->directional_light.position,
-                   &target, &(const v3f){.y = 1.0});
-      mat4_transpose(light_space_view);
-
-      mat4 light_space_projection_from_view_from_local = MAT4_IDENTITY;
-      mat4_mul(light_space_projection, light_space_view,
-               light_space_projection_from_view_from_local);
-      mat4_transpose(light_space_projection_from_view_from_local);
-      memcpy(renderer->resources.common_uniforms
-                 .light_space_projection_from_view_from_local,
-             light_space_projection_from_view_from_local,
-             16 * sizeof(mat4_value_type));
+  VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand, {
+    if (!HashTableGPUMesh_has(renderer->resources.meshes,
+                              command->mesh_identifier)) {
+      load_mesh_in_cache(renderer, assets, wgpu_queue,
+                         command->mesh_identifier);
     }
-  }
-  renderer->resources.common_uniforms.current_time_secs = current_time_secs;
-  wgpuQueueWriteBuffer(wgpu_queue, renderer->resources.common_uniforms_buffer,
-                       0, &renderer->resources.common_uniforms,
-                       sizeof(CommonUniforms));
+  });
+  DrawCommandQueue_length(&renderer->draw_commands);
 
-  size_t mesh_uniform_stride = ceilToNextMultiple(
-      sizeof(MeshUniforms),
-      renderer->ctx.wgpu_limits.limits.minUniformBufferOffsetAlignment);
-  for (size_t command_index = 0; command_index < renderer->draw_commands.length;
-       command_index++) {
-    DrawCommand *command = &renderer->draw_commands.data[command_index];
-    MeshUniforms mesh_uniforms = {0};
-    transform_matrix(&command->transform,
-                     (float *)mesh_uniforms.world_from_local);
-    mat4_transpose(mesh_uniforms.world_from_local);
-    wgpuQueueWriteBuffer(wgpu_queue, renderer->resources.mesh_uniforms_buffer,
-                         command_index * mesh_uniform_stride, &mesh_uniforms,
-                         sizeof(MeshUniforms));
-  }
+  renderer->render_pipeline->fn(&renderer->ctx, &renderer->resources,
+                                renderer->render_pipeline->pipeline_state,
+                                &renderer->draw_commands, frame_allocator,
+                                &render_graph, wgpu_queue, surface_texture_view,
+                                current_time_secs);
 
   WGPUCommandEncoderDescriptor command_encoder_descriptor = {
       .nextInChain = NULL, .label = "command_encoder"};
   WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       renderer->ctx.wgpu_device, &command_encoder_descriptor);
-
   render_graph_execute(&render_graph, command_encoder, &renderer->resources,
                        &renderer->draw_commands);
-
   WGPUCommandBufferDescriptor command_buffer_descriptor = {
       .nextInChain = NULL, .label = "command_buffer"};
   WGPUCommandBuffer command_buffer =
       wgpuCommandEncoderFinish(command_encoder, &command_buffer_descriptor);
   wgpuQueueSubmit(wgpu_queue, 1, &command_buffer);
   wgpuSurfacePresent(renderer->ctx.wgpu_surface);
+
+  render_graph_deinit(&render_graph);
+  renderer->render_pipeline->cleanup_fn(
+      renderer->render_pipeline->pipeline_state);
   wgpuQueueRelease(wgpu_queue);
   wgpuCommandBufferRelease(command_buffer);
   wgpuCommandEncoderRelease(command_encoder);
   wgpuTextureRelease(surface_texture.texture);
-  wgpuBindGroupLayoutRelease(deferred_lighting_result_bind_group_layout);
-  wgpuBindGroupRelease(deferred_lighting_result_bind_group);
-  wgpuBindGroupLayoutRelease(g_buffer_bind_group_layout);
-  wgpuBindGroupRelease(g_buffer_bind_group);
-  wgpuBindGroupLayoutRelease(
-      directional_light_space_depth_map_bind_group_layout);
-  wgpuBindGroupRelease(directional_light_space_depth_map_bind_group);
-  render_graph_deinit(&render_graph);
 
-  for (size_t draw_command_index = 0;
-       draw_command_index < renderer->draw_commands.length;
-       draw_command_index++) {
-    allocator_free(
-        renderer->allocator,
-        renderer->draw_commands.data[draw_command_index].material_identifier);
-  }
+  VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand,
+               { DrawCommand_deinit(renderer->allocator, command); });
   DrawCommandQueue_clear(&renderer->draw_commands);
   renderer->resources.light_count = 0;
 }
@@ -1167,7 +759,7 @@ void get_adapter_required_limits(WGPUAdapter adapter,
   out_required_limits->limits.maxBindingsPerBindGroup = 8;
   out_required_limits->limits.maxUniformBufferBindingSize =
       sizeof(CommonUniforms);
-  out_required_limits->limits.maxBufferSize = 248000;
+  out_required_limits->limits.maxBufferSize = 192000000;
   out_required_limits->limits.maxVertexBufferArrayStride = sizeof(Vertex);
   out_required_limits->limits.maxInterStageShaderComponents = 9;
   out_required_limits->limits.maxTextureDimension2D = 4096;
@@ -1219,7 +811,8 @@ WGPUBindGroupLayout create_mesh_uniforms_bind_group_layout(WGPUDevice device) {
                                   .type = WGPUBufferBindingType_Uniform,
                                   .minBindingSize = sizeof(MeshUniforms),
                                   .hasDynamicOffset = true},
-                          .visibility = WGPUShaderStage_Vertex},
+                          .visibility = WGPUShaderStage_Vertex |
+                                        WGPUShaderStage_Fragment},
               });
 }
 
@@ -1325,9 +918,6 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
       renderer->ctx.wgpu_device, &renderer->ctx.depth_texture_format);
 
   DrawCommandQueue_init(renderer->allocator, &renderer->draw_commands);
-  cube_mesh_init(renderer->ctx.wgpu_device, queue,
-                 &renderer->resources.cube_mesh);
-
   initialize_common_uniforms(&renderer->resources.common_uniforms);
   renderer->resources.common_uniforms_buffer =
       create_common_uniforms_buffer(renderer->ctx.wgpu_device);
@@ -1363,6 +953,9 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
       HashTableTexture_create(renderer->allocator, 512);
   renderer->resources.materials =
       HashTableMaterial_create(renderer->allocator, 32);
+  renderer->resources.meshes =
+      HashTableGPUMesh_create(renderer->allocator, 128);
+  assets_set_destructor(assets, Mesh, &mesh_destructor);
 
   assets_register_loader(assets, Shader, &shader_asset_loader,
                          &shader_asset_destructor);
@@ -1378,4 +971,30 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
   load_materials(renderer->allocator, renderer->ctx.wgpu_device,
                  renderer->resources.materials, renderer->resources.textures,
                  renderer->resources.material_bind_group_layout, assets);
+
+  GPUMesh *cube_mesh = allocator_allocate(renderer->allocator, sizeof(GPUMesh));
+  cube_mesh_init(renderer->ctx.wgpu_device, queue, cube_mesh);
+  HashTableGPUMesh_set(renderer->resources.meshes, "_cube", cube_mesh);
+}
+
+void DrawCommand_deinit(Allocator *allocator, DrawCommand *command) {
+  ASSERT(allocator != NULL);
+  ASSERT(command != NULL);
+  allocator_free(allocator, command->mesh_identifier);
+  DrawCommandMaterial_deinit(allocator, &command->material);
+}
+void DrawCommandMaterial_deinit(Allocator *allocator,
+                                DrawCommandMaterial *command_material) {
+  ASSERT(allocator != NULL);
+  ASSERT(command_material != NULL);
+
+  switch (command_material->type) {
+  case MaterialType_Shader:
+    allocator_free(allocator, command_material->material_shader);
+    break;
+  case MaterialType_Basic:
+  default:
+    allocator_free(allocator, command_material->material_identifier);
+    break;
+  }
 }
