@@ -113,15 +113,15 @@ static void parse_array(void) {
   Json *parsed_json = json_parse_from_str(&system_allocator, json_string);
   T_ASSERT_NOT_NULL(parsed_json);
   T_ASSERT_EQ(parsed_json->type, JSON_ARRAY);
-  T_ASSERT_EQ(parsed_json->array[0]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[0]->number, 1.0, 0.1);
-  T_ASSERT_EQ(parsed_json->array[1]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[1]->number, 2.0, 0.1);
-  T_ASSERT_EQ(parsed_json->array[2]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[2]->number, 4.0, 0.1);
-  T_ASSERT_EQ(parsed_json->array[3]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[3]->number, 5.0, 0.1);
-  T_ASSERT_NULL(parsed_json->array[4]);
+  T_ASSERT_EQ(json_array_length(parsed_json->array), 4);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 0)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 0)->number, 1.0, 0.1);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 1)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 1)->number, 2.0, 0.1);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 2)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 2)->number, 4.0, 0.1);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 3)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 3)->number, 5.0, 0.1);
   json_destroy(&system_allocator, parsed_json);
 }
 
@@ -132,9 +132,8 @@ static void parse_array_with_reallocation(void) {
   T_ASSERT_NOT_NULL(parsed_json);
   T_ASSERT_EQ(parsed_json->type, JSON_ARRAY);
   for (size_t i = 0; i < 21; i++) {
-    T_ASSERT_NOT_NULL(parsed_json->array[i]);
+    T_ASSERT_NOT_NULL(json_array_at(parsed_json->array, i));
   }
-  T_ASSERT_NULL(parsed_json->array[21]);
   json_destroy(&system_allocator, parsed_json);
 }
 
@@ -143,14 +142,14 @@ static void parse_heterogeneous_array(void) {
   Json *parsed_json = json_parse_from_str(&system_allocator, json_string);
   T_ASSERT_NOT_NULL(parsed_json);
   T_ASSERT_EQ(parsed_json->type, JSON_ARRAY);
-  T_ASSERT_EQ(parsed_json->array[0]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[0]->number, 1.0, 0.1);
-  T_ASSERT_EQ(parsed_json->array[1]->type, JSON_STRING);
-  T_ASSERT(strcmp(parsed_json->array[1]->string, "this is a string") == 0);
-  T_ASSERT_EQ(parsed_json->array[2]->type, JSON_NUMBER);
-  T_ASSERT_FLOAT_EQ(parsed_json->array[2]->number, 4.0, 0.1);
-  T_ASSERT_EQ(parsed_json->array[3]->type, JSON_ARRAY);
-  T_ASSERT_NULL(parsed_json->array[4]);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 0)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 0)->number, 1.0, 0.1);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 1)->type, JSON_STRING);
+  T_ASSERT(strcmp(json_array_at(parsed_json->array, 1)->string,
+                  "this is a string") == 0);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 2)->type, JSON_NUMBER);
+  T_ASSERT_FLOAT_EQ(json_array_at(parsed_json->array, 2)->number, 4.0, 0.1);
+  T_ASSERT_EQ(json_array_at(parsed_json->array, 3)->type, JSON_ARRAY);
   json_destroy(&system_allocator, parsed_json);
 }
 
@@ -211,7 +210,7 @@ static void parse_object_with_a_ton_of_attributes(void) {
   T_ASSERT_EQ(parsed_json->type, JSON_OBJECT);
   T_ASSERT_NOT_NULL(json_object_get(parsed_json->object, "property97"));
   T_ASSERT_FLOAT_EQ(json_object_get(parsed_json->object, "property97")->number,
-                  97.0, 0.1);
+                    97.0, 0.1);
 
   json_destroy(&system_allocator, parsed_json);
 }

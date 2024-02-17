@@ -2,7 +2,6 @@
 #define CUTTERENG_JSON_H
 #include "memory.h"
 #include <stdbool.h>
-#include <stddef.h>
 
 #define JSON_LOG_PARSE_ERROR(ctx, msg, ...)                                    \
   LOG_ERROR("%d:%d " msg, ctx->line, ctx->column, ##__VA_ARGS__)
@@ -17,19 +16,31 @@ typedef enum {
 } JsonValueType;
 
 typedef struct JsonObject JsonObject;
+typedef struct JsonArray JsonArray;
+
 typedef struct Json Json;
 struct Json {
   JsonValueType type;
   union {
     JsonObject *object;
-    Json **array;
+    JsonArray *array;
     char *string;
     double number;
     bool boolean;
   };
 };
 
+size_t json_array_length(const JsonArray *array);
+Json *json_array_at(const JsonArray *array, size_t index);
+
+/// Returns the JsonObject represented by the Json
+//
+// @return The associated JsonObject or NULL if json doesn't have the object
+// type
+JsonObject *json_as_object(const Json *json);
 Json *json_object_get(const JsonObject *object, const char *key);
+Json *json_object_get_typed(const JsonObject *object, JsonValueType type,
+                            const char *key);
 void json_object_steal(JsonObject *object, const char *key);
 
 /// Parses a json from a string

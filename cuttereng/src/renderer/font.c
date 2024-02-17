@@ -67,8 +67,10 @@ void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
   }
 
   font->glyph_count = 0;
-  while (glyphs_json->array[font->glyph_count] != NULL) {
-    Json *glyph_element_json = glyphs_json->array[font->glyph_count];
+  for (size_t glyph_index = 0;
+       glyph_index < json_array_length(glyphs_json->array); glyph_index++) {
+    Json *glyph_element_json =
+        json_array_at(glyphs_json->array, font->glyph_count);
     if (glyph_element_json->type != JSON_OBJECT) {
       LOG_ERROR("glyph element of font file: %s is not an object", path);
       goto cleanup_atlas_str;
@@ -101,7 +103,7 @@ void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
       goto cleanup_atlas_str;
     }
 
-    Json *top_left_x_json = glyph_rect_json->array[0];
+    Json *top_left_x_json = json_array_at(glyph_rect_json->array, 0);
     if (!top_left_x_json) {
       LOG_ERROR("top left x coordinate missing in glyph element's rect from "
                 "font file: %s",
@@ -115,7 +117,7 @@ void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
                 path);
       goto cleanup_atlas_str;
     }
-    Json *top_left_y_json = glyph_rect_json->array[1];
+    Json *top_left_y_json = json_array_at(glyph_rect_json->array, 1);
     if (!top_left_y_json) {
       LOG_ERROR("top left y coordinate missing in glyph element's rect from "
                 "font file: %s",
@@ -129,7 +131,7 @@ void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
                 path);
       goto cleanup_atlas_str;
     }
-    Json *bottom_right_x_json = glyph_rect_json->array[2];
+    Json *bottom_right_x_json = json_array_at(glyph_rect_json->array, 2);
     if (!bottom_right_x_json) {
       LOG_ERROR(
           "bottom right x coordinate missing in glyph element's rect from "
@@ -144,7 +146,7 @@ void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
                 path);
       goto cleanup_atlas_str;
     }
-    Json *bottom_right_y_json = glyph_rect_json->array[3];
+    Json *bottom_right_y_json = json_array_at(glyph_rect_json->array, 3);
     if (!bottom_right_y_json) {
       LOG_ERROR(
           "bottom right y coordinate missing in glyph element's rect from "

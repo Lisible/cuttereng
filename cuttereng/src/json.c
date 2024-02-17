@@ -2,6 +2,7 @@
 #include "log.h"
 #include "src/assert.h"
 #include "src/hash.h"
+#include "src/memory.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -36,7 +37,7 @@ typedef struct {
 
 void advance(ParsingContext *ctx, size_t count);
 Json *parse_element(ParsingContext *ctx);
-Json *parse_value(ParsingContext *ctx);
+bool parse_value(ParsingContext *ctx, Json *output_value);
 bool parse_object(ParsingContext *ctx, Json *output_value);
 bool parse_array(ParsingContext *ctx, Json *output_value);
 void parse_number(ParsingContext *ctx, Json *output_value);
@@ -50,6 +51,7 @@ bool is_non_zero_digit(char c);
 char current_character(ParsingContext *ctx);
 char next_character(ParsingContext *ctx);
 Json *json_create(Allocator *allocator);
+void json_cleanup(Allocator *allocator, Json *value);
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
 Json *json_parse_from_str(Allocator *allocator, const char *str) {
@@ -66,19 +68,19 @@ Json *json_parse_from_str(Allocator *allocator, const char *str) {
 Json *parse_element(ParsingContext *ctx) {
   ASSERT(ctx != NULL);
   eat_whitespaces(ctx);
-  Json *value = parse_value(ctx);
-  eat_whitespaces(ctx);
-  return value;
-}
 
-Json *parse_value(ParsingContext *ctx) {
-  ASSERT(ctx != NULL);
-  Json *value = json_create(ctx->allocator);
-  if (!value) {
-    LOG_ERROR("json allocation failed");
-    goto err;
+  Json *json = allocator_allocate(ctx->allocator, sizeof(Json));
+  if (!parse_value(ctx, json)) {
+    return NULL;
   }
 
+  eat_whitespaces(ctx);
+  return json;
+}
+
+bool parse_value(ParsingContext *ctx, Json *value) {
+  ASSERT(ctx != NULL);
+  ASSERT(value != NULL);
   if (strcmp(&ctx->str[ctx->index], TOKEN_TRUE) == 0) {
     value->type = JSON_BOOLEAN;
     value->boolean = true;
@@ -96,29 +98,52 @@ Json *parse_value(ParsingContext *ctx) {
   } else if (current_character(ctx) == TOKEN_DOUBLE_QUOTE) {
     if (!parse_string(ctx, value)) {
       JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json string");
-      goto err_2;
+      goto err;
     }
   } else if (current_character(ctx) == TOKEN_ARRAY_BEGIN) {
     if (!parse_array(ctx, value)) {
       JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json array");
-      goto err_2;
+      goto err;
     }
   } else if (current_character(ctx) == TOKEN_OBJECT_BEGIN) {
     if (!parse_object(ctx, value)) {
       JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json object");
-      goto err_2;
+      goto err;
     }
   } else {
     JSON_LOG_PARSE_ERROR(ctx, "unexpected token: %c", current_character(ctx));
-    goto err_2;
+    goto err;
   }
 
-  return value;
+  return true;
 
-err_2:
-  free(value);
 err:
-  return NULL;
+  return false;
+}
+
+struct JsonArray {
+  Json *elements;
+  size_t length;
+};
+
+JsonArray *JsonArray_create(Allocator *allocator, size_t length) {
+  ASSERT(allocator != NULL);
+  JsonArray *array = allocator_allocate(allocator, sizeof(JsonArray));
+  array->elements = allocator_allocate_array(allocator, length, sizeof(Json));
+  array->length = length;
+  return array;
+}
+
+void JsonArray_destroy(Allocator *allocator, JsonArray *array) {
+  ASSERT(allocator != NULL);
+  ASSERT(array != NULL);
+
+  for (size_t i = 0; i < array->length; i++) {
+    json_cleanup(allocator, &array->elements[i]);
+  }
+
+  allocator_free(allocator, array->elements);
+  allocator_free(allocator, array);
 }
 
 typedef struct {
@@ -175,7 +200,8 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
     eat_character(ctx, TOKEN_COLON);
     eat_whitespaces(ctx);
 
-    Json *value = parse_value(ctx);
+    Json *value = allocator_allocate(ctx->allocator, sizeof(Json));
+    parse_value(ctx, value);
     if (!value) {
       return false;
     }
@@ -202,9 +228,8 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
   eat_character(ctx, TOKEN_ARRAY_BEGIN);
   size_t capacity = MINIMUM_ARRAY_CAPACITY;
 
-  Json **array =
-      allocator_allocate(ctx->allocator, (capacity + 1) * sizeof(Json *));
-  if (!array) {
+  Json *elements = allocator_allocate(ctx->allocator, capacity * sizeof(Json));
+  if (!elements) {
     LOG_ERROR("memory allocation failed");
     goto err;
   }
@@ -215,17 +240,16 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
     if (length == capacity) {
       size_t old_capacity = capacity;
       capacity *= 2;
-      array = allocator_reallocate(ctx->allocator, array,
-                                   (old_capacity + 1) * sizeof(Json *),
-                                   (capacity + 1) * sizeof(Json *));
-      if (!array) {
+      elements = allocator_reallocate(ctx->allocator, elements,
+                                      old_capacity * sizeof(Json),
+                                      capacity * sizeof(Json));
+      if (!elements) {
         LOG_ERROR("memory reallocation failed");
         goto err;
       }
     }
 
-    array[length] = parse_value(ctx);
-    if (!array[length]) {
+    if (!parse_value(ctx, &elements[length])) {
       goto cleanup;
     }
     length++;
@@ -239,16 +263,18 @@ bool parse_array(ParsingContext *ctx, Json *output_value) {
     eat_whitespaces(ctx);
   }
 
-  array[length] = NULL;
-
   eat_character(ctx, TOKEN_ARRAY_END);
 
   output_value->type = JSON_ARRAY;
-  output_value->array = array;
+
+  JsonArray *json_array = allocator_allocate(ctx->allocator, sizeof(JsonArray));
+  json_array->elements = elements;
+  json_array->length = length;
+  output_value->array = json_array;
   return true;
 
 cleanup:
-  free(array);
+  free(elements);
 
 err:
   return false;
@@ -266,14 +292,12 @@ bool parse_string(ParsingContext *ctx, Json *output_value) {
   ASSERT(output_value != NULL);
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
   size_t estimated_string_size = estimate_string_size(&ctx->str[ctx->index]);
-  char *string =
-      allocator_allocate(ctx->allocator, estimated_string_size * sizeof(char));
+  char *string = allocator_allocate_array(ctx->allocator, estimated_string_size,
+                                          sizeof(char));
   if (!string) {
     LOG_ERROR("json string allocation failed");
     goto err;
   }
-
-  memset(string, 0, estimated_string_size * sizeof(char));
 
   size_t string_index = 0;
   while (current_character(ctx) != TOKEN_DOUBLE_QUOTE) {
@@ -297,7 +321,7 @@ bool parse_string(ParsingContext *ctx, Json *output_value) {
         if (!is_escapable_character(current_character(ctx))) {
           JSON_LOG_PARSE_ERROR(ctx, "character %c is not escapable",
                                current_character(ctx));
-          goto err_2;
+          goto cleanup_string;
         }
 
         string[string_index] = current_character(ctx);
@@ -316,8 +340,8 @@ bool parse_string(ParsingContext *ctx, Json *output_value) {
   output_value->string = string;
   return true;
 
-err_2:
-  free(string);
+cleanup_string:
+  allocator_free(ctx->allocator, string);
 
 err:
   return false;
@@ -457,13 +481,7 @@ void json_cleanup(Allocator *allocator, Json *value) {
     allocator_free(allocator, value->string);
     value->string = NULL;
   } else if (value->type == JSON_ARRAY) {
-    size_t i = 0;
-    while (value->array[i] != NULL) {
-      json_destroy(allocator, value->array[i]);
-      i++;
-    }
-
-    allocator_free(allocator, value->array);
+    JsonArray_destroy(allocator, value->array);
     value->array = NULL;
   } else if (value->type == JSON_OBJECT) {
     HashTableJson_destroy(value->object->hash_table);
@@ -544,6 +562,25 @@ Json *json_object_get(const JsonObject *object, const char *key) {
   ASSERT(key != NULL);
   return HashTableJson_get(object->hash_table, key);
 }
+JsonObject *json_as_object(const Json *json) {
+  ASSERT(json != NULL);
+  if (json->type != JSON_OBJECT) {
+    return NULL;
+  }
+
+  return json->object;
+}
+Json *json_object_get_typed(const JsonObject *json_object, JsonValueType type,
+                            const char *key) {
+  ASSERT(json_object != NULL);
+  ASSERT(key != NULL);
+
+  Json *value = json_object_get(json_object, key);
+  if (!value || value->type != type) {
+    return NULL;
+  }
+  return value;
+}
 
 const char *json_object_set(JsonObject *object, char *key, Json *value) {
   ASSERT(object != NULL);
@@ -556,4 +593,14 @@ void json_object_steal(JsonObject *object, const char *key) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
   HashTableJson_steal(object->hash_table, key);
+}
+
+size_t json_array_length(const JsonArray *array) {
+  ASSERT(array != NULL);
+  return array->length;
+}
+Json *json_array_at(const JsonArray *array, size_t index) {
+  ASSERT(array != NULL);
+  ASSERT(index < array->length);
+  return &array->elements[index];
 }
