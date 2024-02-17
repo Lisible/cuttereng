@@ -27,6 +27,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
+  engine->capturing_mouse = false;
   ecs_init(&system_allocator, &engine->ecs, ecs_init_system,
            &(SystemContext){.input_state = &engine->input_state,
                             .assets = engine->assets,
@@ -57,6 +58,11 @@ void engine_handle_events(Engine *engine, Event *event) {
     } else {
       InputState_handle_event(&engine->input_state, event);
     }
+
+    if (event->key_event.key == Key_F2) {
+      engine->capturing_mouse = !engine->capturing_mouse;
+    }
+
     break;
   case EventType_Quit:
     engine->running = false;
@@ -249,4 +255,8 @@ void configuration_debug_print(Configuration *configuration) {
 void window_size_debug_print(WindowSize *window_size) {
   ASSERT(window_size != NULL);
   LOG_DEBUG("window size: (%d, %d)", window_size->width, window_size->height);
+}
+bool engine_should_mouse_be_captured(Engine *engine) {
+  ASSERT(engine != NULL);
+  return engine->capturing_mouse;
 }

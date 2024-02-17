@@ -27,6 +27,7 @@ typedef struct {
   const char *application_title;
   float current_time_secs;
   bool running;
+  bool capturing_mouse;
 } Engine;
 
 typedef struct {
@@ -44,6 +45,7 @@ void engine_handle_events(Engine *engine, Event *event);
 void engine_update(Allocator *frame_allocator, Engine *engine, float dt);
 void engine_render(Allocator *frame_allocator, Engine *engine);
 bool engine_is_running(Engine *engine);
+bool engine_should_mouse_be_captured(Engine *engine);
 
 bool window_size_from_json(Json *json, WindowSize *window_size);
 void window_size_debug_print(WindowSize *window_size);

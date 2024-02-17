@@ -2,6 +2,7 @@
 #include "SDL_events.h"
 #include "SDL_gamecontroller.h"
 #include "SDL_keyboard.h"
+#include "SDL_mouse.h"
 #include "SDL_timer.h"
 #include "assert.h"
 #include "engine.h"
@@ -54,6 +55,7 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
   Allocator frame_allocator = arena_allocator(&frame_arena);
   arena_init(&frame_arena, &system_allocator, 1000 * KB);
 
+  bool capture_mouse = false;
   float last_frame_time = 0;
   while (engine_is_running(&engine)) {
     float current_time = SDL_GetTicks();
@@ -65,6 +67,21 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
       engine_handle_events(&engine, &event);
     }
     engine_set_current_time(&engine, current_time / 1000.f);
+    if (!capture_mouse && engine_should_mouse_be_captured(&engine)) {
+      SDL_SetWindowGrab(window, true);
+      SDL_SetRelativeMouseMode(true);
+      capture_mouse = true;
+    } else if (capture_mouse && !engine_should_mouse_be_captured(&engine)) {
+      SDL_SetWindowGrab(window, false);
+      SDL_SetRelativeMouseMode(false);
+      capture_mouse = false;
+    }
+
+    if (capture_mouse) {
+      SDL_WarpMouseInWindow(window, config.window_size.width / 2,
+                            config.window_size.height / 2);
+    }
+
     float update_start_time = SDL_GetTicks();
     engine_update(&frame_allocator, &engine, dt);
     float update_duration = (SDL_GetTicks() - update_start_time) / 1000.f;
