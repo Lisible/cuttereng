@@ -103,7 +103,6 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
                                                                                \
       index++;                                                                 \
     }                                                                          \
-                                                                               \
     return NULL;                                                               \
   }                                                                            \
   bool name##_has(const name *table, const char *key) {                        \
@@ -177,7 +176,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
       name##KV kv = table->items[i];                                           \
       if (kv.key != NULL) {                                                    \
         uint64_t hash = hash_fnv_1a(kv.key, strlen(kv.key));                   \
-        size_t index = hash & (table->capacity - 1);                           \
+        size_t index = hash & (new_capacity - 1);                              \
         bool found = false;                                                    \
         while (new_items[index].key != NULL) {                                 \
           if (strcmp(kv.key, new_items[index].key) == 0) {                     \
@@ -186,7 +185,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
             break;                                                             \
           }                                                                    \
           index++;                                                             \
-          if (index >= table->capacity) {                                      \
+          if (index >= new_capacity) {                                         \
             index = 0;                                                         \
           }                                                                    \
         }                                                                      \
