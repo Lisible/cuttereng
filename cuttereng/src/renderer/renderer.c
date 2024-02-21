@@ -43,12 +43,12 @@ void HashTableMaterial_destructor(Allocator *allocator, void *value) {
 }
 DEF_HASH_TABLE(GPUMaterial *, HashTableMaterial, HashTableMaterial_destructor)
 
-void HashTableGPUMesh_destructor(Allocator *allocator, void *value) {
+void HashTableGPUModel_destructor(Allocator *allocator, void *value) {
   (void)allocator;
-  gpu_mesh_deinit(value);
-  allocator_free(allocator, (GPUMesh *)value);
+  GPUModel_deinit(allocator, value);
+  allocator_free(allocator, (GPUModel *)value);
 }
-DEF_HASH_TABLE(GPUMesh *, HashTableGPUMesh, HashTableGPUMesh_destructor)
+DEF_HASH_TABLE(GPUModel *, HashTableGPUModel, HashTableGPUModel_destructor)
 
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
 
@@ -384,7 +384,7 @@ void renderer_destroy(Renderer *renderer) {
   HashTableShaderModule_destroy(renderer->resources.shader_modules);
   HashTableTexture_destroy(renderer->resources.textures);
   HashTableMaterial_destroy(renderer->resources.materials);
-  HashTableGPUMesh_destroy(renderer->resources.meshes);
+  HashTableGPUModel_destroy(renderer->resources.models);
   wgpuBindGroupLayoutRelease(renderer->resources.material_bind_group_layout);
   wgpuBindGroupLayoutRelease(
       renderer->resources.mesh_uniforms_bind_group_layout);
@@ -416,7 +416,7 @@ void renderer_draw_mesh(Renderer *renderer, Transform *transform,
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
   DrawCommand draw_command;
-  draw_command.mesh_identifier =
+  draw_command.model_identifier =
       memory_clone_string(renderer->allocator, mesh_identifier);
   draw_command.material.type = MaterialType_Basic;
   draw_command.material.material_identifier =
@@ -431,7 +431,7 @@ void renderer_draw_mesh_with_shader_material(Renderer *renderer,
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
   DrawCommand draw_command;
-  draw_command.mesh_identifier =
+  draw_command.model_identifier =
       memory_clone_string(renderer->allocator, mesh_identifier);
   draw_command.material.type = MaterialType_Shader;
   draw_command.material.material_shader =
@@ -462,12 +462,15 @@ void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window) {
   renderer->ctx.wgpu_surface = wgpu_surface;
 }
 
-void load_mesh_in_cache(Renderer *renderer, Assets *assets, WGPUQueue queue,
-                        char *mesh_identifier) {
-  GPUMesh *gpu_mesh = allocator_allocate(renderer->allocator, sizeof(GPUMesh));
-  Mesh *mesh = assets_fetch(assets, Mesh, mesh_identifier);
-  gpu_mesh_init(renderer->ctx.wgpu_device, queue, gpu_mesh, mesh);
-  HashTableGPUMesh_set(renderer->resources.meshes, mesh_identifier, gpu_mesh);
+void load_model_in_cache(Allocator *allocator, Renderer *renderer,
+                         Assets *assets, WGPUQueue queue,
+                         char *model_identifier) {
+  GPUModel *gpu_model =
+      allocator_allocate(renderer->allocator, sizeof(GPUModel));
+  Model *model = assets_fetch(assets, Model, model_identifier);
+  GPUModel_init(allocator, renderer->ctx.wgpu_device, queue, gpu_model, model);
+  HashTableGPUModel_set(renderer->resources.models, model_identifier,
+                        gpu_model);
 }
 
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
@@ -497,10 +500,10 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
   render_graph_init(&render_graph);
 
   VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand, {
-    if (!HashTableGPUMesh_has(renderer->resources.meshes,
-                              command->mesh_identifier)) {
-      load_mesh_in_cache(renderer, assets, wgpu_queue,
-                         command->mesh_identifier);
+    if (!HashTableGPUModel_has(renderer->resources.models,
+                               command->model_identifier)) {
+      load_model_in_cache(renderer->allocator, renderer, assets, wgpu_queue,
+                          command->model_identifier);
     }
   });
   DrawCommandQueue_length(&renderer->draw_commands);
@@ -953,8 +956,8 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
       HashTableTexture_create(renderer->allocator, 512);
   renderer->resources.materials =
       HashTableMaterial_create(renderer->allocator, 32);
-  renderer->resources.meshes =
-      HashTableGPUMesh_create(renderer->allocator, 128);
+  renderer->resources.models =
+      HashTableGPUModel_create(renderer->allocator, 128);
   assets_set_destructor(assets, Mesh, &mesh_destructor);
 
   assets_register_loader(assets, Shader, &shader_asset_loader,
@@ -963,6 +966,8 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
                          &material_destructor);
   assets_register_loader(assets, BitmapFont, &bitmap_font_loader,
                          &bitmap_font_destructor);
+  assets_register_loader(assets, Model, &model_asset_loader,
+                         &model_asset_destructor);
   load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
                       renderer->ctx.wgpu_device, assets);
   load_textures(renderer->allocator, renderer->resources.textures,
@@ -972,15 +977,17 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
                  renderer->resources.materials, renderer->resources.textures,
                  renderer->resources.material_bind_group_layout, assets);
 
-  GPUMesh *cube_mesh = allocator_allocate(renderer->allocator, sizeof(GPUMesh));
-  cube_mesh_init(renderer->ctx.wgpu_device, queue, cube_mesh);
-  HashTableGPUMesh_set(renderer->resources.meshes, "_cube", cube_mesh);
+  GPUModel *cube_model =
+      allocator_allocate(renderer->allocator, sizeof(GPUModel));
+  cube_model_init(renderer->allocator, renderer->ctx.wgpu_device, queue,
+                  cube_model);
+  HashTableGPUModel_set(renderer->resources.models, "_cube", cube_model);
 }
 
 void DrawCommand_deinit(Allocator *allocator, DrawCommand *command) {
   ASSERT(allocator != NULL);
   ASSERT(command != NULL);
-  allocator_free(allocator, command->mesh_identifier);
+  allocator_free(allocator, command->model_identifier);
   DrawCommandMaterial_deinit(allocator, &command->material);
 }
 void DrawCommandMaterial_deinit(Allocator *allocator,

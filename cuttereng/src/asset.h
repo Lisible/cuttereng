@@ -32,6 +32,10 @@ void assets_set_destructor_(Assets *assets, char *asset_type,
                             AssetDestructor *asset_destructor);
 void assets_clear(Assets *assets);
 void assets_list_subdirectory(const char *subdirectory);
+
+/// Returns the effective path of an asset
+/// @return The path, owned by the caller
+char *asset_get_effective_path(Allocator *allocator, const char *path);
 char *asset_read_file_to_string(Allocator *allocator, const char *path);
 
 #define assets_store(assets, asset_type, asset_identifier, asset)              \

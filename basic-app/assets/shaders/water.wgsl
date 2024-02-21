@@ -78,7 +78,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
         Wave(normalize(vec2<f32>(-1.0, 0.6)), 0.1, 2.0/2.0, 0.4),
         Wave(normalize(vec2<f32>(-1.0, 4.0)), 0.01, 2.0, 0.3)
     );
-    let wave_count = 8;
+    let wave_count = 4;
 
     var world_pos = (u_mesh.world_from_local * vec4<f32>(in.position, 1.0));
     var h = vec3<f32>(0.0);

@@ -98,6 +98,7 @@
     }                                                                          \
   } while (0);
 
+DECL_VEC(char *, StringVec)
 DECL_VEC(u8, u8vec)
 
 #endif // CUTTERENG_VEC_H

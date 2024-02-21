@@ -360,8 +360,8 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
 
       // computing the light space view proj matrix
       mat4 light_space_projection;
-      mat4_set_to_orthographic(light_space_projection, 1.0, 200.0, -200.0,
-                               200.0, 200.0, -200.0);
+      mat4_set_to_orthographic(light_space_projection, 1.0, 20.0, -20.0, 20.0,
+                               20.0, -20.0);
 
       v3f target = {0};
       mat4 light_space_view;
@@ -425,11 +425,8 @@ void mesh_pass_dispatch(const RenderPassDispatchContext *ctx) {
        command_index++) {
     DrawCommand *command = &command_queue->data[command_index];
 
-    GPUMesh *mesh = HashTableGPUMesh_get(res->meshes, command->mesh_identifier);
-    gpu_mesh_bind(render_pass_encoder, mesh);
-    u32 stride = mesh_stride * command_index;
-    wgpuRenderPassEncoderSetBindGroup(
-        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+    GPUModel *model =
+        HashTableGPUModel_get(res->models, command->model_identifier);
 
     GPUMaterial *material;
     if (command->material.type == MaterialType_Basic) {
@@ -440,7 +437,24 @@ void mesh_pass_dispatch(const RenderPassDispatchContext *ctx) {
     }
     wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 2,
                                       material->bind_group, 0, 0);
-    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
+
+    for (size_t mesh_index = 0; mesh_index < model->mesh_count; mesh_index++) {
+      gpu_mesh_bind(render_pass_encoder, &model->meshes[mesh_index]);
+      u32 stride = mesh_stride * command_index;
+      wgpuRenderPassEncoderSetBindGroup(
+          render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+
+      if (model->meshes[mesh_index].index_count > 0) {
+        wgpuRenderPassEncoderDrawIndexed(render_pass_encoder,
+                                         model->meshes[mesh_index].index_count,
+                                         1, 0, 0, 0);
+      } else {
+
+        wgpuRenderPassEncoderDraw(render_pass_encoder,
+                                  model->meshes[mesh_index].vertex_count, 1, 0,
+                                  0);
+      }
+    }
   }
 }
 
@@ -456,12 +470,16 @@ void directional_light_space_depth_map_pass_dispatch(
        command_index < DrawCommandQueue_length(command_queue);
        command_index++) {
     DrawCommand *command = &command_queue->data[command_index];
-    GPUMesh *mesh = HashTableGPUMesh_get(res->meshes, command->mesh_identifier);
-    gpu_mesh_bind(render_pass_encoder, mesh);
-    u32 stride = mesh_stride * command_index;
-    wgpuRenderPassEncoderSetBindGroup(
-        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
-    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
+    GPUModel *model =
+        HashTableGPUModel_get(res->models, command->model_identifier);
+    for (size_t mesh_index = 0; mesh_index < model->mesh_count; mesh_index++) {
+      gpu_mesh_bind(render_pass_encoder, &model->meshes[mesh_index]);
+      u32 stride = mesh_stride * command_index;
+      wgpuRenderPassEncoderSetBindGroup(
+          render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+      wgpuRenderPassEncoderDraw(
+          render_pass_encoder, model->meshes[mesh_index].vertex_count, 1, 0, 0);
+    }
   }
 }
 

@@ -36,16 +36,34 @@ Index *mesh_indices(Mesh *mesh);
 size_t mesh_index_count(Mesh *mesh);
 
 typedef struct {
+  Mesh *meshes;
+  size_t mesh_count;
+} Model;
+void *model_asset_loader_fn(Allocator *allocator, const char *path);
+extern AssetLoader model_asset_loader;
+void model_asset_destructor_fn(Allocator *allocator, void *asset);
+extern AssetDestructor model_asset_destructor;
+
+typedef struct {
   WGPUBuffer vertex_buffer;
   WGPUBuffer index_buffer;
   size_t vertex_count;
   size_t index_count;
 } GPUMesh;
 
-void cube_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *mesh);
 bool gpu_mesh_init(WGPUDevice device, WGPUQueue queue, GPUMesh *gpu_mesh,
                    Mesh *mesh);
 void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh);
 void gpu_mesh_deinit(GPUMesh *gpu_mesh);
+
+typedef struct {
+  GPUMesh *meshes;
+  size_t mesh_count;
+} GPUModel;
+void GPUModel_init(Allocator *allocator, WGPUDevice device, WGPUQueue queue,
+                   GPUModel *gpu_model, const Model *model);
+void GPUModel_deinit(Allocator *allocator, GPUModel *gpu_model);
+void cube_model_init(Allocator *allocator, WGPUDevice device, WGPUQueue queue,
+                     GPUModel *model);
 
 #endif // CUTTERENG_RENDERER_MESH_H

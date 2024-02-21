@@ -50,6 +50,7 @@ cuttereng_lib = library(
   'src/image.c',
   'src/zlib.c',
   'src/deflate.c',
+  'src/gltf.c',
   'src/bitstream.c',
   'src/png.c',
   'src/transform.c',
@@ -82,3 +83,7 @@ test_bitstream = executable('test_bitstream', 'tests/test_runner.c', 'tests/bits
 test('test_bitstream', test_bitstream)
 test_memory = executable('test_memory', 'tests/test_runner.c', 'tests/memory.c', dependencies: [cuttereng_dep])
 test('test_memory', test_memory)
+test_gltf = executable('test_gltf', 'tests/test_runner.c', 'tests/gltf.c', dependencies: [cuttereng_dep])
+test('test_gltf', test_gltf)
+test_bytes = executable('test_bytes', 'tests/test_runner.c', 'tests/bytes.c', dependencies: [cuttereng_dep])
+test('test_bytes', test_bytes)

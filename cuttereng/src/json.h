@@ -39,8 +39,19 @@ Json *json_array_at(const JsonArray *array, size_t index);
 // type
 JsonObject *json_as_object(const Json *json);
 Json *json_object_get(const JsonObject *object, const char *key);
-Json *json_object_get_typed(const JsonObject *object, JsonValueType type,
-                            const char *key);
+bool json_object_get_object(const JsonObject *object, const char *key,
+                            JsonObject **out_object);
+bool json_object_get_array(const JsonObject *object, const char *key,
+                           JsonArray **out_array);
+bool json_object_get_string(const JsonObject *object, const char *key,
+                            char **out_str);
+bool json_object_get_number(const JsonObject *object, const char *key,
+                            double *out_number);
+bool json_object_get_boolean(const JsonObject *object, const char *key,
+                             bool *out_bool);
+size_t json_object_get_key_count(const JsonObject *object);
+char *json_object_get_key(const JsonObject *object, size_t index);
+
 void json_object_steal(JsonObject *object, const char *key);
 
 /// Parses a json from a string

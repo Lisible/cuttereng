@@ -56,14 +56,23 @@ fn vs_main(@builtin(vertex_index) in: u32) -> VertexOutput {
 fn compute_shadow(frag_pos_light_space: vec4<f32>, shadow_bias: f32) -> f32 {
     var projected_coordinates = frag_pos_light_space.xyz / frag_pos_light_space.w;
     projected_coordinates = vec4<f32>(projected_coordinates.xy * vec2<f32>(0.5, -0.5) + vec2<f32>(0.5, 0.5), projected_coordinates.z, 1.0).xyz;
-    let closest_depth = textureSample(g_buffer_light_space_depth_map_texture, g_buffer_light_space_depth_map_sampler, projected_coordinates.xy).r;
+    // let closest_depth = textureSample(g_buffer_light_space_depth_map_texture, g_buffer_light_space_depth_map_sampler, projected_coordinates.xy).r;
     let current_depth = projected_coordinates.z;
 
     var shadow = 0.0;
-    if (current_depth - shadow_bias > closest_depth) {
-        shadow = 1.0;
+    let texture_dimension = textureDimensions(g_buffer_light_space_depth_map_texture);
+    let texel_size = vec2<f32>(1.0) / vec2<f32>(f32(texture_dimension.x), f32(texture_dimension.y));
+    
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            let pcf_depth = textureSample(g_buffer_light_space_depth_map_texture, g_buffer_light_space_depth_map_sampler, projected_coordinates.xy + vec2<f32>(f32(x), f32(y)) * texel_size).r;
+            if (current_depth - shadow_bias > pcf_depth) {
+                shadow += 1.0;
+            }
+        }
     }
-    return shadow;
+
+    return shadow / 9.0;
 }
 
 fn compute_directional_light(light_direction: vec3<f32>, view_direction: vec3<f32>, normal: vec3<f32>, base_color: vec3<f32>, frag_pos_light_space: vec4<f32>) -> vec3<f32> {

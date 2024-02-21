@@ -2,6 +2,7 @@
 #define CUTTERENG_COMMON_H
 
 #include "log.h"
+#include <float.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

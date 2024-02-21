@@ -170,6 +170,27 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);
   }
+
+  {
+    EcsQuery *query_meshes = EcsQuery_new(
+        allocator, &(const EcsQueryDescriptor){
+                       .components = {ecs_component_id(Transform),
+                                      ecs_component_id(MeshInstance),
+                                      ecs_component_id(Material)},
+                       .component_count = 3});
+    EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
+    while (ecs_query_it_next(&query_it)) {
+      Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
+      MeshInstance *mesh_instance =
+          ecs_query_it_get(&query_it, MeshInstance, 1);
+      // Material*material=
+      //     ecs_query_it_get(&query_it, Material, 2);
+      renderer_draw_mesh(engine->renderer, transform, mesh_instance->mesh_id,
+                         "water.json");
+    }
+    ecs_query_it_deinit(&query_it);
+    EcsQuery_destroy(query_meshes, allocator);
+  }
 }
 
 bool configuration_from_json(Json *configuration_json,

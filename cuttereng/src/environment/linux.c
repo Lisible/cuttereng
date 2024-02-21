@@ -9,6 +9,11 @@
 char *get_process_base_path(Allocator *allocator, size_t *buffer_size);
 char *get_process_executable_path(Allocator *allocator, size_t *buffer_size);
 
+char *env_get_cwd_path(Allocator *allocator) {
+  size_t buffer_size;
+  return get_process_base_path(allocator, &buffer_size);
+}
+
 char *env_get_configuration_file_path(Allocator *allocator) {
   static const char CONFIGURATION_FILE_NAME[] = "/project_configuration.json";
   static const size_t CONFIGURATION_FILE_NAME_LENGTH =

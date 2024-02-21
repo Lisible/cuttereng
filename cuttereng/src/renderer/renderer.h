@@ -26,7 +26,7 @@ DECL_HASH_TABLE(WGPUTexture, HashTableTexture)
 
 typedef struct GPUMaterial GPUMaterial;
 DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
-DECL_HASH_TABLE(GPUMesh *, HashTableGPUMesh)
+DECL_HASH_TABLE(GPUModel *, HashTableGPUModel)
 
 typedef struct {
   mat4 projection_from_view;
@@ -84,7 +84,7 @@ struct RendererResources {
   HashTableShaderModule *shader_modules;
   HashTableTexture *textures;
   HashTableMaterial *materials;
-  HashTableGPUMesh *meshes;
+  HashTableGPUModel *models;
   WGPUBindGroupLayout material_bind_group_layout;
 
   CommonUniforms common_uniforms;
@@ -120,7 +120,7 @@ void DrawCommandMaterial_deinit(Allocator *allocator,
 typedef struct {
   Transform transform;
   DrawCommandMaterial material;
-  char *mesh_identifier;
+  char *model_identifier;
 } DrawCommand;
 
 void DrawCommand_deinit(Allocator *allocator, DrawCommand *command);
@@ -159,7 +159,7 @@ void renderer_draw_mesh(Renderer *renderer, Transform *transform,
                         const char *mesh_id, char *material_identifier);
 void renderer_draw_mesh_with_shader_material(Renderer *renderer,
                                              Transform *transform,
-                                             const char *mesh_id,
+                                             const char *model_id,
                                              const char *shader_identifier);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
                      Assets *assets, float current_time_secs);

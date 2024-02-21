@@ -14,7 +14,7 @@
 typedef struct Moving Moving;
 typedef struct Rotating Rotating;
 
-float light_angle = 0.0;
+float light_angle = M_PI_4;
 
 void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
@@ -42,8 +42,8 @@ void system_move_light(EcsCommandQueue *queue, EcsQueryIt *it) {
 
   while (ecs_query_it_next(it)) {
     DirectionalLight *light = ecs_query_it_get(it, DirectionalLight, 0);
-    light->position.x = 10.0 * sin(light_angle);
-    light->position.z = 10.0 * cos(light_angle);
+    light->position.x = 15.0 * sin(light_angle);
+    light->position.z = 15.0 * cos(light_angle);
     LOG_DEBUG("Updated light position: %f %f %f", light->position.x,
               light->position.y, light->position.z);
   }
@@ -193,47 +193,6 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   LOG_DEBUG("Initializing");
-  const SystemContext *system_context = it->ctx;
-
-  Mesh *mesh = allocator_allocate(it->allocator, sizeof(Mesh));
-
-  int water_side_quad_count = 100;
-  size_t vertex_count = water_side_quad_count * water_side_quad_count * 6;
-  Vertex *vertices =
-      allocator_allocate_array(it->allocator, vertex_count, sizeof(Vertex));
-  size_t v = 0;
-  for (int j = 0; j < water_side_quad_count; j++) {
-    for (int i = 0; i < water_side_quad_count; i++) {
-      vertices[v++] =
-          (Vertex){.position = {i, 0.0, j + 1.0}, .normal = {.y = 1.0}};
-      vertices[v++] = (Vertex){.position = {i, 0.0, j}, .normal = {.y = 1.0}};
-      vertices[v++] =
-          (Vertex){.position = {i + 1.0, 0.0, j}, .normal = {.y = 1.0}};
-      vertices[v++] = (Vertex){.position =
-                                   {
-                                       i + 1.0,
-                                       0.0,
-                                       j,
-                                   },
-                               .normal = {.y = 1.0}};
-      vertices[v++] =
-          (Vertex){.position = {i + 1.0, 0.0, j + 1.0}, .normal = {.y = 1.0}};
-      vertices[v++] =
-          (Vertex){.position = {i, 0.0, j + 1.0}, .normal = {.y = 1.0}};
-    }
-  }
-  mesh_init(mesh, vertices, vertex_count, NULL, 0);
-  assets_store(system_context->assets, Mesh, "proc_water", mesh);
-
-  ecs_command_queue_register_system(
-      command_queue,
-      &(const EcsSystemDescriptor){
-          .query =
-              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
-                                                  ecs_component_id(Cube),
-                                                  ecs_component_id(Moving)},
-                                   .component_count = 3},
-          .fn = system_move_cubes});
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -243,15 +202,6 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
                                  ecs_component_id(Moving)},
                   .component_count = 2},
           .fn = system_move_light});
-  ecs_command_queue_register_system(
-      command_queue,
-      &(const EcsSystemDescriptor){
-          .query =
-              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
-                                                  ecs_component_id(Cube),
-                                                  ecs_component_id(Rotating)},
-                                   .component_count = 3},
-          .fn = system_rotate_cubes});
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -291,8 +241,11 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
                                               Camera, &camera);
   Transform camera_transform = TRANSFORM_DEFAULT;
-  camera_transform.position.y = 1.0;
-  camera_transform.position.z = -3.0;
+  camera_transform.position.x = -12.0;
+  camera_transform.position.y = 7.0;
+  camera_transform.position.z = -13.0;
+  quaternion_set_to_axis_angle(&camera_transform.rotation,
+                               &(const v3f){.y = 0.9, .x = 0.3}, M_PI_4);
   ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
                                               Transform, &camera_transform);
 
@@ -300,7 +253,6 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_component(command_queue, directional_light,
                                      DirectionalLight,
                                      {.position = {0.0, 20.0, -10.0}});
-
   Transform directional_light_transform = TRANSFORM_DEFAULT;
   directional_light_transform.position.y = 1.0;
   ecs_command_queue_insert_component_with_ptr(command_queue, directional_light,
@@ -309,17 +261,25 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_tag_component(command_queue, directional_light,
                                          Moving);
 
-  EcsId quad = ecs_command_queue_create_entity(command_queue);
-  Transform quad_transform = TRANSFORM_DEFAULT;
-  quad_transform.position.x = -water_side_quad_count / 2.0;
-  quad_transform.position.z = 2.0;
-  quad_transform.position.y = -5.0;
-  ecs_command_queue_insert_component_with_ptr(command_queue, quad, Transform,
-                                              &quad_transform);
-  ecs_command_queue_insert_component(command_queue, quad, MeshInstance,
-                                     {.mesh_id = "proc_water"});
-  ecs_command_queue_insert_component(command_queue, quad, ShaderMaterial,
-                                     {.shader_identifier = "water.wgsl"});
+  EcsId ground = ecs_command_queue_create_entity(command_queue);
+  Transform ground_transform = TRANSFORM_DEFAULT;
+  ground_transform.position.x = 0.0;
+  ground_transform.position.z = 0.0;
+  ground_transform.position.y = 0.0;
+  ground_transform.scale = (v3f){.x = 15.0, .y = 0.1, .z = 15.0};
+  ecs_command_queue_insert_component(command_queue, ground, MeshInstance,
+                                     {.mesh_id = "_cube"});
+  ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
+                                              &ground_transform);
+  ecs_command_queue_insert_component(command_queue, ground, Material, {0});
+
+  EcsId fox = ecs_command_queue_create_entity(command_queue);
+  Transform fox_transform = TRANSFORM_DEFAULT;
+  ecs_command_queue_insert_component(command_queue, fox, MeshInstance,
+                                     {.mesh_id = "models/fox.glb"});
+  ecs_command_queue_insert_component_with_ptr(command_queue, fox, Transform,
+                                              &fox_transform);
+  ecs_command_queue_insert_component(command_queue, fox, Material, {0});
 }
 
 int main(int argc, char **argv) {

@@ -214,13 +214,19 @@ void assets_destroy(Assets *assets) {
   HashTableAssetDestructor_destroy(assets->destructors);
   allocator_free(assets->allocator, assets);
 }
-char *asset_read_file_to_string(Allocator *allocator, const char *path) {
+
+char *asset_get_effective_path(Allocator *allocator, const char *path) {
+  ASSERT(allocator != NULL);
   ASSERT(path != NULL);
   size_t effective_path_length = strlen(ASSETS_BASE_PATH) + strlen(path) + 1;
   char *effective_path = allocator_allocate(allocator, effective_path_length);
   memset(effective_path, 0, effective_path_length);
   strcat(effective_path, ASSETS_BASE_PATH);
   strcat(effective_path, path);
+  return effective_path;
+}
+char *asset_read_file_to_string(Allocator *allocator, const char *path) {
+  char *effective_path = asset_get_effective_path(allocator, path);
   char *result = filesystem_read_file_to_string(allocator, effective_path);
   allocator_free(allocator, effective_path);
   return result;

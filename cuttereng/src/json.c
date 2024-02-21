@@ -1,8 +1,8 @@
 #include "json.h"
+#include "assert.h"
+#include "hash.h"
 #include "log.h"
-#include "src/assert.h"
-#include "src/hash.h"
-#include "src/memory.h"
+#include "memory.h"
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -81,15 +81,18 @@ Json *parse_element(ParsingContext *ctx) {
 bool parse_value(ParsingContext *ctx, Json *value) {
   ASSERT(ctx != NULL);
   ASSERT(value != NULL);
-  if (strcmp(&ctx->str[ctx->index], TOKEN_TRUE) == 0) {
+  if (ctx->index + 4 <= ctx->len &&
+      strncmp(&ctx->str[ctx->index], TOKEN_TRUE, 4) == 0) {
     value->type = JSON_BOOLEAN;
     value->boolean = true;
     advance(ctx, strlen(TOKEN_TRUE));
-  } else if (strcmp(&ctx->str[ctx->index], TOKEN_FALSE) == 0) {
+  } else if (ctx->index + 4 <= ctx->len &&
+             strncmp(&ctx->str[ctx->index], TOKEN_FALSE, 4) == 0) {
     value->type = JSON_BOOLEAN;
     value->boolean = false;
     advance(ctx, strlen(TOKEN_FALSE));
-  } else if (strcmp(&ctx->str[ctx->index], TOKEN_NULL) == 0) {
+  } else if (ctx->index + 4 <= ctx->len &&
+             strncmp(&ctx->str[ctx->index], TOKEN_NULL, 4) == 0) {
     value->type = JSON_NULL;
     advance(ctx, strlen(TOKEN_NULL));
   } else if (current_character(ctx) == TOKEN_MINUS ||
@@ -155,6 +158,7 @@ DECL_HASH_TABLE(Json *, HashTableJson)
 DEF_HASH_TABLE(Json *, HashTableJson, json_destroy)
 
 struct JsonObject {
+
   HashTableJson *hash_table;
 };
 
@@ -172,7 +176,7 @@ JsonObject *json_object_create(Allocator *allocator) {
   return object;
 
 cleanup:
-  free(object);
+  allocator_free(allocator, object);
 err:
   return NULL;
 }
@@ -570,18 +574,100 @@ JsonObject *json_as_object(const Json *json) {
 
   return json->object;
 }
-Json *json_object_get_typed(const JsonObject *json_object, JsonValueType type,
-                            const char *key) {
-  ASSERT(json_object != NULL);
+bool json_object_get_object(const JsonObject *object, const char *key,
+                            JsonObject **out_object) {
+  ASSERT(object != NULL);
   ASSERT(key != NULL);
+  ASSERT(out_object != NULL);
 
-  Json *value = json_object_get(json_object, key);
-  if (!value || value->type != type) {
-    return NULL;
+  Json *json = json_object_get(object, key);
+  if (json == NULL || json->type != JSON_OBJECT) {
+    return false;
   }
-  return value;
+
+  *out_object = json->object;
+  return true;
+}
+bool json_object_get_array(const JsonObject *object, const char *key,
+                           JsonArray **out_array) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
+  ASSERT(out_array != NULL);
+
+  Json *json = json_object_get(object, key);
+  if (json == NULL || json->type != JSON_ARRAY) {
+    return false;
+  }
+
+  *out_array = json->array;
+  return true;
+}
+bool json_object_get_string(const JsonObject *object, const char *key,
+                            char **out_str) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
+  ASSERT(out_str != NULL);
+
+  Json *json = json_object_get(object, key);
+  if (json == NULL || json->type != JSON_STRING) {
+    return false;
+  }
+
+  *out_str = json->string;
+  return true;
+}
+bool json_object_get_number(const JsonObject *object, const char *key,
+                            double *out_number) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
+  ASSERT(out_number != NULL);
+
+  Json *json = json_object_get(object, key);
+  if (json == NULL || json->type != JSON_NUMBER) {
+    return false;
+  }
+
+  *out_number = json->number;
+  return true;
+}
+bool json_object_get_boolean(const JsonObject *object, const char *key,
+                             bool *out_bool) {
+  ASSERT(object != NULL);
+  ASSERT(key != NULL);
+  ASSERT(out_bool != NULL);
+
+  Json *json = json_object_get(object, key);
+  if (json == NULL || json->type != JSON_BOOLEAN) {
+    return false;
+  }
+
+  out_bool = &json->boolean;
+  return true;
 }
 
+size_t json_object_get_key_count(const JsonObject *object) {
+  ASSERT(object != NULL);
+  return HashTableJson_length(object->hash_table);
+}
+
+char *json_object_get_key(const JsonObject *object, size_t index) {
+  ASSERT(object != NULL);
+  ASSERT(index < object->hash_table->length);
+
+  size_t cur_index = 0;
+  for (size_t i = 0; i < object->hash_table->capacity; i++) {
+    HashTableJsonKV *item = &object->hash_table->items[i];
+    if (item->key != NULL) {
+      if (cur_index == index) {
+        return item->key;
+      } else {
+        cur_index++;
+      }
+    }
+  }
+
+  return NULL;
+}
 const char *json_object_set(JsonObject *object, char *key, Json *value) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
