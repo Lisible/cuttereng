@@ -215,6 +215,15 @@ static void parse_object_with_a_ton_of_attributes(void) {
   json_destroy(&system_allocator, parsed_json);
 }
 
+void parse_array_with_numbers_using_exponent_syntax(void) {
+  const char json_string[] = "[-0.40028640627861023,7.7861436409421e-08,2."
+                             "7262069934863575e-08,0.916390061378479]";
+  Json *parsed_json = json_parse_from_str(&system_allocator, json_string);
+  T_ASSERT_EQ(parsed_json->type, JSON_ARRAY);
+  T_ASSERT_EQ(json_array_length(parsed_json->array), 4);
+  json_destroy(&system_allocator, parsed_json);
+}
+
 TEST_SUITE(TEST(parse_true_literal), TEST(parse_false_literal),
            TEST(parse_null_literal), TEST(parse_number_integer),
            TEST(parse_number_integer_with_whitespaces),
@@ -227,4 +236,5 @@ TEST_SUITE(TEST(parse_true_literal), TEST(parse_false_literal),
            TEST(parse_heterogeneous_array), TEST(parse_empty_object),
            TEST(parse_object_with_single_attribute),
            TEST(parse_object_with_multiple_attributes),
-           TEST(parse_object_with_a_ton_of_attributes))
+           TEST(parse_object_with_a_ton_of_attributes),
+           TEST(parse_array_with_numbers_using_exponent_syntax))

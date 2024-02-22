@@ -467,13 +467,21 @@ void parse_number(ParsingContext *ctx, Json *output_value) {
   }
 
   int exponent = 0;
+  int exponent_factor = 1;
   if (current_character(ctx) == 'e' || current_character(ctx) == 'E') {
     advance(ctx, 1);
+    if (current_character(ctx) == TOKEN_MINUS) {
+      exponent_factor = -1;
+      advance(ctx, 1);
+    }
+
     while (is_digit(current_character(ctx))) {
       exponent += exponent * 10 + (current_character(ctx) - '0');
       advance(ctx, 1);
     }
   }
+
+  exponent *= exponent_factor;
 
   output_value->type = JSON_NUMBER;
   output_value->number = sign * (number * pow(10, exponent));
@@ -685,6 +693,7 @@ size_t json_array_length(const JsonArray *array) {
   ASSERT(array != NULL);
   return array->length;
 }
+
 Json *json_array_at(const JsonArray *array, size_t index) {
   ASSERT(array != NULL);
   ASSERT(index < array->length);
