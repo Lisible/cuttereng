@@ -1,6 +1,7 @@
 #ifndef CUTTERENG_ECS_ECS_H
 #define CUTTERENG_ECS_ECS_H
 
+#include "../asset.h"
 #include "../hash.h"
 #include "../vec.h"
 
@@ -84,6 +85,8 @@ void ecs_command_queue_deinit(EcsCommandQueue *queue);
 void ecs_command_queue_register_system(EcsCommandQueue *queue,
                                        const EcsSystemDescriptor *system);
 EcsId ecs_command_queue_create_entity(EcsCommandQueue *queue);
+EcsId ecs_command_queue_import_glb(EcsCommandQueue *queue, Assets *assets,
+                                   const char *glb_path);
 void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
                                          char *component_name,
                                          size_t component_size,

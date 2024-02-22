@@ -5,6 +5,7 @@
 #include "math/quaternion.h"
 #include "math/vector.h"
 #include "renderer/material.h"
+#include "renderer/mesh.h"
 #include <cuttereng.h>
 #include <ecs/ecs.h>
 #include <engine.h>
@@ -193,6 +194,7 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   LOG_DEBUG("Initializing");
+  SystemContext *ctx = it->ctx;
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){
@@ -267,19 +269,36 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ground_transform.position.z = 0.0;
   ground_transform.position.y = 0.0;
   ground_transform.scale = (v3f){.x = 15.0, .y = 0.1, .z = 15.0};
+
+  Mesh cube_mesh;
+  cube_mesh_init(&cube_mesh);
+  AssetHandle cube_mesh_handle =
+      assets_store(ctx->assets, Mesh, "_cube", &cube_mesh);
   ecs_command_queue_insert_component(command_queue, ground, MeshInstance,
-                                     {.mesh_id = "_cube"});
+                                     {.mesh_handle = cube_mesh_handle});
   ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
                                               &ground_transform);
-  ecs_command_queue_insert_component(command_queue, ground, Material, {0});
 
-  EcsId fox = ecs_command_queue_create_entity(command_queue);
-  Transform fox_transform = TRANSFORM_DEFAULT;
-  ecs_command_queue_insert_component(command_queue, fox, MeshInstance,
-                                     {.mesh_id = "models/fox.glb"});
-  ecs_command_queue_insert_component_with_ptr(command_queue, fox, Transform,
-                                              &fox_transform);
-  ecs_command_queue_insert_component(command_queue, fox, Material, {0});
+  AssetHandle water_material_handle;
+  assets_load(ctx->assets, Material, "materials/water.json",
+              &water_material_handle);
+  ecs_command_queue_insert_component(
+      command_queue, ground, Material,
+      {.base_color = water_material_handle, .normal = water_material_handle});
+
+  EcsId fox = ecs_command_queue_import_glb(command_queue, ctx->assets,
+                                           "models/fox.glb");
+
+  // EcsId fox = ecs_command_queue_create_entity(command_queue);
+  // Transform fox_transform = TRANSFORM_DEFAULT;
+
+  // AssetHandle fox_mesh_handle;
+  // assets_load(ctx->assets, Mesh, "_cube", &cube_mesh);
+  // ecs_command_queue_insert_component(command_queue, fox, MeshInstance,
+  //                                    {.mesh_handle = cube_mesh_handle});
+  // ecs_command_queue_insert_component_with_ptr(command_queue, fox, Transform,
+  //                                             &fox_transform);
+  // ecs_command_queue_insert_component(command_queue, fox, Material, {0});
 }
 
 int main(int argc, char **argv) {

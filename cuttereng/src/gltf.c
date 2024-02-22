@@ -298,10 +298,12 @@ bool parse_nodes(const ParsingContext *ctx, Gltf *gltf,
     LOG_DEBUG("Parsing node %d", node_index);
     Json *node_json = json_array_at(gltf_nodes_json, node_index);
     if (node_json->type != JSON_OBJECT) {
+      LOG_DEBUG("Node type is not object");
       return false;
     }
 
     if (!GltfNode_parse(ctx, &gltf->nodes[node_index], node_json->object)) {
+      LOG_DEBUG("Couldn't parse node");
       return false;
     }
   }
@@ -322,6 +324,7 @@ bool GltfNode_parse(const ParsingContext *ctx, GltfNode *gltf_node,
     LOG_DEBUG("Node name: %s", node_name);
   }
   gltf_node->name = node_name;
+  LOG_DEBUG("Parsing node %s", gltf_node->name);
 
   double camera;
   if (!json_object_get_number(gltf_node_json, "camera", &camera)) {
@@ -366,12 +369,14 @@ bool GltfNode_parse(const ParsingContext *ctx, GltfNode *gltf_node,
 
   JsonArray *matrix = NULL;
   if (!json_object_get_array(gltf_node_json, "matrix", &matrix)) {
+    gltf_node->has_matrix = false;
     memset(gltf_node->matrix, 0, 16);
     gltf_node->matrix[0] = 1.0;
     gltf_node->matrix[5] = 1.0;
     gltf_node->matrix[10] = 1.0;
     gltf_node->matrix[15] = 1.0;
   } else {
+    gltf_node->has_matrix = true;
     size_t matrix_length = json_array_length(matrix);
     for (size_t i = 0; i < matrix_length; i++) {
       Json *value = json_array_at(matrix, i);
@@ -392,11 +397,13 @@ bool GltfNode_parse(const ParsingContext *ctx, GltfNode *gltf_node,
     gltf_node->has_mesh = true;
   }
 
+  gltf_node->has_trs = false;
   JsonArray *rotation = NULL;
   if (!json_object_get_array(gltf_node_json, "rotation", &rotation)) {
     gltf_node->rotation.scalar_part = 1.0;
     gltf_node->rotation.vector_part = (v3f){0.0, 0.0, 0.0};
   } else {
+    gltf_node->has_trs = true;
     size_t rotation_length = json_array_length(rotation);
     if (rotation_length != 4) {
       return false;
@@ -428,6 +435,7 @@ bool GltfNode_parse(const ParsingContext *ctx, GltfNode *gltf_node,
   if (!json_object_get_array(gltf_node_json, "scale", &scale)) {
     gltf_node->scale = (v3f){1.0, 1.0, 1.0};
   } else {
+    gltf_node->has_trs = true;
     size_t scale_length = json_array_length(scale);
     if (scale_length != 3) {
       return false;
@@ -454,6 +462,7 @@ bool GltfNode_parse(const ParsingContext *ctx, GltfNode *gltf_node,
   if (!json_object_get_array(gltf_node_json, "translation", &translation)) {
     gltf_node->translation = (v3f){1.0, 1.0, 1.0};
   } else {
+    gltf_node->has_trs = true;
     size_t translation_length = json_array_length(translation);
     if (translation_length != 3) {
       return false;

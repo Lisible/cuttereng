@@ -11,10 +11,11 @@ void bitmap_font_destructor_fn(Allocator *allocator, void *ptr) {
     return;
   }
   allocator_free(allocator, font->atlas);
-  allocator_free(allocator, font);
+  // allocator_free(allocator, font);
 }
 
-void *bitmap_font_loader_fn(Allocator *allocator, const char *path) {
+void *bitmap_font_loader_fn(Allocator *allocator, Assets *assets,
+                            const char *path) {
   BitmapFont *font = allocator_allocate(allocator, sizeof(BitmapFont));
   if (!font) {
     LOG_ERROR("Couldn't allocate font");

@@ -1,10 +1,15 @@
 #ifndef CUTTERENG_ASSET_H
 #define CUTTERENG_ASSET_H
 
-#include "common.h"
 #include "memory.h"
+#include <stdalign.h>
 
-typedef void *(*AssetLoaderFn)(Allocator *allocator, const char *path);
+#define ASSET_STORE_CAPACITY 1024
+typedef size_t AssetHandle;
+
+typedef struct Assets Assets;
+typedef void *(*AssetLoaderFn)(Allocator *allocator, Assets *assets,
+                               const char *path);
 typedef struct {
   AssetLoaderFn fn;
 } AssetLoader;
@@ -14,7 +19,6 @@ typedef struct {
   AssetDestructorFn fn;
 } AssetDestructor;
 
-typedef struct Assets Assets;
 Assets *assets_new(Allocator *allocator);
 void assets_register_loader_(Assets *assets, char *asset_type,
                              AssetLoader *asset_loader,
@@ -22,12 +26,15 @@ void assets_register_loader_(Assets *assets, char *asset_type,
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type);
 
-void assets_store_(Assets *assets, char *asset_type, char *asset_identifier,
-                   void *asset);
-void *assets_fetch_(Assets *assets, char *asset_type, char *asset_path);
+AssetHandle assets_store_(Assets *assets, const char *asset_type,
+                          size_t asset_type_alignment, size_t asset_type_size,
+                          const void *asset);
+bool assets_load_(Assets *assets, const char *asset_type,
+                  size_t asset_type_alignment, size_t asset_type_size,
+                  const char *asset_path, AssetHandle *out_asset_handle);
+void *assets_get_(Assets *assets, const char *asset_type,
+                  AssetHandle asset_handle);
 void assets_destroy(Assets *assets);
-void assets_remove_(Assets *assets, const char *asset_type,
-                    const char *asset_path);
 void assets_set_destructor_(Assets *assets, char *asset_type,
                             AssetDestructor *asset_destructor);
 void assets_clear(Assets *assets);
@@ -39,13 +46,17 @@ char *asset_get_effective_path(Allocator *allocator, const char *path);
 char *asset_read_file_to_string(Allocator *allocator, const char *path);
 
 #define assets_store(assets, asset_type, asset_identifier, asset)              \
-  assets_store_(assets, #asset_type, asset_identifier, asset)
+  assets_store_(assets, #asset_type, alignof(asset_type), sizeof(asset_type),  \
+                asset)
 #define assets_set_destructor(assets, asset_type, asset_destructor)            \
   assets_set_destructor_(assets, #asset_type, asset_destructor);
 #define assets_remove(assets, asset_type, asset_path)                          \
   assets_remove_(assets, #asset_type, asset_path)
-#define assets_fetch(assets, asset_type, asset_path)                           \
-  (asset_type *)assets_fetch_(assets, #asset_type, asset_path)
+#define assets_load(assets, asset_type, asset_path, out_asset_handle)          \
+  assets_load_(assets, #asset_type, alignof(asset_type), sizeof(asset_type),   \
+               asset_path, out_asset_handle)
+#define assets_get(assets, asset_type, asset_handle)                           \
+  (asset_type *)assets_get_(assets, #asset_type, asset_handle)
 #define assets_register_loader(assets, asset_type, asset_loader,               \
                                asset_destructor)                               \
   assets_register_loader_(assets, #asset_type, asset_loader, asset_destructor)

@@ -5,7 +5,8 @@
 #include "renderer.h"
 
 RendererRenderPipeline *
-renderer_default_render_pipeline_create(Allocator *allocator);
+renderer_default_render_pipeline_create(Allocator *allocator,
+                                        Renderer *renderer, Assets *assets);
 void renderer_default_render_pipeline_destroy(Allocator *allocator,
                                               RendererRenderPipeline *pipeline);
 

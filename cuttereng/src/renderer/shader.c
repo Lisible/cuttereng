@@ -3,7 +3,8 @@
 #include "../asset.h"
 
 AssetLoader shader_asset_loader = {.fn = shader_asset_loader_fn};
-void *shader_asset_loader_fn(Allocator *allocator, const char *path) {
+void *shader_asset_loader_fn(Allocator *allocator, Assets *assets,
+                             const char *path) {
   ASSERT(path != NULL);
   Shader *shader_asset = allocator_allocate(allocator, sizeof(Shader));
   shader_asset->source = asset_read_file_to_string(allocator, path);
@@ -21,7 +22,6 @@ AssetDestructor shader_asset_destructor = {.fn = shader_asset_destructor_fn};
 void shader_asset_destructor_fn(Allocator *allocator, void *asset) {
   Shader *shader_asset = asset;
   allocator_free(allocator, shader_asset->source);
-  allocator_free(allocator, shader_asset);
 }
 
 WGPUShaderModule shader_create_wgpu_shader_module(WGPUDevice device,

@@ -3,9 +3,14 @@
 #include "../bitset.h"
 #include "../log.h"
 #include "../memory.h"
+#include "../transform.h"
+#include "src/bytes.h"
+#include "src/gltf.h"
+#include "src/graphics/mesh_instance.h"
+#include "src/renderer/material.h"
 #include "src/vec.h"
+#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 DEF_VEC(EcsSystem, EcsSystemVec, 512)
 DEF_VEC(EcsCommand, EcsCommandVec, 128)
@@ -275,6 +280,190 @@ EcsId ecs_command_queue_create_entity(EcsCommandQueue *queue) {
   EcsId entity_id = ecs_reserve_entity(queue->ecs);
   EcsCommandVec_append(&queue->commands, &command, 1);
   return entity_id;
+}
+EcsId ecs_command_queue_import_glb(EcsCommandQueue *queue, Assets *assets,
+                                   const char *glb_path) {
+  ASSERT(queue != NULL);
+  ASSERT(glb_path != NULL);
+
+  char *effective_path = asset_get_effective_path(queue->allocator, glb_path);
+  if (!effective_path) {
+    goto err;
+  }
+  LOG_DEBUG("Importing GLB from %s", glb_path);
+  FILE *glb_file = fopen(effective_path, "r");
+  if (!glb_file) {
+    LOG_ERROR("Couldn't open GLB file");
+    goto cleanup_effective_path;
+  }
+  allocator_free(queue->allocator, effective_path);
+
+  if (fseek(glb_file, 0, SEEK_END) < 0) {
+    LOG_ERROR("Couldn't seek the end of the GLB file");
+    goto cleanup_glb_file;
+  }
+  long glb_file_length = ftell(glb_file);
+  if (fseek(glb_file, 0, SEEK_SET) < 0) {
+    LOG_ERROR("Couldn't seek the beginning of the GLB file");
+    goto cleanup_glb_file;
+  }
+
+  u8 *glb_file_content = allocator_allocate(queue->allocator, glb_file_length);
+  if (!glb_file_content) {
+    LOG_ERROR("Couldn't allocate GLB file content buffer");
+    goto cleanup_glb_file;
+  }
+
+  fread(glb_file_content, 1, glb_file_length, glb_file);
+
+  if (fclose(glb_file) == EOF) {
+    LOG_ERROR("An error occured while closing the GLB file");
+    goto cleanup_glb_file;
+  }
+
+  Gltf *gltf =
+      Gltf_parse_glb(queue->allocator, glb_file_content, glb_file_length);
+  if (!gltf) {
+    LOG_ERROR("Couldn't parse GLB");
+    goto err;
+  }
+
+  if (gltf->scene_count != 1) {
+    LOG_ERROR("Only single scene GLB are supported so far");
+    goto cleanup_gltf;
+  }
+
+  GltfScene *scene = &gltf->scenes[0];
+  EcsId *node_entities = allocator_allocate_array(
+      queue->allocator, gltf->node_count, sizeof(EcsId));
+
+  LOG_DEBUG("Scene name: %s", scene->name);
+  for (size_t node_index = 0; node_index < gltf->node_count; node_index++) {
+    GltfNode *node = &gltf->nodes[node_index];
+    EcsId entity_id = ecs_command_queue_create_entity(queue);
+    node_entities[node_index] = entity_id;
+    Transform transform = TRANSFORM_DEFAULT;
+    if (node->has_trs) {
+      transform = (Transform){.position = node->translation,
+                              .rotation = node->rotation,
+                              .scale = node->scale};
+    } else {
+      // TODO transform from matrix
+    }
+
+    ecs_command_queue_insert_component_with_ptr(queue, entity_id, Transform,
+                                                &transform);
+    if (node->has_mesh) {
+      GltfMesh *gltf_mesh = &gltf->meshes[node->mesh];
+      GltfMeshPrimitive *primitive = &gltf_mesh->primitives[0];
+      GltfMeshPrimitiveAttribute *position_attribute =
+          gltf_mesh_primitive_attribute_by_name(
+              "POSITION", primitive->attributes, primitive->attribute_count);
+      GltfAccessor *position_accessor =
+          &gltf->accessors[position_attribute->accessor];
+      GltfMeshPrimitiveAttribute *normal_attribute =
+          gltf_mesh_primitive_attribute_by_name("NORMAL", primitive->attributes,
+                                                primitive->attribute_count);
+      GltfAccessor *normal_accessor =
+          normal_attribute == NULL
+              ? NULL
+              : &gltf->accessors[normal_attribute->accessor];
+      GltfMeshPrimitiveAttribute *texture_coordinates_attribute =
+          gltf_mesh_primitive_attribute_by_name(
+              "TEXCOORD_0", primitive->attributes, primitive->attribute_count);
+      GltfAccessor *texture_coordinates_accessor =
+          texture_coordinates_attribute == NULL
+              ? NULL
+              : &gltf->accessors[texture_coordinates_attribute->accessor];
+
+      Mesh *mesh = allocator_allocate(queue->allocator, sizeof(Mesh));
+
+      mesh->vertex_count = position_accessor->count;
+      mesh->vertices = allocator_allocate_array(
+          queue->allocator, position_accessor->count, sizeof(Vertex));
+      for (size_t vertex_index = 0; vertex_index < position_accessor->count;
+           vertex_index++) {
+        size_t position_stride = position_accessor->byte_stride;
+        if (position_stride == 0) {
+          position_stride = sizeof(v3f);
+        }
+
+        mesh->vertices[vertex_index].position.x = float_from_bytes_le(
+            &position_accessor->data_ptr[vertex_index * position_stride]);
+        mesh->vertices[vertex_index].position.y = float_from_bytes_le(
+            &position_accessor
+                 ->data_ptr[vertex_index * position_stride + sizeof(float)]);
+        mesh->vertices[vertex_index].position.z = -float_from_bytes_le(
+            &position_accessor->data_ptr[vertex_index * position_stride +
+                                         2 * sizeof(float)]);
+
+        if (normal_accessor != NULL) {
+          size_t normal_stride = normal_accessor->byte_stride;
+          if (normal_stride == 0) {
+            normal_stride = sizeof(v3f);
+          }
+          mesh->vertices[vertex_index].normal.x = float_from_bytes_le(
+              &normal_accessor->data_ptr[vertex_index * normal_stride]);
+          mesh->vertices[vertex_index].normal.y = float_from_bytes_le(
+              &normal_accessor
+                   ->data_ptr[vertex_index * normal_stride + sizeof(float)]);
+          mesh->vertices[vertex_index].normal.z = float_from_bytes_le(
+              &normal_accessor->data_ptr[vertex_index * normal_stride +
+                                         2 * sizeof(float)]);
+        }
+        if (texture_coordinates_accessor != NULL) {
+          size_t texture_coordinates_stride =
+              texture_coordinates_accessor->byte_stride;
+          if (texture_coordinates_stride == 0) {
+            texture_coordinates_stride = sizeof(v2f);
+          }
+          mesh->vertices[vertex_index].texture_coordinates.x =
+              float_from_bytes_le(
+                  &texture_coordinates_accessor
+                       ->data_ptr[vertex_index * texture_coordinates_stride]);
+          mesh->vertices[vertex_index].texture_coordinates.y =
+              float_from_bytes_le(
+                  &texture_coordinates_accessor
+                       ->data_ptr[vertex_index * texture_coordinates_stride +
+                                  sizeof(float)]);
+        }
+      }
+      if (primitive->has_indices) {
+        GltfAccessor *index_accessor = &gltf->accessors[primitive->indices];
+        size_t index_count = index_accessor->count;
+        mesh->index_count = index_count;
+        mesh->indices = allocator_allocate_array(queue->allocator, index_count,
+                                                 sizeof(Index));
+        for (size_t index_index = 0; index_index < index_count; index_index++) {
+          size_t stride = index_accessor->byte_stride;
+          if (stride == 0) {
+            stride = sizeof(Index);
+          }
+          mesh->indices[index_index] = u16_from_bytes_le(
+              &index_accessor->data_ptr[index_index * stride]);
+        }
+      }
+
+      AssetHandle mesh_handle = assets_store(assets, Mesh, node->name, mesh);
+
+      ecs_command_queue_insert_component(queue, entity_id, MeshInstance,
+                                         {.mesh_handle = mesh_handle});
+      ecs_command_queue_insert_component(queue, entity_id, Material,
+                                         {.base_color = 0, .normal = 0});
+    }
+    LOG_DEBUG("Node %d name: %s", node_index, node->name);
+  }
+
+  return node_entities[scene->nodes[0]];
+
+cleanup_gltf:
+  Gltf_destroy(queue->allocator, gltf);
+cleanup_glb_file:
+  fclose(glb_file);
+cleanup_effective_path:
+  allocator_free(queue->allocator, effective_path);
+err:
+  PANIC();
 }
 void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
                                          char *component_name,

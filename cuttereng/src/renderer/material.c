@@ -1,22 +1,16 @@
 #include "material.h"
 #include "../assert.h"
+#include "../image.h"
 #include "../json.h"
 #include "renderer.h"
 #include "webgpu/webgpu.h"
 #include <string.h>
 
 AssetLoader material_loader = {.fn = material_loader_fn};
-void material_destroy(Allocator *allocator, Material *material) {
+void *material_loader_fn(Allocator *allocator, Assets *assets,
+                         const char *path) {
   ASSERT(allocator != NULL);
-  if (!material) {
-    return;
-  }
-
-  allocator_free(allocator, material->base_color);
-  allocator_free(allocator, material);
-}
-
-void *material_loader_fn(Allocator *allocator, const char *path) {
+  ASSERT(path != NULL);
   Material *material = allocator_allocate(allocator, sizeof(Material));
   char *material_file_content = asset_read_file_to_string(allocator, path);
   if (!material_file_content) {
@@ -44,14 +38,12 @@ void *material_loader_fn(Allocator *allocator, const char *path) {
     LOG_ERROR("base_color property of material file %s is not a string", path);
     goto cleanup_material_json;
   }
-  char *base_color_str = base_color_json->string;
-  size_t base_color_str_length = strlen(base_color_str) + 1;
-  material->base_color = allocator_allocate(allocator, base_color_str_length);
-  if (!material->base_color) {
-    LOG_ERROR("Couldn't allocate material->base_color");
-    goto cleanup_material_json;
+
+  AssetHandle base_color_handle;
+  if (!assets_load(assets, Image, base_color_json->string,
+                   &base_color_handle)) {
+    LOG_ERROR("Couldn't load base color texture");
   }
-  memcpy(material->base_color, base_color_str, base_color_str_length);
 
   Json *normal_json = json_object_get(material_json->object, "normal");
   if (!normal_json) {
@@ -63,15 +55,14 @@ void *material_loader_fn(Allocator *allocator, const char *path) {
     LOG_ERROR("normal property of material file %s is not a string", path);
     goto cleanup_material_json;
   }
-  char *normal_str = normal_json->string;
-  size_t normal_str_length = strlen(normal_str) + 1;
-  material->normal = allocator_allocate(allocator, normal_str_length);
-  if (!material->normal) {
-    LOG_ERROR("Couldn't allocate material->normal");
-    goto cleanup_material_json;
-  }
-  memcpy(material->normal, normal_str, normal_str_length);
 
+  AssetHandle normal_handle;
+  if (!assets_load(assets, Image, normal_json->string, &normal_handle)) {
+    LOG_ERROR("Couldn't load normal texture");
+  }
+
+  material->base_color = base_color_handle;
+  material->normal = normal_handle;
   json_destroy(allocator, material_json);
   allocator_free(allocator, material_file_content);
   return material;
@@ -88,25 +79,23 @@ err:
 AssetDestructor material_destructor = {.fn = material_destructor_fn};
 void material_destructor_fn(Allocator *allocator, void *asset) {
   Material *material = asset;
-  allocator_free(allocator, material->normal);
-  allocator_free(allocator, material->base_color);
-  allocator_free(allocator, material);
 }
 
-GPUMaterial *gpu_material_create(Allocator *allocator,
-                                 HashTableTexture *textures, WGPUDevice device,
+GPUMaterial *gpu_material_create(Allocator *allocator, ResourceCaches *caches,
+                                 WGPUDevice device,
                                  WGPUBindGroupLayout material_bind_group_layout,
                                  Material *material) {
   GPUMaterial *gpu_material =
       allocator_allocate(allocator, sizeof(GPUMaterial));
   WGPUTexture base_color_texture =
-      HashTableTexture_get(textures, material->base_color);
+      ResourceCaches_get_texture(caches, material->base_color);
   if (!base_color_texture) {
     allocator_free(allocator, gpu_material);
     return NULL;
   }
 
-  WGPUTexture normal_texture = HashTableTexture_get(textures, material->normal);
+  WGPUTexture normal_texture =
+      ResourceCaches_get_texture(caches, material->normal);
   if (!normal_texture) {
     allocator_free(allocator, gpu_material);
     return NULL;
@@ -175,11 +164,15 @@ GPUMaterial *gpu_material_create(Allocator *allocator,
   return gpu_material;
 }
 
-void gpu_material_destroy(Allocator *allocator, GPUMaterial *material) {
+void gpu_material_deinit(GPUMaterial *material) {
   wgpuTextureViewRelease(material->base_color_texture_view);
   wgpuSamplerRelease(material->base_color_texture_sampler);
   wgpuTextureViewRelease(material->normal_texture_view);
   wgpuSamplerRelease(material->normal_texture_sampler);
   wgpuBindGroupRelease(material->bind_group);
+}
+
+void gpu_material_destroy(Allocator *allocator, GPUMaterial *material) {
+  gpu_material_deinit(material);
   allocator_free(allocator, material);
 }

@@ -160,7 +160,7 @@ typedef struct {
 } RenderPassRenderAttachment;
 
 typedef struct {
-  char *module_identifier;
+  AssetHandle module_handle;
   bool has_no_fragment_shader;
 } RenderPassShaderModuleDescriptor;
 

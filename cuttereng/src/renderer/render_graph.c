@@ -3,6 +3,7 @@
 #include "../bitset.h"
 #include "../memory.h"
 #include "../renderer/renderer.h"
+#include "src/renderer/resource_cache.h"
 #include <webgpu/webgpu.h>
 
 WGPUCullMode wgpu_cull_mode_from_cull_mode(CullMode cull_mode);
@@ -111,23 +112,25 @@ char *render_pass_descriptor_generate_identifier(
     Allocator *allocator, const RenderPassDescriptor *render_pass_descriptor) {
   ASSERT(render_pass_descriptor != NULL);
   static const size_t BOOLEAN_IDENTIFIER_LENGTH = 1;
-  size_t identifier_length =
-      strlen(render_pass_descriptor->shader_module.module_identifier);
+
+  size_t module_id_str_length =
+      (int)(log10(render_pass_descriptor->shader_module.module_handle + 1.0) +
+            2.0);
+  size_t identifier_length = module_id_str_length;
   identifier_length += BOOLEAN_IDENTIFIER_LENGTH;
   identifier_length++; // Null terminator
 
   char *identifier =
       allocator_allocate_array(allocator, identifier_length, sizeof(char));
-  identifier = strcat(identifier,
-                      render_pass_descriptor->shader_module.module_identifier);
+  snprintf(identifier, module_id_str_length, "%ld",
+           render_pass_descriptor->shader_module.module_handle);
   if (render_pass_descriptor->uses_vertex_buffer) {
     identifier = strcat(identifier, "t");
   } else {
     identifier = strcat(identifier, "f");
   }
-  // allocator_allocate_array zero-initialize the allocated memory, so the
-  // null terminator is already present
 
+  LOG_DEBUG("shader identifier: %s", identifier);
   return identifier;
 }
 
@@ -145,10 +148,9 @@ void create_pipeline(RenderGraph *render_graph,
               render_pass_descriptor->bind_group_layout_count,
           .bindGroupLayouts = render_pass_descriptor->bind_group_layouts});
 
-  WGPUShaderModule shader_module = HashTableShaderModule_get(
-      res->shader_modules,
-      render_pass_descriptor->shader_module.module_identifier);
-
+  WGPUShaderModule shader_module = ResourceCaches_get_shader_module(
+      &res->resource_caches,
+      render_pass_descriptor->shader_module.module_handle);
   WGPUVertexAttribute vertex_attributes[] = {
       {.format = WGPUVertexFormat_Float32x3, .offset = 0, .shaderLocation = 0},
       {.format = WGPUVertexFormat_Float32x3,

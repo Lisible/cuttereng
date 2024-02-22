@@ -41,6 +41,7 @@ cuttereng_lib = library(
   'src/math/matrix.c',
   'src/math/quaternion.c',
   'src/renderer/renderer.c',
+  'src/renderer/resource_cache.c',
   'src/renderer/render_graph.c',
   'src/renderer/default_pipeline.c',
   'src/renderer/shader.c',

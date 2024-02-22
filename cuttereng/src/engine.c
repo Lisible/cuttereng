@@ -54,7 +54,6 @@ void engine_handle_events(Engine *engine, Event *event) {
     if (event->key_event.key == Key_F1) {
       engine_reload_assets(engine);
       renderer_clear_caches(engine->renderer);
-      renderer_load_resources(engine->renderer, engine->assets);
     } else {
       InputState_handle_event(&engine->input_state, event);
     }
@@ -163,9 +162,9 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
           ecs_query_it_get(&query_it, MeshInstance, 1);
       ShaderMaterial *shader_material =
           ecs_query_it_get(&query_it, ShaderMaterial, 2);
-      renderer_draw_mesh_with_shader_material(
-          engine->renderer, transform, mesh_instance->mesh_id,
-          shader_material->shader_identifier);
+      renderer_draw_mesh_with_shader_material(engine->renderer, transform,
+                                              mesh_instance->mesh_handle,
+                                              shader_material->shader_handle);
     }
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);
@@ -185,8 +184,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
           ecs_query_it_get(&query_it, MeshInstance, 1);
       // Material*material=
       //     ecs_query_it_get(&query_it, Material, 2);
-      renderer_draw_mesh(engine->renderer, transform, mesh_instance->mesh_id,
-                         "water.json");
+      renderer_draw_mesh(engine->renderer, transform,
+                         mesh_instance->mesh_handle, 0);
     }
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);

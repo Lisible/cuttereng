@@ -29,6 +29,7 @@ void bitmap_font_destructor_fn(Allocator *allocator, void *ptr);
 extern AssetDestructor bitmap_font_destructor;
 
 extern AssetLoader bitmap_font_loader;
-void *bitmap_font_loader_fn(Allocator *allocator, const char *path);
+void *bitmap_font_loader_fn(Allocator *allocator, Assets *assets,
+                            const char *path);
 
 #endif // CUTTERENG_RENDERER_FONT_H

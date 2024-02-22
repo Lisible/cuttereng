@@ -30,6 +30,8 @@ typedef struct {
   bool has_camera;
   bool has_skin;
   bool has_mesh;
+  bool has_matrix;
+  bool has_trs;
 } GltfNode;
 
 typedef struct {

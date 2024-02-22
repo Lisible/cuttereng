@@ -1,5 +1,7 @@
 #include "material.h"
+#include "shader.h"
 #include "src/renderer/renderer.h"
+#include "src/renderer/resource_cache.h"
 
 typedef struct {
   WGPUBindGroup directional_light_depth_map;
@@ -24,6 +26,15 @@ uint32_t ceilToNextMultiple(uint32_t value, uint32_t step) {
 }
 
 typedef struct {
+  AssetHandle gbuffer_shader_handle;
+  AssetHandle directional_light_space_depth_map_shader_handle;
+  AssetHandle directional_light_shadow_map_write_to_gbuffer_shader_handle;
+  AssetHandle deferred_lighting_shader_handle;
+  AssetHandle skybox_shader_handle;
+  AssetHandle composition_shader_handle;
+} DefaultPipelineStaticState;
+
+typedef struct {
   WGPUBindGroupLayout deferred_lighting_result_bind_group_layout;
   WGPUBindGroup deferred_lighting_result_bind_group;
   WGPUBindGroupLayout g_buffer_bind_group_layout;
@@ -37,12 +48,14 @@ typedef struct {
 } DefaultPipelineState;
 
 void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
+                               void *render_pipeline_static_state,
                                void *render_pipeline_state,
                                DrawCommandQueue *draw_commands,
                                Allocator *frame_allocator,
                                RenderGraph *render_graph, WGPUQueue wgpu_queue,
                                WGPUTextureView surface_texture_view,
                                float current_time_secs) {
+  DefaultPipelineStaticState *static_state = render_pipeline_static_state;
   DefaultPipelineState *state = render_pipeline_state;
   RenderGraphResourceHandle surface_texture_handle =
       render_graph_register_texture_view(
@@ -97,11 +110,12 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
                    .store_op = WGPUStoreOp_Store}},
           .render_attachment_count = 4,
           .uses_vertex_buffer = true,
-          .shader_module = {.module_identifier = "shader.wgsl"},
+          .shader_module = {.module_handle =
+                                static_state->gbuffer_shader_handle},
           .dispatch_fn = mesh_pass_dispatch});
 
   VEC_FOR_EACH(draw_commands, command, DrawCommand, {
-    if (command->material.type != MaterialType_Shader) {
+    if (!command->uses_shader_material) {
       continue;
     }
 
@@ -111,7 +125,7 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
     render_graph_add_pass(
         frame_allocator, render_graph, ctx, res,
         &(const RenderPassDescriptor){
-            .identifier = command->material.material_shader,
+            .identifier = "shader_material_pass",
             .bind_group_layouts = {res->common_uniforms_bind_group_layout,
                                    res->mesh_uniforms_bind_group_layout,
                                    res->material_bind_group_layout},
@@ -139,8 +153,7 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
                      .store_op = WGPUStoreOp_Store}},
             .render_attachment_count = 4,
             .uses_vertex_buffer = true,
-            .shader_module = {.module_identifier =
-                                  command->material.material_shader},
+            .shader_module = {.module_handle = command->material_handle},
             .dispatch_fn = mesh_pass_dispatch});
   });
 
@@ -212,9 +225,11 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
           .render_attachment_count = 1,
           .uses_vertex_buffer = true,
           .cull_mode = CullMode_Front,
-          .shader_module = {.module_identifier =
-                                "directional_light_space_depth_map.wgsl",
-                            .has_no_fragment_shader = true},
+          .shader_module =
+              {.module_handle =
+                   static_state
+                       ->directional_light_space_depth_map_shader_handle,
+               .has_no_fragment_shader = true},
           .dispatch_fn = directional_light_space_depth_map_pass_dispatch});
 
   state->directional_light_shadow_map_to_gbuffer_pass_data =
@@ -238,8 +253,9 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
           .uses_vertex_buffer = false,
           .shader_module =
               {
-                  .module_identifier =
-                      "directional_light_shadow_map_to_gbuffer.wgsl",
+                  .module_handle =
+                      static_state
+                          ->directional_light_shadow_map_write_to_gbuffer_shader_handle,
               },
           .pass_data =
               &state->directional_light_shadow_map_to_gbuffer_pass_data,
@@ -271,7 +287,8 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
                              &g_buffer.directional_light_space_depth_map,
                              &surface_texture_handle},
           .read_resource_count = 5,
-          .shader_module = {.module_identifier = "deferred_lighting.wgsl"},
+          .shader_module = {.module_handle =
+                                static_state->deferred_lighting_shader_handle},
           .pass_data = &state->deferred_lighting_pass_data,
           .dispatch_fn = deferred_lighting_pass_dispatch});
 
@@ -288,7 +305,8 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
           .render_attachment_count = 1,
           .read_resource_count = 0,
           .uses_vertex_buffer = false,
-          .shader_module = {.module_identifier = "skybox.wgsl"},
+          .shader_module = {.module_handle =
+                                static_state->skybox_shader_handle},
           .dispatch_fn = skybox_pass_dispatch});
 
   state->deferred_lighting_result_bind_group_layout =
@@ -349,7 +367,8 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
           .read_resources = {&deferred_lighting_result,
                              &surface_texture_handle},
           .read_resource_count = 2,
-          .shader_module = {.module_identifier = "composition.wgsl"},
+          .shader_module = {.module_handle =
+                                static_state->composition_shader_handle},
           .pass_data = &state->composition_pass_data,
           .dispatch_fn = composition_pass_dispatch});
 
@@ -424,36 +443,29 @@ void mesh_pass_dispatch(const RenderPassDispatchContext *ctx) {
        command_index < DrawCommandQueue_length(command_queue);
        command_index++) {
     DrawCommand *command = &command_queue->data[command_index];
-
-    GPUModel *model =
-        HashTableGPUModel_get(res->models, command->model_identifier);
-
-    GPUMaterial *material;
-    if (command->material.type == MaterialType_Basic) {
-      material = HashTableMaterial_get(res->materials,
-                                       command->material.material_identifier);
-    } else {
-      material = HashTableMaterial_get(res->materials, "water.json");
+    if (command->uses_shader_material) {
+      continue;
     }
+
+    GPUMesh *mesh =
+        ResourceCaches_get_mesh(&res->resource_caches, command->mesh_handle);
+    GPUMaterial *material = ResourceCaches_get_material(
+        &res->resource_caches, command->material_handle);
     wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 2,
                                       material->bind_group, 0, 0);
 
-    for (size_t mesh_index = 0; mesh_index < model->mesh_count; mesh_index++) {
-      gpu_mesh_bind(render_pass_encoder, &model->meshes[mesh_index]);
-      u32 stride = mesh_stride * command_index;
-      wgpuRenderPassEncoderSetBindGroup(
-          render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+    gpu_mesh_bind(render_pass_encoder, mesh);
+    u32 stride = mesh_stride * command_index;
+    wgpuRenderPassEncoderSetBindGroup(
+        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
 
-      if (model->meshes[mesh_index].index_count > 0) {
-        wgpuRenderPassEncoderDrawIndexed(render_pass_encoder,
-                                         model->meshes[mesh_index].index_count,
-                                         1, 0, 0, 0);
-      } else {
+    if (mesh->index_count > 0) {
+      wgpuRenderPassEncoderDrawIndexed(render_pass_encoder, mesh->index_count,
+                                       1, 0, 0, 0);
+    } else {
 
-        wgpuRenderPassEncoderDraw(render_pass_encoder,
-                                  model->meshes[mesh_index].vertex_count, 1, 0,
-                                  0);
-      }
+      wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0,
+                                0);
     }
   }
 }
@@ -470,16 +482,13 @@ void directional_light_space_depth_map_pass_dispatch(
        command_index < DrawCommandQueue_length(command_queue);
        command_index++) {
     DrawCommand *command = &command_queue->data[command_index];
-    GPUModel *model =
-        HashTableGPUModel_get(res->models, command->model_identifier);
-    for (size_t mesh_index = 0; mesh_index < model->mesh_count; mesh_index++) {
-      gpu_mesh_bind(render_pass_encoder, &model->meshes[mesh_index]);
-      u32 stride = mesh_stride * command_index;
-      wgpuRenderPassEncoderSetBindGroup(
-          render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
-      wgpuRenderPassEncoderDraw(
-          render_pass_encoder, model->meshes[mesh_index].vertex_count, 1, 0, 0);
-    }
+    GPUMesh *mesh =
+        ResourceCaches_get_mesh(&res->resource_caches, command->mesh_handle);
+    gpu_mesh_bind(render_pass_encoder, mesh);
+    u32 stride = mesh_stride * command_index;
+    wgpuRenderPassEncoderSetBindGroup(
+        render_pass_encoder, 1, res->mesh_uniforms_bind_group, 1, &stride);
+    wgpuRenderPassEncoderDraw(render_pass_encoder, mesh->vertex_count, 1, 0, 0);
   }
 }
 
@@ -511,18 +520,84 @@ void composition_pass_dispatch(const RenderPassDispatchContext *ctx) {
   wgpuRenderPassEncoderDraw(render_pass_encoder, 6, 1, 0, 0);
 }
 
+bool load_shader_to_renderer_resource_cache(Renderer *renderer, Assets *assets,
+                                            const char *shader_path,
+                                            AssetHandle *out_asset_handle) {
+  AssetHandle handle;
+  if (!assets_load(assets, Shader, shader_path, &handle)) {
+    LOG_DEBUG("Couldn't load shader %s", shader_path);
+    return false;
+  }
+
+  Shader *shader = assets_get(assets, Shader, handle);
+  ResourceCaches_set_shader_module(
+      &renderer->resources.resource_caches, handle,
+      shader_create_wgpu_shader_module(renderer->ctx.wgpu_device, shader_path,
+                                       shader->source));
+  *out_asset_handle = handle;
+  return true;
+}
+
 RendererRenderPipeline *
-renderer_default_render_pipeline_create(Allocator *allocator) {
+renderer_default_render_pipeline_create(Allocator *allocator,
+                                        Renderer *renderer, Assets *assets) {
+  ASSERT(allocator != NULL);
+  ASSERT(assets != NULL);
   RendererRenderPipeline *pipeline =
       allocator_allocate(allocator, sizeof(RendererRenderPipeline));
+  DefaultPipelineStaticState *pipeline_static_state =
+      allocator_allocate(allocator, sizeof(DefaultPipelineStaticState));
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets, "shaders/skybox.wgsl",
+          &pipeline_static_state->skybox_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets, "shaders/shader.wgsl",
+          &pipeline_static_state->gbuffer_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets, "shaders/deferred_lighting.wgsl",
+          &pipeline_static_state->deferred_lighting_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets, "shaders/composition.wgsl",
+          &pipeline_static_state->composition_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets, "shaders/directional_light_space_depth_map.wgsl",
+          &pipeline_static_state
+               ->directional_light_space_depth_map_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+  if (!load_shader_to_renderer_resource_cache(
+          renderer, assets,
+          "shaders/directional_light_shadow_map_to_gbuffer.wgsl",
+          &pipeline_static_state
+               ->directional_light_shadow_map_write_to_gbuffer_shader_handle)) {
+    goto cleanup_pipeline_static_state;
+  }
+
+  pipeline->pipeline_static_state = pipeline_static_state;
   pipeline->pipeline_state =
       allocator_allocate(allocator, sizeof(DefaultPipelineState));
   pipeline->fn = renderer_default_pipeline;
   pipeline->cleanup_fn = renderer_default_pipeline_cleanup;
   return pipeline;
+cleanup_pipeline_static_state:
+  LOG_ERROR("Failed to create render pipeline");
+  allocator_free(allocator, pipeline->pipeline_static_state);
+  allocator_free(allocator, pipeline->pipeline_state);
+  allocator_free(allocator, pipeline);
+  return NULL;
 }
 void renderer_default_render_pipeline_destroy(
     Allocator *allocator, RendererRenderPipeline *pipeline) {
+  allocator_free(allocator, pipeline->pipeline_static_state);
   allocator_free(allocator, pipeline->pipeline_state);
   allocator_free(allocator, pipeline);
 }

@@ -120,11 +120,9 @@ static Vertex CUBE_VERTICES[36] = {(Vertex){.position = {-0.5, 0.5, -0.5},
                                             .texture_coordinates = {0.0, 1.0},
                                             .normal = {0.0, 1.0, 0.0}}};
 
-void cube_model_init(Allocator *allocator, WGPUDevice device, WGPUQueue queue,
-                     GPUModel *model) {
-  Mesh cube_mesh = {.vertices = CUBE_VERTICES, .vertex_count = 36};
-  Model cube_model = {.mesh_count = 1, .meshes = &cube_mesh};
-  GPUModel_init(allocator, device, queue, model, &cube_model);
+void cube_mesh_init(Mesh *mesh) {
+  ASSERT(mesh != NULL);
+  mesh_init(mesh, CUBE_VERTICES, 36, NULL, 0);
 }
 
 void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
@@ -226,30 +224,6 @@ void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh) {
                                         gpu_mesh->index_count * sizeof(Index));
   }
 }
-void GPUModel_init(Allocator *allocator, WGPUDevice device, WGPUQueue queue,
-                   GPUModel *gpu_model, const Model *model) {
-  ASSERT(device != NULL);
-  ASSERT(queue != NULL);
-  ASSERT(gpu_model != NULL);
-  ASSERT(model != NULL);
-
-  gpu_model->mesh_count = model->mesh_count;
-  gpu_model->meshes =
-      allocator_allocate_array(allocator, model->mesh_count, sizeof(GPUMesh));
-  for (size_t mesh_index = 0; mesh_index < model->mesh_count; mesh_index++) {
-    gpu_mesh_init(device, queue, &gpu_model->meshes[mesh_index],
-                  &model->meshes[mesh_index]);
-  }
-}
-void GPUModel_deinit(Allocator *allocator, GPUModel *gpu_model) {
-  ASSERT(gpu_model != NULL);
-  for (size_t mesh_index = 0; mesh_index < gpu_model->mesh_count;
-       mesh_index++) {
-    gpu_mesh_deinit(&gpu_model->meshes[mesh_index]);
-  }
-  allocator_free(allocator, gpu_model->meshes);
-}
-
 void mesh_destructor_fn(Allocator *allocator, void *asset) {
   ASSERT(allocator != NULL);
   ASSERT(asset != NULL);
@@ -259,9 +233,11 @@ void mesh_destructor_fn(Allocator *allocator, void *asset) {
 }
 AssetDestructor mesh_destructor = {.fn = mesh_destructor_fn};
 
-void *model_asset_loader_fn(Allocator *allocator, const char *path) {
+void *model_asset_loader_fn(Allocator *allocator, Assets *assets,
+                            const char *path) {
   ASSERT(allocator != NULL);
   ASSERT(path != NULL);
+  (void)assets;
   // FIXME This is not error checked and this is platform specific
   // There should be an abstraction that allows to do that
   // The abstraction should also provide a way to not have to put all the

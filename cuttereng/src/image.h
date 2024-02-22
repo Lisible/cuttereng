@@ -12,16 +12,16 @@ typedef enum {
 } PixelFormat;
 
 typedef struct {
+  u8 *data;
   u32 width;
   u32 height;
   u32 bytes_per_pixel;
   PixelFormat pixel_format;
-  u8 *data;
 } Image;
 
 void image_destroy(Allocator *allocator, Image *image);
 
-void *image_loader_fn(Allocator *allocator, const char *path);
+void *image_loader_fn(Allocator *allocator, Assets *assets, const char *path);
 extern AssetLoader image_loader;
 
 void image_destructor_fn(Allocator *allocator, void *asset);

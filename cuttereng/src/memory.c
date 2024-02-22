@@ -8,6 +8,10 @@ void *memory_allocate(size_t size, void *ctx) {
   (void)ctx;
   return malloc(size);
 }
+void *memory_allocate_aligned(size_t alignment, size_t size, void *ctx) {
+  (void)ctx;
+  return aligned_alloc(alignment, size);
+}
 void *memory_allocate_array(size_t count, size_t item_size, void *ctx) {
   (void)ctx;
   return calloc(count, item_size);
@@ -23,6 +27,7 @@ void memory_free(void *ptr, void *ctx) {
   free(ptr);
 }
 Allocator system_allocator = {.allocate = memory_allocate,
+                              .allocate_aligned = memory_allocate_aligned,
                               .allocate_array = memory_allocate_array,
                               .reallocate = memory_reallocate,
                               .free = memory_free,
@@ -30,6 +35,11 @@ Allocator system_allocator = {.allocate = memory_allocate,
 void *allocator_allocate(Allocator *allocator, size_t size) {
   ASSERT(allocator != NULL);
   return allocator->allocate(size, allocator->ctx);
+}
+void *allocator_allocate_aligned(Allocator *allocator, size_t alignment,
+                                 size_t size) {
+  ASSERT(allocator != NULL);
+  return allocator->allocate_aligned(alignment, size, allocator->ctx);
 }
 void *allocator_allocate_array(Allocator *allocator, size_t count,
                                size_t item_size) {
@@ -49,6 +59,13 @@ void allocator_free(Allocator *allocator, void *ptr) {
 void *arena_allocator_allocate(size_t size, void *ctx) {
   ASSERT(ctx != NULL);
   return arena_allocate((Arena *)ctx, size);
+}
+void *arena_allocator_allocate_aligned(size_t alignment, size_t size,
+                                       void *ctx) {
+  ASSERT(ctx != NULL);
+  (void)alignment;
+  (void)size;
+  UNIMPLEMENTED();
 }
 void *arena_allocator_allocate_array(size_t count, size_t item_size,
                                      void *ctx) {
@@ -72,6 +89,7 @@ void arena_allocator_free(void *ptr, void *ctx) {
 Allocator arena_allocator(Arena *arena) {
   return (Allocator){.ctx = arena,
                      .allocate = arena_allocator_allocate,
+                     .allocate_aligned = arena_allocator_allocate_aligned,
                      .allocate_array = arena_allocator_allocate_array,
                      .reallocate = arena_allocator_reallocate,
                      .free = arena_allocator_free};

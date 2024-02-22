@@ -43,13 +43,6 @@ void HashTableMaterial_destructor(Allocator *allocator, void *value) {
 }
 DEF_HASH_TABLE(GPUMaterial *, HashTableMaterial, HashTableMaterial_destructor)
 
-void HashTableGPUModel_destructor(Allocator *allocator, void *value) {
-  (void)allocator;
-  GPUModel_deinit(allocator, value);
-  allocator_free(allocator, (GPUModel *)value);
-}
-DEF_HASH_TABLE(GPUModel *, HashTableGPUModel, HashTableGPUModel_destructor)
-
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
 
 void on_queue_submitted_work_done(WGPUQueueWorkDoneStatus status,
@@ -220,10 +213,14 @@ Renderer *renderer_new(Allocator *allocator, SDL_Window *window,
   renderer->ctx.depth_texture_format = WGPUTextureFormat_Depth32Float;
   // renderer->ctx.resolution_factor = 0.4;
   renderer->ctx.resolution_factor = 1.0;
-  renderer->render_pipeline =
-      renderer_default_render_pipeline_create(allocator);
-
   initialize_resources(renderer, assets, queue);
+  renderer->render_pipeline =
+      renderer_default_render_pipeline_create(allocator, renderer, assets);
+  if (!renderer->render_pipeline) {
+    LOG_ERROR("Couldn't create default render pipeline");
+    goto cleanup_surface;
+  }
+
   wgpuQueueRelease(queue);
 
   return renderer;
@@ -246,54 +243,33 @@ void load_bitmap_fonts(Allocator *allocator, Assets *assets) {
     char font_path[sizeof(FONT_DIR) + MAX_FILENAME_LENGTH] = FONT_DIR;
     strcat(font_path, dl->entries[i]);
     LOG_DEBUG("Loading font %s", dl->entries[i]);
-    BitmapFont *font = assets_fetch(assets, BitmapFont, font_path);
-    if (!font) {
+    AssetHandle font_handle;
+    if (!assets_load(assets, BitmapFont, font_path, &font_handle)) {
       LOG_ERROR("Couldn't load font %s", dl->entries[i]);
       continue;
     }
-
+    BitmapFont *font = assets_get(assets, BitmapFont, font_handle);
+    (void)font;
     // TODO something idk
   }
   filesystem_directory_listing_destroy(allocator, dl);
 }
 Material *load_material(Assets *assets, char *material_path) {
-  return assets_fetch(assets, Material, material_path);
-}
-
-void load_materials(Allocator *allocator, WGPUDevice device,
-                    HashTableMaterial *materials, HashTableTexture *textures,
-                    WGPUBindGroupLayout material_bind_group_layout,
-                    Assets *assets) {
-  DirectoryListing *dl =
-      filesystem_list_files_in_directory(allocator, "assets/materials");
-  for (size_t i = 0; i < dl->entry_count; i++) {
-    char material_path[sizeof(MATERIAL_DIR) + MAX_FILENAME_LENGTH] =
-        MATERIAL_DIR;
-    strcat(material_path, dl->entries[i]);
-    LOG_DEBUG("Loading material %s", dl->entries[i]);
-    Material *material = load_material(assets, material_path);
-    if (!material) {
-      LOG_ERROR("Couldn't load material %s", dl->entries[i]);
-      continue;
-    }
-
-    LOG_ERROR("material->base_color: %s", material->base_color);
-
-    GPUMaterial *gpu_material = gpu_material_create(
-        allocator, textures, device, material_bind_group_layout, material);
-    if (!gpu_material) {
-      LOG_ERROR("Couldn't create material binding data");
-      material_destroy(allocator, material);
-      continue;
-    }
-    HashTableMaterial_set(materials, dl->entries[i], gpu_material);
+  AssetHandle material_handle;
+  if (!assets_load(assets, Material, material_path, &material_handle)) {
+    return NULL;
   }
-  filesystem_directory_listing_destroy(allocator, dl);
+
+  return assets_get(assets, Material, material_handle);
 }
 
 WGPUShaderModule create_shader_module(WGPUDevice device, Assets *assets,
                                       char *shader_module_identifier) {
-  Shader *shader = assets_fetch(assets, Shader, shader_module_identifier);
+  AssetHandle shader_handle;
+  if (!assets_load(assets, Shader, shader_module_identifier, &shader_handle)) {
+    return NULL;
+  }
+  Shader *shader = assets_get(assets, Shader, shader_handle);
   WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
       .chain =
           (WGPUChainedStruct){.sType = WGPUSType_ShaderModuleWGSLDescriptor},
@@ -325,14 +301,15 @@ void load_shader_modules(Allocator *allocator,
 }
 
 WGPUTexture load_texture(WGPUDevice device, WGPUQueue queue, Assets *assets,
-                         char *texture_path) {
-  Image *image = assets_fetch(assets, Image, texture_path);
+                         AssetHandle texture_handle) {
+  Image *image = assets_get(assets, Image, texture_handle);
+
   // TODO set based on the image format
   WGPUTextureFormat texture_format = WGPUTextureFormat_RGBA8UnormSrgb;
   WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
       &(const WGPUTextureDescriptor){
-          .label = texture_path,
+          .label = "texture",
           .dimension = WGPUTextureDimension_2D,
           .size = {image->width, image->height, 1},
           .format = texture_format,
@@ -354,37 +331,12 @@ WGPUTexture load_texture(WGPUDevice device, WGPUQueue queue, Assets *assets,
   return texture;
 }
 
-void load_textures(Allocator *allocator, HashTableTexture *textures,
-                   WGPUDevice device, WGPUQueue queue, Assets *assets) {
-  (void)textures;
-  (void)device;
-  (void)assets;
-  DirectoryListing *dl =
-      filesystem_list_files_in_directory(allocator, "assets/textures");
-  for (size_t i = 0; i < dl->entry_count; i++) {
-    char texture_path[sizeof(TEXTURE_DIR) + MAX_FILENAME_LENGTH] = TEXTURE_DIR;
-    strcat(texture_path, dl->entries[i]);
-    LOG_DEBUG("Loading texture %s", dl->entries[i]);
-    WGPUTexture texture = load_texture(device, queue, assets, texture_path);
-    if (!texture) {
-      LOG_ERROR("Texture loading failed");
-    } else {
-      HashTableTexture_set(textures, dl->entries[i], texture);
-    }
-  }
-  filesystem_directory_listing_destroy(allocator, dl);
-}
-
 void renderer_destroy(Renderer *renderer) {
   ASSERT(renderer != NULL);
 
   renderer_default_render_pipeline_destroy(renderer->allocator,
                                            renderer->render_pipeline);
   HashTableRenderPipeline_destroy(renderer->resources.pipelines);
-  HashTableShaderModule_destroy(renderer->resources.shader_modules);
-  HashTableTexture_destroy(renderer->resources.textures);
-  HashTableMaterial_destroy(renderer->resources.materials);
-  HashTableGPUModel_destroy(renderer->resources.models);
   wgpuBindGroupLayoutRelease(renderer->resources.material_bind_group_layout);
   wgpuBindGroupLayoutRelease(
       renderer->resources.mesh_uniforms_bind_group_layout);
@@ -411,31 +363,26 @@ void renderer_destroy(Renderer *renderer) {
 }
 
 void renderer_draw_mesh(Renderer *renderer, Transform *transform,
-                        const char *mesh_identifier,
-                        char *material_identifier) {
+                        AssetHandle mesh_handle, AssetHandle material_handle) {
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
   DrawCommand draw_command;
-  draw_command.model_identifier =
-      memory_clone_string(renderer->allocator, mesh_identifier);
-  draw_command.material.type = MaterialType_Basic;
-  draw_command.material.material_identifier =
-      memory_clone_string(renderer->allocator, material_identifier);
+  draw_command.mesh_handle = mesh_handle;
+  draw_command.material_handle = material_handle;
+  draw_command.uses_shader_material = false;
   memcpy(&draw_command.transform, transform, sizeof(Transform));
   DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
 }
 void renderer_draw_mesh_with_shader_material(Renderer *renderer,
                                              Transform *transform,
-                                             const char *mesh_identifier,
-                                             const char *shader_identifier) {
+                                             AssetHandle mesh_handle,
+                                             AssetHandle material_handle) {
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
   DrawCommand draw_command;
-  draw_command.model_identifier =
-      memory_clone_string(renderer->allocator, mesh_identifier);
-  draw_command.material.type = MaterialType_Shader;
-  draw_command.material.material_shader =
-      memory_clone_string(renderer->allocator, shader_identifier);
+  draw_command.mesh_handle = mesh_handle;
+  draw_command.material_handle = material_handle;
+  draw_command.uses_shader_material = false;
   memcpy(&draw_command.transform, transform, sizeof(Transform));
   DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
 }
@@ -462,15 +409,59 @@ void renderer_initialize_for_window(Renderer *renderer, SDL_Window *window) {
   renderer->ctx.wgpu_surface = wgpu_surface;
 }
 
-void load_model_in_cache(Allocator *allocator, Renderer *renderer,
-                         Assets *assets, WGPUQueue queue,
-                         char *model_identifier) {
-  GPUModel *gpu_model =
-      allocator_allocate(renderer->allocator, sizeof(GPUModel));
-  Model *model = assets_fetch(assets, Model, model_identifier);
-  GPUModel_init(allocator, renderer->ctx.wgpu_device, queue, gpu_model, model);
-  HashTableGPUModel_set(renderer->resources.models, model_identifier,
-                        gpu_model);
+void load_mesh_in_cache_if_required(Renderer *renderer, WGPUQueue queue,
+                                    Assets *assets, AssetHandle mesh_handle) {
+  ASSERT(renderer != NULL);
+  ASSERT(assets != NULL);
+  if (ResourceCaches_has_mesh(&renderer->resources.resource_caches,
+                              mesh_handle)) {
+    return;
+  }
+
+  Mesh *mesh = assets_get(assets, Mesh, mesh_handle);
+  GPUMesh *gpu_mesh = allocator_allocate(renderer->allocator, sizeof(GPUMesh));
+  gpu_mesh_init(renderer->ctx.wgpu_device, queue, gpu_mesh, mesh);
+  ResourceCaches_set_mesh(&renderer->resources.resource_caches, mesh_handle,
+                          gpu_mesh);
+}
+
+void load_texture_in_cache_if_required(Renderer *renderer, WGPUQueue queue,
+                                       Assets *assets,
+                                       AssetHandle texture_handle) {
+  ASSERT(renderer != NULL);
+  ASSERT(assets != NULL);
+  if (ResourceCaches_has_texture(&renderer->resources.resource_caches,
+                                 texture_handle)) {
+    return;
+  }
+
+  WGPUTexture texture =
+      load_texture(renderer->ctx.wgpu_device, queue, assets, texture_handle);
+  ResourceCaches_set_texture(&renderer->resources.resource_caches,
+                             texture_handle, texture);
+}
+
+void load_material_in_cache_if_required(Renderer *renderer, WGPUQueue queue,
+                                        Assets *assets,
+                                        AssetHandle material_handle) {
+  ASSERT(renderer != NULL);
+  ASSERT(assets != NULL);
+  if (ResourceCaches_has_material(&renderer->resources.resource_caches,
+                                  material_handle)) {
+    return;
+  }
+
+  Material *material = assets_get(assets, Material, material_handle);
+  load_texture_in_cache_if_required(renderer, queue, assets,
+                                    material->base_color);
+  load_texture_in_cache_if_required(renderer, queue, assets, material->normal);
+
+  GPUMaterial *gpu_material = gpu_material_create(
+      renderer->allocator, &renderer->resources.resource_caches,
+      renderer->ctx.wgpu_device, renderer->resources.material_bind_group_layout,
+      material);
+  ResourceCaches_set_material(&renderer->resources.resource_caches,
+                              material_handle, gpu_material);
 }
 
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,
@@ -493,26 +484,27 @@ void renderer_render(Allocator *frame_allocator, Renderer *renderer,
     LOG_ERROR("get_current_texture status=%#.8x", surface_texture.status);
     exit(1);
   }
+
+  // Ensures meshes and materials are loaded
+  VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand, {
+    load_mesh_in_cache_if_required(renderer, wgpu_queue, assets,
+                                   command->mesh_handle);
+    load_material_in_cache_if_required(renderer, wgpu_queue, assets,
+                                       command->material_handle);
+  });
+
   WGPUTextureView surface_texture_view =
       wgpuTextureCreateView(surface_texture.texture, NULL);
 
   RenderGraph render_graph;
   render_graph_init(&render_graph);
 
-  VEC_FOR_EACH(&renderer->draw_commands, command, DrawCommand, {
-    if (!HashTableGPUModel_has(renderer->resources.models,
-                               command->model_identifier)) {
-      load_model_in_cache(renderer->allocator, renderer, assets, wgpu_queue,
-                          command->model_identifier);
-    }
-  });
-  DrawCommandQueue_length(&renderer->draw_commands);
-
-  renderer->render_pipeline->fn(&renderer->ctx, &renderer->resources,
-                                renderer->render_pipeline->pipeline_state,
-                                &renderer->draw_commands, frame_allocator,
-                                &render_graph, wgpu_queue, surface_texture_view,
-                                current_time_secs);
+  renderer->render_pipeline->fn(
+      &renderer->ctx, &renderer->resources,
+      renderer->render_pipeline->pipeline_static_state,
+      renderer->render_pipeline->pipeline_state, &renderer->draw_commands,
+      frame_allocator, &render_graph, wgpu_queue, surface_texture_view,
+      current_time_secs);
 
   WGPUCommandEncoderDescriptor command_encoder_descriptor = {
       .nextInChain = NULL, .label = "command_encoder"};
@@ -692,25 +684,9 @@ void renderer_set_view_position(Renderer *renderer, v3f *view_position) {
 void renderer_clear_caches(Renderer *renderer) {
   ASSERT(renderer != NULL);
   HashTableRenderPipeline_clear(renderer->resources.pipelines);
-  HashTableMaterial_clear(renderer->resources.materials);
-  HashTableTexture_clear(renderer->resources.textures);
-  HashTableShaderModule_clear(renderer->resources.shader_modules);
+  ResourceCaches_clear(&renderer->resources.resource_caches);
 }
 
-void renderer_load_resources(Renderer *renderer, Assets *assets) {
-  ASSERT(renderer != NULL);
-  ASSERT(assets != NULL);
-
-  WGPUQueue queue = wgpuDeviceGetQueue(renderer->ctx.wgpu_device);
-  load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
-                      renderer->ctx.wgpu_device, assets);
-  load_textures(renderer->allocator, renderer->resources.textures,
-                renderer->ctx.wgpu_device, queue, assets);
-  load_materials(renderer->allocator, renderer->ctx.wgpu_device,
-                 renderer->resources.materials, renderer->resources.textures,
-                 renderer->resources.material_bind_group_layout, assets);
-  wgpuQueueRelease(queue);
-}
 void initialize_common_uniforms(CommonUniforms *uniforms) {
   uniforms->current_time_secs = 0;
   uniforms->view_position = (v3f){0};
@@ -950,14 +926,7 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
 
   renderer->resources.pipelines =
       HashTableRenderPipeline_create(renderer->allocator, 32);
-  renderer->resources.shader_modules =
-      HashTableShaderModule_create(renderer->allocator, 32);
-  renderer->resources.textures =
-      HashTableTexture_create(renderer->allocator, 512);
-  renderer->resources.materials =
-      HashTableMaterial_create(renderer->allocator, 32);
-  renderer->resources.models =
-      HashTableGPUModel_create(renderer->allocator, 128);
+  ResourceCaches_init(&renderer->resources.resource_caches);
   assets_set_destructor(assets, Mesh, &mesh_destructor);
 
   assets_register_loader(assets, Shader, &shader_asset_loader,
@@ -968,40 +937,9 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
                          &bitmap_font_destructor);
   assets_register_loader(assets, Model, &model_asset_loader,
                          &model_asset_destructor);
-  load_shader_modules(renderer->allocator, renderer->resources.shader_modules,
-                      renderer->ctx.wgpu_device, assets);
-  load_textures(renderer->allocator, renderer->resources.textures,
-                renderer->ctx.wgpu_device, queue, assets);
-  load_bitmap_fonts(renderer->allocator, assets);
-  load_materials(renderer->allocator, renderer->ctx.wgpu_device,
-                 renderer->resources.materials, renderer->resources.textures,
-                 renderer->resources.material_bind_group_layout, assets);
-
-  GPUModel *cube_model =
-      allocator_allocate(renderer->allocator, sizeof(GPUModel));
-  cube_model_init(renderer->allocator, renderer->ctx.wgpu_device, queue,
-                  cube_model);
-  HashTableGPUModel_set(renderer->resources.models, "_cube", cube_model);
 }
 
 void DrawCommand_deinit(Allocator *allocator, DrawCommand *command) {
   ASSERT(allocator != NULL);
   ASSERT(command != NULL);
-  allocator_free(allocator, command->model_identifier);
-  DrawCommandMaterial_deinit(allocator, &command->material);
-}
-void DrawCommandMaterial_deinit(Allocator *allocator,
-                                DrawCommandMaterial *command_material) {
-  ASSERT(allocator != NULL);
-  ASSERT(command_material != NULL);
-
-  switch (command_material->type) {
-  case MaterialType_Shader:
-    allocator_free(allocator, command_material->material_shader);
-    break;
-  case MaterialType_Basic:
-  default:
-    allocator_free(allocator, command_material->material_identifier);
-    break;
-  }
 }

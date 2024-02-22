@@ -10,7 +10,8 @@ typedef struct {
   char *source;
 } Shader;
 
-void *shader_asset_loader_fn(Allocator *allocator, const char *path);
+void *shader_asset_loader_fn(Allocator *allocator, Assets *assets,
+                             const char *path);
 extern AssetLoader shader_asset_loader;
 void shader_asset_destructor_fn(Allocator *allocator, void *asset);
 extern AssetDestructor shader_asset_destructor;

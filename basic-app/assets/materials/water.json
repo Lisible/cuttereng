@@ -1,4 +1,4 @@
 {
-  "base_color": "water.png",
-  "normal": "water.normal.png"
+  "base_color": "textures/water.png",
+  "normal": "textures/water.normal.png"
 }
