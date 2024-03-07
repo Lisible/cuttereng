@@ -12,7 +12,8 @@ void *material_loader_fn(Allocator *allocator, Assets *assets,
   ASSERT(allocator != NULL);
   ASSERT(path != NULL);
   Material *material = allocator_allocate(allocator, sizeof(Material));
-  char *material_file_content = asset_read_file_to_string(allocator, path);
+  char *material_file_content =
+      asset_read_file_to_string(allocator, path, NULL);
   if (!material_file_content) {
     LOG_ERROR("Couldn't read material file: %s", path);
     goto err;

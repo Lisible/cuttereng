@@ -136,7 +136,9 @@ void mesh_init(Mesh *mesh, Vertex *vertices, size_t vertex_count,
 }
 void mesh_deinit(Allocator *allocator, Mesh *mesh) {
   ASSERT(mesh != NULL);
-  allocator_free(allocator, mesh->vertices);
+  if (mesh->vertices != CUBE_VERTICES) {
+    allocator_free(allocator, mesh->vertices);
+  }
   allocator_free(allocator, mesh->indices);
 }
 Vertex *mesh_vertices(Mesh *mesh) {

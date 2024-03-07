@@ -14,6 +14,9 @@ cuttereng_deps += m_dep
 sdl2_dep = dependency('sdl2')
 cuttereng_deps += sdl2_dep
 
+lisiblepng_dep = dependency('lisiblepng', default_options: ['c_args=[\'-DLPNG_DEBUG_LOG\']'])
+cuttereng_deps += lisiblepng_dep
+
 cc = meson.get_compiler('c')
 wgpu_native_dir = get_option('opt_wgpu_native_path')
 wgpu_native_lib = cc.find_library('wgpu_native', dirs: [wgpu_native_dir])
@@ -49,11 +52,7 @@ cuttereng_lib = library(
   'src/renderer/material.c',
   'src/renderer/font.c',
   'src/image.c',
-  'src/zlib.c',
-  'src/deflate.c',
   'src/gltf.c',
-  'src/bitstream.c',
-  'src/png.c',
   'src/transform.c',
   dependencies: cuttereng_deps,
 )
@@ -76,12 +75,8 @@ test_quaternion= executable('test_quaternion', 'tests/test_runner.c', 'tests/mat
 test('test_quaternion', test_quaternion)
 test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
 test('test_mesh', test_mesh)
-test_png = executable('test_png', 'tests/test_runner.c', 'tests/png.c', dependencies: [cuttereng_dep])
-test('test_png', test_png)
 test_vec = executable('test_vec', 'tests/test_runner.c', 'tests/vec.c', dependencies: [cuttereng_dep])
 test('test_vec', test_vec)
-test_bitstream = executable('test_bitstream', 'tests/test_runner.c', 'tests/bitstream.c', dependencies: [cuttereng_dep])
-test('test_bitstream', test_bitstream)
 test_memory = executable('test_memory', 'tests/test_runner.c', 'tests/memory.c', dependencies: [cuttereng_dep])
 test('test_memory', test_memory)
 test_gltf = executable('test_gltf', 'tests/test_runner.c', 'tests/gltf.c', dependencies: [cuttereng_dep])

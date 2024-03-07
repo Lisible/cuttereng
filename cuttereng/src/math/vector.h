@@ -1,6 +1,84 @@
 #ifndef CUTTERENG_MATH_VECTOR_H
 #define CUTTERENG_MATH_VECTOR_H
 
+#define DEFINE_V4(T, name)                                                     \
+  typedef struct {                                                             \
+    T x;                                                                       \
+    T y;                                                                       \
+    T z;                                                                       \
+    T w;                                                                       \
+  } name;                                                                      \
+                                                                               \
+  void name##_add(name *lhs, const name *rhs);                                 \
+  void name##_sub(name *lhs, const name *rhs);                                 \
+  void name##_mul_scalar(name *lhs, T rhs);                                    \
+  void name##_div_scalar(name *lhs, T rhs);                                    \
+  void name##_neg(name *v);                                                    \
+  T name##_dot(const name *lhs, const name *rhs);                              \
+  T name##_length(const name *v);                                              \
+  void name##_normalize(name *v);
+
+#define IMPL_V4(T, name)                                                       \
+  void name##_add(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
+    lhs->x += rhs->x;                                                          \
+    lhs->y += rhs->y;                                                          \
+    lhs->z += rhs->z;                                                          \
+    lhs->w += rhs->w;                                                          \
+  }                                                                            \
+                                                                               \
+  void name##_sub(name *lhs, const name *rhs) {                                \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
+    lhs->x -= rhs->x;                                                          \
+    lhs->y -= rhs->y;                                                          \
+    lhs->z -= rhs->z;                                                          \
+    lhs->w -= rhs->w;                                                          \
+  }                                                                            \
+                                                                               \
+  void name##_mul_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
+    lhs->x *= rhs;                                                             \
+    lhs->y *= rhs;                                                             \
+    lhs->z *= rhs;                                                             \
+    lhs->w *= rhs;                                                             \
+  }                                                                            \
+                                                                               \
+  void name##_div_scalar(name *lhs, T rhs) {                                   \
+    ASSERT(lhs != NULL);                                                       \
+    lhs->x /= rhs;                                                             \
+    lhs->y /= rhs;                                                             \
+    lhs->z /= rhs;                                                             \
+    lhs->w /= rhs;                                                             \
+  }                                                                            \
+                                                                               \
+  void name##_neg(name *v) {                                                   \
+    ASSERT(v != NULL);                                                         \
+    v->x = -v->x;                                                              \
+    v->y = -v->y;                                                              \
+    v->z = -v->z;                                                              \
+    v->w = -v->w;                                                              \
+  }                                                                            \
+  T name##_dot(const name *lhs, const name *rhs) {                             \
+    ASSERT(lhs != NULL);                                                       \
+    ASSERT(rhs != NULL);                                                       \
+    return lhs->x * rhs->x + lhs->y * rhs->y + lhs->z * rhs->z +               \
+           lhs->w * rhs->w;                                                    \
+  }                                                                            \
+  T name##_length(const name *v) {                                             \
+    return sqrt(v->x * v->x + v->y * v->y + v->z * v->z + v->w * v->w);        \
+  }                                                                            \
+  void name##_normalize(name *v) {                                             \
+    T length = name##_length(v);                                               \
+    v->x /= length;                                                            \
+    v->y /= length;                                                            \
+    v->z /= length;                                                            \
+    v->w /= length;                                                            \
+  }
+
+DEFINE_V4(float, v4f)
+
 #define DEFINE_V3(T, name)                                                     \
   typedef struct {                                                             \
     T x;                                                                       \

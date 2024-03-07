@@ -300,11 +300,12 @@ void load_shader_modules(Allocator *allocator,
   filesystem_directory_listing_destroy(allocator, dl);
 }
 
-WGPUTexture load_texture(WGPUDevice device, WGPUQueue queue, Assets *assets,
+WGPUTexture load_texture(Allocator *allocator, WGPUDevice device,
+                         WGPUQueue queue, Assets *assets,
                          AssetHandle texture_handle) {
   Image *image = assets_get(assets, Image, texture_handle);
+  // image_add_alpha_channel(allocator, image);
 
-  // TODO set based on the image format
   WGPUTextureFormat texture_format = WGPUTextureFormat_RGBA8UnormSrgb;
   WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
@@ -436,7 +437,8 @@ void load_texture_in_cache_if_required(Renderer *renderer, WGPUQueue queue,
   }
 
   WGPUTexture texture =
-      load_texture(renderer->ctx.wgpu_device, queue, assets, texture_handle);
+      load_texture(renderer->allocator, renderer->ctx.wgpu_device, queue,
+                   assets, texture_handle);
   ResourceCaches_set_texture(&renderer->resources.resource_caches,
                              texture_handle, texture);
 }

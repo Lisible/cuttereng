@@ -60,7 +60,8 @@ void filesystem_directory_listing_destroy(Allocator *allocator,
   allocator_free(allocator, directory_listing);
 }
 
-char *filesystem_read_file_to_string(Allocator *allocator, const char *path) {
+char *filesystem_read_file_to_string(Allocator *allocator, const char *path,
+                                     size_t *out_size) {
   if (!path)
     goto err;
 
@@ -89,6 +90,10 @@ char *filesystem_read_file_to_string(Allocator *allocator, const char *path) {
 
   if (fclose(file) < 0)
     goto err_3;
+
+  if (out_size) {
+    *out_size = length;
+  }
 
   return content;
 

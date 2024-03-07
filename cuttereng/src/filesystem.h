@@ -19,6 +19,7 @@ void filesystem_directory_listing_destroy(Allocator *allocator,
 ///
 /// The user is responsible for freeing the returned string
 /// @return The file content
-char *filesystem_read_file_to_string(Allocator *allocator, const char *path);
+char *filesystem_read_file_to_string(Allocator *allocator, const char *path,
+                                     size_t *out_size);
 
 #endif // CUTTERENG_FILESYSTEM_H

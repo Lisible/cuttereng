@@ -274,17 +274,15 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   cube_mesh_init(&cube_mesh);
   AssetHandle cube_mesh_handle =
       assets_store(ctx->assets, Mesh, "_cube", &cube_mesh);
-  ecs_command_queue_insert_component(command_queue, ground, MeshInstance,
-                                     {.mesh_handle = cube_mesh_handle});
-  ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
-                                              &ground_transform);
-
   AssetHandle water_material_handle;
   assets_load(ctx->assets, Material, "materials/water.json",
               &water_material_handle);
   ecs_command_queue_insert_component(
-      command_queue, ground, Material,
-      {.base_color = water_material_handle, .normal = water_material_handle});
+      command_queue, ground, MeshInstance,
+      {.mesh_handle = cube_mesh_handle,
+       .material_handle = water_material_handle});
+  ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
+                                              &ground_transform);
 
   EcsId fox = ecs_command_queue_import_glb(command_queue, ctx->assets,
                                            "models/fox.glb");

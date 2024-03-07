@@ -148,35 +148,37 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   ecs_query_it_deinit(&query_directional_light_it);
   EcsQuery_destroy(query_directional_light, allocator);
 
-  {
-    EcsQuery *query_meshes = EcsQuery_new(
-        allocator, &(const EcsQueryDescriptor){
-                       .components = {ecs_component_id(Transform),
-                                      ecs_component_id(MeshInstance),
-                                      ecs_component_id(ShaderMaterial)},
-                       .component_count = 3});
-    EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
-    while (ecs_query_it_next(&query_it)) {
-      Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
-      MeshInstance *mesh_instance =
-          ecs_query_it_get(&query_it, MeshInstance, 1);
-      ShaderMaterial *shader_material =
-          ecs_query_it_get(&query_it, ShaderMaterial, 2);
-      renderer_draw_mesh_with_shader_material(engine->renderer, transform,
-                                              mesh_instance->mesh_handle,
-                                              shader_material->shader_handle);
-    }
-    ecs_query_it_deinit(&query_it);
-    EcsQuery_destroy(query_meshes, allocator);
-  }
+  // {
+  //   EcsQuery *query_meshes = EcsQuery_new(
+  //       allocator, &(const EcsQueryDescriptor){
+  //                      .components = {ecs_component_id(Transform),
+  //                                     ecs_component_id(MeshInstance),
+  //                                     ecs_component_id(ShaderMaterial)},
+  //                      .component_count = 3});
+  //   EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
+  //   while (ecs_query_it_next(&query_it)) {
+  //     Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
+  //     MeshInstance *mesh_instance =
+  //         ecs_query_it_get(&query_it, MeshInstance, 1);
+  //     ShaderMaterial *shader_material =
+  //         ecs_query_it_get(&query_it, ShaderMaterial, 2);
+  //     renderer_draw_mesh_with_shader_material(engine->renderer, transform,
+  //                                             mesh_instance->mesh_handle,
+  //                                             shader_material->shader_handle);
+  //   }
+  //   ecs_query_it_deinit(&query_it);
+  //   EcsQuery_destroy(query_meshes, allocator);
+  // }
 
   {
     EcsQuery *query_meshes = EcsQuery_new(
-        allocator, &(const EcsQueryDescriptor){
-                       .components = {ecs_component_id(Transform),
-                                      ecs_component_id(MeshInstance),
-                                      ecs_component_id(Material)},
-                       .component_count = 3});
+        allocator,
+        &(const EcsQueryDescriptor){.components =
+                                        {
+                                            ecs_component_id(Transform),
+                                            ecs_component_id(MeshInstance),
+                                        },
+                                    .component_count = 2});
     EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
     while (ecs_query_it_next(&query_it)) {
       Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
@@ -185,7 +187,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
       // Material*material=
       //     ecs_query_it_get(&query_it, Material, 2);
       renderer_draw_mesh(engine->renderer, transform,
-                         mesh_instance->mesh_handle, 0);
+                         mesh_instance->mesh_handle,
+                         mesh_instance->material_handle);
     }
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);

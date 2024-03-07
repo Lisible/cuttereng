@@ -22,7 +22,7 @@ void *bitmap_font_loader_fn(Allocator *allocator, Assets *assets,
     goto err;
   }
 
-  char *font_file_content = asset_read_file_to_string(allocator, path);
+  char *font_file_content = asset_read_file_to_string(allocator, path, NULL);
   if (!font_file_content) {
     LOG_ERROR("Couldn't read font file: %s", path);
     goto cleanup_font;

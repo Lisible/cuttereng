@@ -54,8 +54,6 @@ AssetHandle AssetStore_store(AssetStore *asset_store, const void *asset) {
   if (asset_store->length == asset_store->capacity) {
     PANIC("AssetStore is full");
   }
-
-  LOG_DEBUG("asset_store->asset_type_size = %d", asset_store->asset_type_size);
   memcpy(
       &asset_store->assets[asset_store->asset_type_size * asset_store->length],
       asset, asset_store->asset_type_size);
@@ -249,9 +247,11 @@ char *asset_get_effective_path(Allocator *allocator, const char *path) {
   strcat(effective_path, path);
   return effective_path;
 }
-char *asset_read_file_to_string(Allocator *allocator, const char *path) {
+char *asset_read_file_to_string(Allocator *allocator, const char *path,
+                                size_t *out_size) {
   char *effective_path = asset_get_effective_path(allocator, path);
-  char *result = filesystem_read_file_to_string(allocator, effective_path);
+  char *result =
+      filesystem_read_file_to_string(allocator, effective_path, out_size);
   allocator_free(allocator, effective_path);
   return result;
 }

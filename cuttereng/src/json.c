@@ -33,39 +33,39 @@ typedef struct {
   size_t index;
   size_t line;
   size_t column;
-} ParsingContext;
+} GltfParsingContext;
 
-void advance(ParsingContext *ctx, size_t count);
-Json *parse_element(ParsingContext *ctx);
-bool parse_value(ParsingContext *ctx, Json *output_value);
-bool parse_object(ParsingContext *ctx, Json *output_value);
-bool parse_array(ParsingContext *ctx, Json *output_value);
-void parse_number(ParsingContext *ctx, Json *output_value);
-bool parse_string(ParsingContext *ctx, Json *output_value);
-void eat_character(ParsingContext *ctx, char expected);
-void eat_whitespaces(ParsingContext *ctx);
+void advance(GltfParsingContext *ctx, size_t count);
+Json *parse_element(GltfParsingContext *ctx);
+bool parse_value(GltfParsingContext *ctx, Json *output_value);
+bool parse_object(GltfParsingContext *ctx, Json *output_value);
+bool parse_array(GltfParsingContext *ctx, Json *output_value);
+void parse_number(GltfParsingContext *ctx, Json *output_value);
+bool parse_string(GltfParsingContext *ctx, Json *output_value);
+void eat_character(GltfParsingContext *ctx, char expected);
+void eat_whitespaces(GltfParsingContext *ctx);
 bool is_character(char c);
 bool is_escapable_character(char c);
 bool is_digit(char c);
 bool is_non_zero_digit(char c);
-char current_character(ParsingContext *ctx);
-char next_character(ParsingContext *ctx);
+char current_character(GltfParsingContext *ctx);
+char next_character(GltfParsingContext *ctx);
 Json *json_create(Allocator *allocator);
 void json_cleanup(Allocator *allocator, Json *value);
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
 Json *json_parse_from_str(Allocator *allocator, const char *str) {
   ASSERT(str != NULL);
-  ParsingContext ctx = {.allocator = allocator,
-                        .str = str,
-                        .len = strlen(str),
-                        .index = 0,
-                        .line = 0,
-                        .column = 0};
+  GltfParsingContext ctx = {.allocator = allocator,
+                            .str = str,
+                            .len = strlen(str),
+                            .index = 0,
+                            .line = 0,
+                            .column = 0};
   return parse_element(&ctx);
 }
 
-Json *parse_element(ParsingContext *ctx) {
+Json *parse_element(GltfParsingContext *ctx) {
   ASSERT(ctx != NULL);
   eat_whitespaces(ctx);
 
@@ -78,7 +78,7 @@ Json *parse_element(ParsingContext *ctx) {
   return json;
 }
 
-bool parse_value(ParsingContext *ctx, Json *value) {
+bool parse_value(GltfParsingContext *ctx, Json *value) {
   ASSERT(ctx != NULL);
   ASSERT(value != NULL);
   if (ctx->index + 4 <= ctx->len &&
@@ -181,7 +181,7 @@ err:
   return NULL;
 }
 
-bool parse_object(ParsingContext *ctx, Json *output_value) {
+bool parse_object(GltfParsingContext *ctx, Json *output_value) {
   ASSERT(ctx != NULL);
   ASSERT(output_value != NULL);
   JsonObject *object = json_object_create(ctx->allocator);
@@ -224,7 +224,7 @@ bool parse_object(ParsingContext *ctx, Json *output_value) {
   return true;
 }
 
-bool parse_array(ParsingContext *ctx, Json *output_value) {
+bool parse_array(GltfParsingContext *ctx, Json *output_value) {
   ASSERT(ctx != NULL);
   ASSERT(output_value != NULL);
   static const size_t MINIMUM_ARRAY_CAPACITY = 16;
@@ -285,13 +285,13 @@ err:
 }
 
 size_t estimate_string_size(const char *str);
-uint16_t parse_unicode_hex(ParsingContext *ctx);
+uint16_t parse_unicode_hex(GltfParsingContext *ctx);
 size_t write_utf8_from_code_point(char *string, size_t current_index,
                                   uint32_t code_point);
 bool is_utf16_leading_surrogate(uint32_t code_point);
 uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
                                     uint16_t trailing_surrogate);
-bool parse_string(ParsingContext *ctx, Json *output_value) {
+bool parse_string(GltfParsingContext *ctx, Json *output_value) {
   ASSERT(ctx != NULL);
   ASSERT(output_value != NULL);
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
@@ -391,7 +391,7 @@ size_t write_utf8_from_code_point(char *string, size_t current_index,
   return 4;
 }
 
-uint16_t parse_unicode_hex(ParsingContext *ctx) {
+uint16_t parse_unicode_hex(GltfParsingContext *ctx) {
   ASSERT(ctx != NULL);
   uint16_t parsed_codepoint = 0;
   for (int i = 3; i >= 0; i--) {
@@ -435,7 +435,7 @@ size_t estimate_string_size(const char *str) {
   return estimated_str_length;
 }
 
-void parse_number(ParsingContext *ctx, Json *output_value) {
+void parse_number(GltfParsingContext *ctx, Json *output_value) {
   ASSERT(ctx != NULL);
   ASSERT(output_value != NULL);
   int sign = 1;
@@ -517,7 +517,7 @@ void json_destroy_without_cleanup(Allocator *allocator, Json *value) {
   allocator_free(allocator, value);
 }
 
-void eat_character(ParsingContext *ctx, char expected) {
+void eat_character(GltfParsingContext *ctx, char expected) {
   ASSERT(ctx != NULL);
   ASSERT(current_character(ctx) == expected);
   advance(ctx, 1);
@@ -528,7 +528,7 @@ bool is_whitespace(char c) {
          c == CODEPOINT_CARRIAGE_RETURN || c == CODEPOINT_LINE_FEED;
 }
 
-void eat_whitespaces(ParsingContext *ctx) {
+void eat_whitespaces(GltfParsingContext *ctx) {
   ASSERT(ctx != NULL);
   while (ctx->index < ctx->len && is_whitespace(current_character(ctx))) {
 
@@ -541,17 +541,17 @@ void eat_whitespaces(ParsingContext *ctx) {
   }
 }
 
-void advance(ParsingContext *ctx, size_t count) {
+void advance(GltfParsingContext *ctx, size_t count) {
   ASSERT(ctx != NULL);
   ctx->index += count;
   ctx->column += count;
 }
 
-char current_character(ParsingContext *ctx) {
+char current_character(GltfParsingContext *ctx) {
   ASSERT(ctx != NULL);
   return ctx->str[ctx->index];
 }
-char next_character(ParsingContext *ctx) {
+char next_character(GltfParsingContext *ctx) {
   ASSERT(ctx != NULL);
   return ctx->str[ctx->index + 1];
 }
@@ -624,6 +624,7 @@ bool json_object_get_string(const JsonObject *object, const char *key,
   *out_str = json->string;
   return true;
 }
+
 bool json_object_get_number(const JsonObject *object, const char *key,
                             double *out_number) {
   ASSERT(object != NULL);

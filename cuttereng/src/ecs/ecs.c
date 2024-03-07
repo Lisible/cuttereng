@@ -3,12 +3,16 @@
 #include "../bitset.h"
 #include "../log.h"
 #include "../memory.h"
+#include "../renderer/material.h"
 #include "../transform.h"
+#include "lisiblepng.h"
 #include "src/bytes.h"
 #include "src/gltf.h"
 #include "src/graphics/mesh_instance.h"
+#include "src/image.h"
 #include "src/renderer/material.h"
 #include "src/vec.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -377,7 +381,6 @@ EcsId ecs_command_queue_import_glb(EcsCommandQueue *queue, Assets *assets,
               : &gltf->accessors[texture_coordinates_attribute->accessor];
 
       Mesh *mesh = allocator_allocate(queue->allocator, sizeof(Mesh));
-
       mesh->vertex_count = position_accessor->count;
       mesh->vertices = allocator_allocate_array(
           queue->allocator, position_accessor->count, sizeof(Vertex));
@@ -444,13 +447,39 @@ EcsId ecs_command_queue_import_glb(EcsCommandQueue *queue, Assets *assets,
         }
       }
 
+      AssetHandle material_handle = 0;
+      if (primitive->has_material) {
+        GltfMaterial *material = &gltf->materials[primitive->material];
+        if (material->has_pbr_metallic_roughness) {
+          size_t texture_index =
+              material->pbr_metallic_roughness.base_color_texture.index;
+          GltfTexture *texture = &gltf->textures[texture_index];
+          GltfSampler *sampler = &gltf->samplers[texture->sampler];
+          GltfImage *img = &gltf->images[texture->source];
+          GltfBufferView *buffer_view = &gltf->buffer_views[img->buffer_view];
+
+          FILE *bv = fmemopen((uint8_t *)buffer_view->data_ptr,
+                              buffer_view->byte_length, "r");
+          LisPng *png = LisPng_decode(bv);
+          fclose(bv);
+          Image *image = Image_from_png(queue->allocator, png);
+          LisPng_destroy(png);
+          AssetHandle base_color_texture_image =
+              assets_store(assets, Image, img->name, image);
+
+          Material m = {.base_color = base_color_texture_image,
+                        .normal = base_color_texture_image};
+          material_handle = assets_store(assets, Material, material->name, &m);
+        }
+      }
+
       AssetHandle mesh_handle = assets_store(assets, Mesh, node->name, mesh);
 
-      ecs_command_queue_insert_component(queue, entity_id, MeshInstance,
-                                         {.mesh_handle = mesh_handle});
-      ecs_command_queue_insert_component(queue, entity_id, Material,
-                                         {.base_color = 0, .normal = 0});
+      ecs_command_queue_insert_component(
+          queue, entity_id, MeshInstance,
+          {.mesh_handle = mesh_handle, .material_handle = material_handle});
     }
+
     LOG_DEBUG("Node %d name: %s", node_index, node->name);
   }
 

@@ -62,6 +62,61 @@ typedef struct {
   GltfMeshPrimitive *primitives;
 } GltfMesh;
 
+typedef enum {
+  GltfSamplerMinMagFilter_Nearest = 9728,
+  GltfSamplerMinMagFilter_Linear = 9729,
+  GltfSamplerMinMagFilter_Unknown
+} GltfSamplerMinMagFilter;
+
+typedef enum {
+  GltfSamplerWrap_ClampToEdge = 33071,
+  GltfSamplerWrap_MirroredRepeat = 33648,
+  GltfSamplerWrap_Repeat = 10497,
+  GltfSamplerWrap_Unknown
+} GltfSamplerWrap;
+
+typedef struct {
+  GltfSamplerMinMagFilter mag_filter;
+  GltfSamplerMinMagFilter min_filter;
+  GltfSamplerWrap wrap_s;
+  GltfSamplerWrap wrap_t;
+} GltfSampler;
+
+typedef struct {
+  char *name;
+  size_t buffer_view;
+} GltfImage;
+
+typedef struct {
+  size_t sampler;
+  size_t source;
+} GltfTexture;
+
+typedef struct {
+  size_t index;
+  size_t tex_coord;
+} GltfTextureInfo;
+
+typedef struct {
+  GltfTextureInfo base_color_texture;
+  v4f base_color_factor;
+  bool has_base_color_texture;
+} GltfMaterialPbrMetallicRoughness;
+
+typedef struct {
+  size_t index;
+  size_t tex_coord;
+  double scale;
+} GltfMaterialNormalTextureInfo;
+
+typedef struct {
+  char *name;
+  GltfMaterialPbrMetallicRoughness pbr_metallic_roughness;
+  // GltfMaterialNormalTextureInfo normal_texture;
+  bool has_pbr_metallic_roughness;
+  // bool has_normal_texture;
+} GltfMaterial;
+
 typedef struct {
   char *name;
   char *type;
@@ -83,6 +138,7 @@ typedef struct {
 
 typedef struct {
   char *name;
+  const u8 *data_ptr;
   size_t buffer;
   size_t byte_offset;
   size_t byte_length;
@@ -106,10 +162,18 @@ typedef struct {
   GltfNode *nodes;
   size_t mesh_count;
   GltfMesh *meshes;
+  size_t material_count;
+  GltfMaterial *materials;
+  size_t texture_count;
+  GltfTexture *textures;
+  size_t sampler_count;
+  GltfSampler *samplers;
+  size_t image_count;
+  GltfImage *images;
   size_t accessor_count;
   GltfAccessor *accessors;
-  // size_t buffer_view_count;
-  // GltfBufferView *buffer_views;
+  size_t buffer_view_count;
+  GltfBufferView *buffer_views;
   // size_t buffer_count;
   // GltfBuffer *buffers;
   const u8 *binary_data;

@@ -4,12 +4,14 @@
 #include "asset.h"
 #include "common.h"
 #include "memory.h"
+#include <lisiblepng.h>
 
 typedef enum {
-  PixelFormat_R8G8B8,
+  PixelFormat_R8G8B8 = 0,
   PixelFormat_R8G8B8A8,
   PixelFormat_Unknown,
 } PixelFormat;
+PixelFormat PixelFormat_from_LisPngColourType(LisPngColourType colour_type);
 
 typedef struct {
   u8 *data;
@@ -19,12 +21,13 @@ typedef struct {
   PixelFormat pixel_format;
 } Image;
 
-void image_destroy(Allocator *allocator, Image *image);
+Image *Image_from_png(Allocator *allocator, LisPng *png);
+void Image_destroy(Allocator *allocator, Image *image);
 
-void *image_loader_fn(Allocator *allocator, Assets *assets, const char *path);
+void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path);
 extern AssetLoader image_loader;
 
-void image_destructor_fn(Allocator *allocator, void *asset);
+void Image_destructor_fn(Allocator *allocator, void *asset);
 extern AssetDestructor image_destructor;
 
 #endif // CUTTERENG_IMAGE_H

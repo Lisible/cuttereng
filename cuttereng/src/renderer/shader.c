@@ -7,7 +7,7 @@ void *shader_asset_loader_fn(Allocator *allocator, Assets *assets,
                              const char *path) {
   ASSERT(path != NULL);
   Shader *shader_asset = allocator_allocate(allocator, sizeof(Shader));
-  shader_asset->source = asset_read_file_to_string(allocator, path);
+  shader_asset->source = asset_read_file_to_string(allocator, path, NULL);
   if (!shader_asset->source) {
     goto cleanup_shader;
   }

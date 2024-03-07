@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/Lisible/lisiblepng.git
+revision = head
+depth = 1
+
+[provide]
+lisiblepng = lisiblepng_dep

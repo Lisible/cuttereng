@@ -5,6 +5,7 @@
 
 typedef struct {
   AssetHandle mesh_handle;
+  AssetHandle material_handle;
 } MeshInstance;
 
 #endif // CUTTERENG_GRAPHICS_MESH_INSTANCE_H

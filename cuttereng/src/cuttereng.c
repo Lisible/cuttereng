@@ -27,7 +27,7 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
       env_get_configuration_file_path(&system_allocator);
   LOG_DEBUG("Configuration file path: %s", configuration_file_path);
   char *configuration_file_content = filesystem_read_file_to_string(
-      &system_allocator, configuration_file_path);
+      &system_allocator, configuration_file_path, NULL);
 
   Json *configuration_json =
       json_parse_from_str(&system_allocator, configuration_file_content);
