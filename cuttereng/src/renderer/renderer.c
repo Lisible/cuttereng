@@ -303,9 +303,8 @@ void load_shader_modules(Allocator *allocator,
 WGPUTexture load_texture(Allocator *allocator, WGPUDevice device,
                          WGPUQueue queue, Assets *assets,
                          AssetHandle texture_handle) {
+  (void)allocator;
   Image *image = assets_get(assets, Image, texture_handle);
-  // image_add_alpha_channel(allocator, image);
-
   WGPUTextureFormat texture_format = WGPUTextureFormat_RGBA8UnormSrgb;
   WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
@@ -937,8 +936,6 @@ void initialize_resources(Renderer *renderer, Assets *assets, WGPUQueue queue) {
                          &material_destructor);
   assets_register_loader(assets, BitmapFont, &bitmap_font_loader,
                          &bitmap_font_destructor);
-  assets_register_loader(assets, Model, &model_asset_loader,
-                         &model_asset_destructor);
 }
 
 void DrawCommand_deinit(Allocator *allocator, DrawCommand *command) {

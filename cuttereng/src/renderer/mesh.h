@@ -37,16 +37,6 @@ Index *mesh_indices(Mesh *mesh);
 size_t mesh_index_count(Mesh *mesh);
 
 typedef struct {
-  Mesh *meshes;
-  size_t mesh_count;
-} Model;
-void *model_asset_loader_fn(Allocator *allocator, Assets *assets,
-                            const char *path);
-extern AssetLoader model_asset_loader;
-void model_asset_destructor_fn(Allocator *allocator, void *asset);
-extern AssetDestructor model_asset_destructor;
-
-typedef struct {
   WGPUBuffer vertex_buffer;
   WGPUBuffer index_buffer;
   size_t vertex_count;
