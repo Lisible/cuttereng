@@ -284,8 +284,9 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
                                               &ground_transform);
 
-  EcsId fox = ecs_command_queue_import_glb(command_queue, ctx->assets,
-                                           "models/fox.glb");
+  // TODO need to add support for paletted images
+  // EcsId model = ecs_command_queue_import_glb(command_queue, ctx->assets,
+  //                                          "models/model.glb");
 
   // EcsId fox = ecs_command_queue_create_entity(command_queue);
   // Transform fox_transform = TRANSFORM_DEFAULT;
