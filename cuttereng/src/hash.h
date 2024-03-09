@@ -132,7 +132,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     if (!table->items[index].key) {                                            \
       return;                                                                  \
     }                                                                          \
-    if (execute_item_dctor && item_dctor_fn != NULL) {                         \
+    if (execute_item_dctor) {                                                  \
       item_dctor_fn(table->allocator, table->items[index].value);              \
     }                                                                          \
     allocator_free(table->allocator, table->items[index].key);                 \

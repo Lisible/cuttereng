@@ -14,8 +14,8 @@ DEF_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
 
 DECL_HASH_TABLE(AssetLoader *, HashTableAssetLoader)
 DEF_HASH_TABLE(AssetLoader *, HashTableAssetLoader, HashTable_noop_destructor)
-DECL_HASH_TABLE(AssetDestructor *, HashTableAssetDestructor)
-DEF_HASH_TABLE(AssetDestructor *, HashTableAssetDestructor,
+DECL_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer)
+DEF_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer,
                HashTable_noop_destructor)
 
 typedef struct {
@@ -80,7 +80,7 @@ DEF_HASH_TABLE(AssetStore *, HashTableAssetStore, AssetStore_destructor)
 struct Assets {
   Allocator *allocator;
   HashTableAssetLoader *loaders;
-  HashTableAssetDestructor *destructors;
+  HashTableAssetDeinitializer *destructors;
   HashTableAssetStore *asset_stores;
 };
 
@@ -88,7 +88,7 @@ Assets *assets_new(Allocator *allocator) {
   Assets *assets = allocator_allocate(allocator, sizeof(Assets));
   assets->allocator = allocator;
   assets->loaders = HashTableAssetLoader_create(allocator, 16);
-  assets->destructors = HashTableAssetDestructor_create(allocator, 16);
+  assets->destructors = HashTableAssetDeinitializer_create(allocator, 16);
   assets->asset_stores = HashTableAssetStore_create(allocator, 16);
   return assets;
 }
@@ -183,16 +183,16 @@ void *assets_get_(Assets *assets, const char *asset_type,
   return AssetStore_get(asset_store, asset_handle);
 }
 
-void assets_register_loader_(Assets *assets, char *asset_type,
-                             AssetLoader *asset_loader,
-                             AssetDestructor *asset_destructor) {
+void assets_register_asset_type_(Assets *assets, char *asset_type,
+                                 AssetLoader *asset_loader,
+                                 AssetDeinitializer *asset_deinitializer) {
   ASSERT(assets != NULL);
   ASSERT(asset_type != NULL);
   ASSERT(asset_loader != NULL);
-  ASSERT(asset_destructor != NULL);
+  ASSERT(asset_deinitializer != NULL);
   HashTableAssetLoader_set(assets->loaders, asset_type, asset_loader);
-  HashTableAssetDestructor_set(assets->destructors, asset_type,
-                               asset_destructor);
+  HashTableAssetDeinitializer_set(assets->destructors, asset_type,
+                                  asset_deinitializer);
 }
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type) {
@@ -201,13 +201,13 @@ bool assets_is_loader_registered_for_type_(const Assets *assets,
   return HashTableAssetLoader_has(assets->loaders, asset_type);
 }
 
-void assets_set_destructor_(Assets *assets, char *asset_type,
-                            AssetDestructor *asset_destructor) {
+void assets_set_deinitializer_(Assets *assets, char *asset_type,
+                               AssetDeinitializer *asset_deinitializer) {
   ASSERT(assets != NULL);
   ASSERT(asset_type != NULL);
-  ASSERT(asset_destructor != NULL);
-  HashTableAssetDestructor_set(assets->destructors, asset_type,
-                               asset_destructor);
+  ASSERT(asset_deinitializer != NULL);
+  HashTableAssetDeinitializer_set(assets->destructors, asset_type,
+                                  asset_deinitializer);
 }
 
 void assets_destroy(Assets *assets) {
@@ -223,17 +223,17 @@ void assets_destroy(Assets *assets) {
     char *asset_type = assets->asset_stores->items[asset_store_index].key;
     AssetStore *asset_store =
         assets->asset_stores->items[asset_store_index].value;
-    AssetDestructor *dctor =
-        HashTableAssetDestructor_get(assets->destructors, asset_type);
+    AssetDeinitializer *deinitializer =
+        HashTableAssetDeinitializer_get(assets->destructors, asset_type);
     for (size_t i = 0; i < asset_store->length; i++) {
-      dctor->fn(asset_store->allocator,
-                &asset_store->assets[asset_store->asset_type_size * i]);
+      deinitializer->fn(asset_store->allocator,
+                        &asset_store->assets[asset_store->asset_type_size * i]);
     }
   }
 
   HashTableAssetStore_destroy(assets->asset_stores);
   HashTableAssetLoader_destroy(assets->loaders);
-  HashTableAssetDestructor_destroy(assets->destructors);
+  HashTableAssetDeinitializer_destroy(assets->destructors);
   allocator_free(assets->allocator, assets);
 }
 

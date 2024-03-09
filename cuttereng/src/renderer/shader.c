@@ -18,8 +18,9 @@ cleanup_shader:
   allocator_free(allocator, shader_asset);
   return NULL;
 }
-AssetDestructor shader_asset_destructor = {.fn = shader_asset_destructor_fn};
-void shader_asset_destructor_fn(Allocator *allocator, void *asset) {
+AssetDeinitializer shader_asset_deinitializer = {
+    .fn = shader_asset_deinitializer_fn};
+void shader_asset_deinitializer_fn(Allocator *allocator, void *asset) {
   Shader *shader_asset = asset;
   allocator_free(allocator, shader_asset->source);
 }

@@ -25,8 +25,8 @@ typedef struct {
   size_t glyph_count;
 } BitmapFont;
 
-void bitmap_font_destructor_fn(Allocator *allocator, void *ptr);
-extern AssetDestructor bitmap_font_destructor;
+void bitmap_font_deinitializer_fn(Allocator *allocator, void *ptr);
+extern AssetDeinitializer bitmap_font_deinitializer;
 
 extern AssetLoader bitmap_font_loader;
 void *bitmap_font_loader_fn(Allocator *allocator, Assets *assets,

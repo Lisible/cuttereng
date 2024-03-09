@@ -22,10 +22,8 @@
 
 DECL_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline)
 DECL_HASH_TABLE(WGPUShaderModule, HashTableShaderModule)
-DECL_HASH_TABLE(WGPUTexture, HashTableTexture)
 
 typedef struct GPUMaterial GPUMaterial;
-DECL_HASH_TABLE(GPUMaterial *, HashTableMaterial)
 
 typedef struct {
   mat4 projection_from_view;
@@ -36,6 +34,7 @@ typedef struct {
   v3f view_position;
   float current_time_secs;
 } CommonUniforms;
+void CommonUniforms_init(CommonUniforms *common_uniforms);
 
 typedef struct {
   float world_from_local[16];
@@ -102,6 +101,10 @@ struct RendererResources {
   size_t light_count;
 };
 typedef struct RendererResources RendererResources;
+void RendererResources_init(Allocator *allocator, WGPUQueue queue,
+                            RendererContext *ctx, RendererResources *resources);
+void RendererResources_deinit(Allocator *allocator,
+                              RendererResources *resources);
 
 typedef struct {
   Transform transform;

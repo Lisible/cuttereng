@@ -21,8 +21,8 @@ typedef struct {
   Index *indices;
   size_t index_count;
 } Mesh;
-void mesh_destructor_fn(Allocator *allocator, void *asset);
-extern AssetDestructor mesh_destructor;
+void mesh_deinitializer_fn(Allocator *allocator, void *asset);
+extern AssetDeinitializer mesh_deinitializer;
 
 /// Initializes a mesh with the given vertices and indices
 ///

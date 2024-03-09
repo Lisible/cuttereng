@@ -15,15 +15,15 @@ struct ResourceCaches {
   WGPUShaderModule shader_modules[RENDERER_SHADER_MODULE_CACHE_SIZE];
   GPUMaterial *materials[RENDERER_MATERIAL_CACHE_SIZE];
   GPUMesh *meshes[RENDERER_MESH_CACHE_SIZE];
-  u64 set_textures[16];
-  u64 set_shader_modules[16];
-  u64 set_materials[16];
-  u64 set_meshes[16];
+  u8 set_textures[128];
+  u8 set_shader_modules[128];
+  u8 set_materials[128];
+  u8 set_meshes[128];
 };
 typedef struct ResourceCaches ResourceCaches;
 
 void ResourceCaches_init(ResourceCaches *caches);
-void ResourceCaches_clear(ResourceCaches *caches);
+void ResourceCaches_clear(Allocator *allocator, ResourceCaches *caches);
 
 void ResourceCaches_set_texture(ResourceCaches *caches, AssetHandle handle,
                                 WGPUTexture texture);

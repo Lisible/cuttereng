@@ -77,8 +77,8 @@ err:
   return NULL;
 }
 
-AssetDestructor material_destructor = {.fn = material_destructor_fn};
-void material_destructor_fn(Allocator *allocator, void *asset) {
+AssetDeinitializer material_deinitializer = {.fn = material_deinitializer_fn};
+void material_deinitializer_fn(Allocator *allocator, void *asset) {
   Material *material = asset;
 }
 

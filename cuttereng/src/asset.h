@@ -14,15 +14,15 @@ typedef struct {
   AssetLoaderFn fn;
 } AssetLoader;
 
-typedef void (*AssetDestructorFn)(Allocator *allocator, void *asset);
+typedef void (*AssetDeinitFn)(Allocator *allocator, void *asset);
 typedef struct {
-  AssetDestructorFn fn;
-} AssetDestructor;
+  AssetDeinitFn fn;
+} AssetDeinitializer;
 
 Assets *assets_new(Allocator *allocator);
-void assets_register_loader_(Assets *assets, char *asset_type,
-                             AssetLoader *asset_loader,
-                             AssetDestructor *asset_destructor);
+void assets_register_asset_type_(Assets *assets, char *asset_type,
+                                 AssetLoader *asset_loader,
+                                 AssetDeinitializer *asset_deinitializer);
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type);
 
@@ -35,8 +35,8 @@ bool assets_load_(Assets *assets, const char *asset_type,
 void *assets_get_(Assets *assets, const char *asset_type,
                   AssetHandle asset_handle);
 void assets_destroy(Assets *assets);
-void assets_set_destructor_(Assets *assets, char *asset_type,
-                            AssetDestructor *asset_destructor);
+void assets_set_deinitializer_(Assets *assets, char *asset_type,
+                               AssetDeinitializer *asset_deinitializer);
 void assets_clear(Assets *assets);
 void assets_list_subdirectory(const char *subdirectory);
 
@@ -49,8 +49,8 @@ char *asset_read_file_to_string(Allocator *allocator, const char *path,
 #define assets_store(assets, asset_type, asset_identifier, asset)              \
   assets_store_(assets, #asset_type, alignof(asset_type), sizeof(asset_type),  \
                 asset)
-#define assets_set_destructor(assets, asset_type, asset_destructor)            \
-  assets_set_destructor_(assets, #asset_type, asset_destructor);
+#define assets_set_deinitializer(assets, asset_type, asset_deinitializer)      \
+  assets_set_deinitializer_(assets, #asset_type, asset_deinitializer);
 #define assets_remove(assets, asset_type, asset_path)                          \
   assets_remove_(assets, #asset_type, asset_path)
 #define assets_load(assets, asset_type, asset_path, out_asset_handle)          \
@@ -58,9 +58,10 @@ char *asset_read_file_to_string(Allocator *allocator, const char *path,
                asset_path, out_asset_handle)
 #define assets_get(assets, asset_type, asset_handle)                           \
   (asset_type *)assets_get_(assets, #asset_type, asset_handle)
-#define assets_register_loader(assets, asset_type, asset_loader,               \
-                               asset_destructor)                               \
-  assets_register_loader_(assets, #asset_type, asset_loader, asset_destructor)
+#define assets_register_asset_type(assets, asset_type, asset_loader,           \
+                                   asset_destructor)                           \
+  assets_register_asset_type_(assets, #asset_type, asset_loader,               \
+                              asset_destructor)
 #define assets_is_loader_registered_for_type(assets, asset_type)               \
   assets_is_loader_registered_for_type_(assets, #asset_type)
 

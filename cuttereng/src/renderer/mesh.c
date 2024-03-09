@@ -224,11 +224,10 @@ void gpu_mesh_bind(WGPURenderPassEncoder rpe, GPUMesh *gpu_mesh) {
                                         gpu_mesh->index_count * sizeof(Index));
   }
 }
-void mesh_destructor_fn(Allocator *allocator, void *asset) {
+void mesh_deinitializer_fn(Allocator *allocator, void *asset) {
   ASSERT(allocator != NULL);
   ASSERT(asset != NULL);
   Mesh *mesh = asset;
   mesh_deinit(allocator, mesh);
-  allocator_free(allocator, mesh);
 }
-AssetDestructor mesh_destructor = {.fn = mesh_destructor_fn};
+AssetDeinitializer mesh_deinitializer = {.fn = mesh_deinitializer_fn};

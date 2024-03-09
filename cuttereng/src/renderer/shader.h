@@ -13,8 +13,8 @@ typedef struct {
 void *shader_asset_loader_fn(Allocator *allocator, Assets *assets,
                              const char *path);
 extern AssetLoader shader_asset_loader;
-void shader_asset_destructor_fn(Allocator *allocator, void *asset);
-extern AssetDestructor shader_asset_destructor;
+void shader_asset_deinitializer_fn(Allocator *allocator, void *asset);
+extern AssetDeinitializer shader_asset_deinitializer;
 
 WGPUShaderModule shader_create_wgpu_shader_module(WGPUDevice device,
                                                   const char *label,

@@ -1,10 +1,24 @@
 #include "resource_cache.h"
 #include "../assert.h"
 #include "../bitset.h"
+#include "webgpu/webgpu.h"
 #include <string.h>
 
-void ResourceCaches_init(ResourceCaches *caches) { ASSERT(caches != NULL); }
-void ResourceCaches_clear(ResourceCaches *caches) {
+void ResourceCaches_init(ResourceCaches *caches) {
+  ASSERT(caches != NULL);
+  memset(caches->textures, 0,
+         RENDERER_TEXTURE_CACHE_SIZE * sizeof(WGPUTexture));
+  memset(caches->shader_modules, 0,
+         RENDERER_SHADER_MODULE_CACHE_SIZE * sizeof(WGPUShaderModule));
+  memset(caches->materials, 0,
+         RENDERER_MATERIAL_CACHE_SIZE * sizeof(GPUMaterial *));
+  memset(caches->meshes, 0, RENDERER_MESH_CACHE_SIZE * sizeof(GPUMesh *));
+  memset(caches->set_textures, 0u, 128 * sizeof(u8));
+  memset(caches->set_shader_modules, 0u, 128 * sizeof(u8));
+  memset(caches->set_materials, 0u, 128 * sizeof(u8));
+  memset(caches->set_meshes, 0u, 128 * sizeof(u8));
+}
+void ResourceCaches_clear(Allocator *allocator, ResourceCaches *caches) {
   ASSERT(caches != NULL);
   for (size_t texture_index = 0; texture_index < RENDERER_TEXTURE_CACHE_SIZE;
        texture_index++) {
@@ -14,6 +28,19 @@ void ResourceCaches_clear(ResourceCaches *caches) {
     }
   }
 
+  for (size_t material_index = 0; material_index < RENDERER_MATERIAL_CACHE_SIZE;
+       material_index++) {
+    if (BITTEST(caches->set_materials, material_index)) {
+      gpu_material_destroy(allocator, caches->materials[material_index]);
+    }
+  }
+  for (size_t mesh_index = 0; mesh_index < RENDERER_MESH_CACHE_SIZE;
+       mesh_index++) {
+    if (BITTEST(caches->set_meshes, mesh_index)) {
+      gpu_mesh_deinit(caches->meshes[mesh_index]);
+    }
+    allocator_free(allocator, caches->meshes[mesh_index]);
+  }
   for (size_t shader_module_index = 0;
        shader_module_index < RENDERER_SHADER_MODULE_CACHE_SIZE;
        shader_module_index++) {
@@ -22,23 +49,10 @@ void ResourceCaches_clear(ResourceCaches *caches) {
     }
   }
 
-  for (size_t material_index = 0; material_index < RENDERER_MATERIAL_CACHE_SIZE;
-       material_index++) {
-    if (BITTEST(caches->set_materials, material_index)) {
-      gpu_material_deinit(caches->materials[material_index]);
-    }
-  }
-  for (size_t mesh_index = 0; mesh_index < RENDERER_MESH_CACHE_SIZE;
-       mesh_index++) {
-    if (BITTEST(caches->set_meshes, mesh_index)) {
-      gpu_mesh_deinit(caches->meshes[mesh_index]);
-    }
-  }
-
-  memset(caches->set_textures, 0, 16 * sizeof(u64));
-  memset(caches->set_shader_modules, 0, 16 * sizeof(u64));
-  memset(caches->set_materials, 0, 16 * sizeof(u64));
-  memset(caches->set_meshes, 0, 16 * sizeof(u64));
+  memset(caches->set_textures, 0u, 128 * sizeof(u8));
+  memset(caches->set_shader_modules, 0u, 128 * sizeof(u8));
+  memset(caches->set_materials, 0u, 128 * sizeof(u8));
+  memset(caches->set_meshes, 0u, 128 * sizeof(u8));
 }
 void ResourceCaches_set_texture(ResourceCaches *caches, AssetHandle handle,
                                 WGPUTexture texture) {

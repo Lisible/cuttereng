@@ -3,15 +3,15 @@
 #include "../json.h"
 
 AssetLoader bitmap_font_loader = {.fn = bitmap_font_loader_fn};
-AssetDestructor bitmap_font_destructor = {.fn = bitmap_font_destructor_fn};
-void bitmap_font_destructor_fn(Allocator *allocator, void *ptr) {
+AssetDeinitializer bitmap_font_deinitializer = {
+    .fn = bitmap_font_deinitializer_fn};
+void bitmap_font_deinitializer_fn(Allocator *allocator, void *ptr) {
   ASSERT(allocator != NULL);
   BitmapFont *font = ptr;
   if (!font) {
     return;
   }
   allocator_free(allocator, font->atlas);
-  // allocator_free(allocator, font);
 }
 
 void *bitmap_font_loader_fn(Allocator *allocator, Assets *assets,

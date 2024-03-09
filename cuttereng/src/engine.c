@@ -21,8 +21,8 @@ void engine_init(Engine *engine, const Configuration *configuration,
   ASSERT(window != NULL);
   InputState_init(&engine->input_state);
   engine->assets = assets_new(&system_allocator);
-  assets_register_loader(engine->assets, Image, &image_loader,
-                         &image_destructor);
+  assets_register_asset_type(engine->assets, Image, &image_loader,
+                             &image_deinitializer);
 
   engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
@@ -93,8 +93,6 @@ void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
 void engine_emit_draw_commands(Allocator *allocator, Engine *engine);
 void engine_render(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
-  LOG_TRACE("render");
-
   engine_emit_draw_commands(frame_allocator, engine);
   renderer_render(frame_allocator, engine->renderer, engine->assets,
                   engine->current_time_secs);

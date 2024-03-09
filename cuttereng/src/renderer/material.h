@@ -29,8 +29,8 @@ void *material_loader_fn(Allocator *allocator, Assets *assets,
                          const char *path);
 extern AssetLoader material_loader;
 
-void material_destructor_fn(Allocator *allocator, void *asset);
-extern AssetDestructor material_destructor;
+void material_deinitializer_fn(Allocator *allocator, void *asset);
+extern AssetDeinitializer material_deinitializer;
 
 struct GPUMaterial {
   WGPUTextureView base_color_texture_view;

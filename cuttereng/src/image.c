@@ -62,8 +62,8 @@ void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path) {
   return image;
 }
 
-AssetDestructor image_destructor = {.fn = Image_destructor_fn};
-void Image_destructor_fn(Allocator *allocator, void *asset) {
+AssetDeinitializer image_deinitializer = {.fn = Image_deinitializer_fn};
+void Image_deinitializer_fn(Allocator *allocator, void *asset) {
   Image *image = asset;
   allocator_free(allocator, image->data);
 }

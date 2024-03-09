@@ -27,7 +27,7 @@ void Image_destroy(Allocator *allocator, Image *image);
 void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path);
 extern AssetLoader image_loader;
 
-void Image_destructor_fn(Allocator *allocator, void *asset);
-extern AssetDestructor image_destructor;
+void Image_deinitializer_fn(Allocator *allocator, void *asset);
+extern AssetDeinitializer image_deinitializer;
 
 #endif // CUTTERENG_IMAGE_H
