@@ -4,6 +4,7 @@
 #include "hash.h"
 #include "log.h"
 #include "memory.h"
+#include <errno.h>
 #include <string.h>
 
 #define ASSETS_BASE_PATH "assets/"
@@ -39,7 +40,16 @@ AssetStore *AssetStore_new(Allocator *allocator, size_t asset_type_alignment,
   asset_store->assets = allocator_allocate_aligned(
       allocator, asset_store->asset_type_alignment,
       asset_store->asset_type_size * asset_store->capacity);
+  if (!asset_store->assets) {
+    LOG_ERROR("AssetStore asset array couldn't be allocated: \n\t%s\n",
+              strerror(errno));
+    goto cleanup_asset_store;
+  }
   return asset_store;
+
+cleanup_asset_store:
+  allocator_free(allocator, asset_store);
+  return NULL;
 }
 
 void AssetStore_destroy(AssetStore *asset_store) {

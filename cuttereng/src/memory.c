@@ -4,13 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const size_t MINIMUM_ALIGNMENT = sizeof(void *);
+
 void *memory_allocate(size_t size, void *ctx) {
   (void)ctx;
   return malloc(size);
 }
 void *memory_allocate_aligned(size_t alignment, size_t size, void *ctx) {
   (void)ctx;
-  return aligned_alloc(alignment, size);
+  return aligned_alloc(MAX(alignment, MINIMUM_ALIGNMENT), size);
 }
 void *memory_allocate_array(size_t count, size_t item_size, void *ctx) {
   (void)ctx;

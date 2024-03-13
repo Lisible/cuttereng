@@ -35,8 +35,7 @@ void *int_asset_loader_fn(Allocator *allocator, Assets *assets,
 static AssetLoader int_asset_loader = {.fn = int_asset_loader_fn};
 
 void int_asset_deinitializer_fn(Allocator *allocator, void *asset) {
-  int *a = asset;
-  allocator_free(allocator, a);
+  IntAsset *a = asset;
 }
 static AssetDeinitializer int_asset_deinitializer = {
     .fn = int_asset_deinitializer_fn};
