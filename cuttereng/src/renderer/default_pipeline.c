@@ -379,8 +379,8 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
 
       // computing the light space view proj matrix
       mat4 light_space_projection;
-      mat4_set_to_orthographic(light_space_projection, 1.0, 20.0, -20.0, 20.0,
-                               20.0, -20.0);
+      mat4_set_to_orthographic(light_space_projection, 1.0, 10.0, -5.0, 5.0,
+                               5.0, -5.0);
 
       v3f target = {0};
       mat4 light_space_view;

@@ -284,20 +284,24 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_component_with_ptr(command_queue, ground, Transform,
                                               &ground_transform);
 
-  // TODO need to add support for paletted images
-  // EcsId model = ecs_command_queue_import_glb(command_queue, ctx->assets,
-  //                                          "models/model.glb");
-
-  // EcsId fox = ecs_command_queue_create_entity(command_queue);
-  // Transform fox_transform = TRANSFORM_DEFAULT;
-
-  // AssetHandle fox_mesh_handle;
-  // assets_load(ctx->assets, Mesh, "_cube", &cube_mesh);
-  // ecs_command_queue_insert_component(command_queue, fox, MeshInstance,
-  //                                    {.mesh_handle = cube_mesh_handle});
-  // ecs_command_queue_insert_component_with_ptr(command_queue, fox, Transform,
-  //                                             &fox_transform);
-  // ecs_command_queue_insert_component(command_queue, fox, Material, {0});
+  EcsId cube = ecs_command_queue_create_entity(command_queue);
+  Transform cube_transform = TRANSFORM_DEFAULT;
+  cube_transform.position.y = 1.0;
+  ecs_command_queue_insert_component(
+      command_queue, cube, MeshInstance,
+      {.mesh_handle = cube_mesh_handle,
+       .material_handle = water_material_handle});
+  ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
+                                              &cube_transform);
+  EcsId second_cube = ecs_command_queue_create_entity(command_queue);
+  Transform second_cube_transform = TRANSFORM_DEFAULT;
+  second_cube_transform.position.y = 1.0;
+  ecs_command_queue_insert_component(
+      command_queue, second_cube, MeshInstance,
+      {.mesh_handle = cube_mesh_handle,
+       .material_handle = water_material_handle});
+  ecs_command_queue_insert_component_with_ptr(
+      command_queue, second_cube, Transform, &second_cube_transform);
 }
 
 int main(int argc, char **argv) {
