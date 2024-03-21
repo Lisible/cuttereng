@@ -302,6 +302,9 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
        .material_handle = water_material_handle});
   ecs_command_queue_insert_component_with_ptr(
       command_queue, second_cube, Transform, &second_cube_transform);
+
+  ecs_command_queue_insert_relationship(command_queue, second_cube, ChildOf,
+                                        cube);
 }
 
 int main(int argc, char **argv) {
