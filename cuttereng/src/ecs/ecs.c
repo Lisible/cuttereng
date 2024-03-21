@@ -236,6 +236,13 @@ void ecs_command_execute(Ecs *ecs, EcsCommand *command) {
                           insert_component_command->component_data);
     break;
   }
+  case EcsCommandType_InsertRelationship: {
+    EcsInsertRelationshipCommand *insert_relationship_command =
+        &command->insert_relationship;
+    ecs_insert_relationship_(ecs, insert_relationship_command->source,
+                             insert_relationship_command->relationship_name,
+                             insert_relationship_command->target);
+  }
   default:
     break;
   }
@@ -454,7 +461,7 @@ EcsId ecs_command_queue_import_glb(EcsCommandQueue *queue, Assets *assets,
           size_t texture_index =
               material->pbr_metallic_roughness.base_color_texture.index;
           GltfTexture *texture = &gltf->textures[texture_index];
-          GltfSampler *sampler = &gltf->samplers[texture->sampler];
+          // GltfSampler *sampler = &gltf->samplers[texture->sampler];
           GltfImage *img = &gltf->images[texture->source];
           GltfBufferView *buffer_view = &gltf->buffer_views[img->buffer_view];
 
@@ -529,8 +536,24 @@ void ecs_command_queue_insert_tag_component_(EcsCommandQueue *queue,
                         .insert_component = (EcsInsertComponentCommand){
                             .entity = entity,
                             .component_name = owned_component_name,
-                            0,
+                            .component_size = 0,
                             .component_data = NULL}};
+  EcsCommandVec_append(&queue->commands, &command, 1);
+}
+void ecs_command_queue_insert_relationship_(EcsCommandQueue *queue,
+                                            EcsId source_entity,
+                                            char *relationship_name,
+                                            EcsId target_entity) {
+  ASSERT(queue != NULL);
+  ASSERT(relationship_name != NULL);
+
+  char *owned_relationship_name =
+      memory_clone_string(queue->allocator, relationship_name);
+  EcsCommand command = {.type = EcsCommandType_InsertRelationship,
+                        .insert_relationship = (EcsInsertRelationshipCommand){
+                            .source = source_entity,
+                            .target = target_entity,
+                            .relationship_name = owned_relationship_name}};
   EcsCommandVec_append(&queue->commands, &command, 1);
 }
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue) {
@@ -634,6 +657,16 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
   component_store_set(store, entity_id, data);
 err:
   return;
+}
+
+void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
+                              EcsId target) {
+  ASSERT(ecs != NULL);
+  ASSERT(relationship_name != NULL);
+
+  (void)source;
+  (void)target;
+  LOG_DEBUG("insert relationship is not implemented yet");
 }
 
 bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,

@@ -43,6 +43,7 @@ typedef enum {
   EcsCommandType_RegisterSystem,
   EcsCommandType_CreateEntity,
   EcsCommandType_InsertComponent,
+  EcsCommandType_InsertRelationship,
 } EcsCommandType;
 
 typedef struct {
@@ -62,10 +63,17 @@ typedef struct {
 } EcsInsertComponentCommand;
 
 typedef struct {
+  EcsId source;
+  EcsId target;
+  char *relationship_name;
+} EcsInsertRelationshipCommand;
+
+typedef struct {
   EcsCommandType type;
   union {
     EcsRegisterSystemCommand register_system;
     EcsInsertComponentCommand insert_component;
+    EcsInsertRelationshipCommand insert_relationship;
   };
 } EcsCommand;
 
@@ -94,6 +102,10 @@ void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
 void ecs_command_queue_insert_tag_component_(EcsCommandQueue *queue,
                                              EcsId entity,
                                              char *component_name);
+void ecs_command_queue_insert_relationship_(EcsCommandQueue *queue,
+                                            EcsId source_entity,
+                                            char *relationship_name,
+                                            EcsId target_entity);
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
 #define ecs_command_queue_insert_component(queue, entity, component_type, ...) \
   ecs_command_queue_insert_component_(queue, entity, #component_type,          \
@@ -104,7 +116,10 @@ void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue);
   ecs_command_queue_insert_component_(queue, entity, #component_type,          \
                                       sizeof(component_type), ptr)
 #define ecs_command_queue_insert_tag_component(queue, entity, component_type)  \
-  ecs_command_queue_insert_tag_component_(queue, entity, #component_type);
+  ecs_command_queue_insert_tag_component_(queue, entity, #component_type)
+#define ecs_command_queue_insert_relationship(queue, source, relationship,     \
+                                              target)                          \
+  ecs_command_queue_insert_relationship_(queue, source, #relationship, target)
 
 void ecs_default_init_system(EcsCommandQueue *queue, EcsQueryIt *it);
 
@@ -131,6 +146,8 @@ EcsId ecs_create_entity(Ecs *ecs);
 size_t ecs_get_entity_count(const Ecs *ecs);
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
                            size_t component_size, const void *data);
+void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
+                              EcsId target);
 bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name);
 void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
@@ -150,6 +167,8 @@ void ecs_query_it_deinit(EcsQueryIt *it);
 #define ecs_insert_component(ecs, entity_id, component_type, ...)              \
   ecs_insert_component_(ecs, entity_id, #component_type,                       \
                         sizeof(component_type), &(component_type)__VA_ARGS__)
+#define ecs_insert_relationship(ecs, source, relationship_type, target)        \
+  ecs_insert_relationship_(ecs, source, #relationship_type, target)
 
 #define ecs_component_id(component_type) #component_type
 
