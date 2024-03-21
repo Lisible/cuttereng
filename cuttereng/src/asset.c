@@ -9,14 +9,14 @@
 
 #define ASSETS_BASE_PATH "assets/"
 
-DECL_HASH_TABLE(void *, HashTableAsset)
+DECL_STRING_HASH_TABLE(void *, HashTableAsset)
 // FIXME there needs to be a destructor, this will leak on asset reload
-DEF_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
+DEF_STRING_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
 
-DECL_HASH_TABLE(AssetLoader *, HashTableAssetLoader)
-DEF_HASH_TABLE(AssetLoader *, HashTableAssetLoader, HashTable_noop_destructor)
-DECL_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer)
-DEF_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer,
+DECL_STRING_HASH_TABLE(AssetLoader *, HashTableAssetLoader)
+DEF_STRING_HASH_TABLE(AssetLoader *, HashTableAssetLoader, HashTable_noop_destructor)
+DECL_STRING_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer)
+DEF_STRING_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer,
                HashTable_noop_destructor)
 
 typedef struct {
@@ -84,8 +84,8 @@ void AssetStore_destructor(Allocator *allocator, void *asset_store) {
   AssetStore_destroy(asset_store);
 }
 
-DECL_HASH_TABLE(AssetStore *, HashTableAssetStore)
-DEF_HASH_TABLE(AssetStore *, HashTableAssetStore, AssetStore_destructor)
+DECL_STRING_HASH_TABLE(AssetStore *, HashTableAssetStore)
+DEF_STRING_HASH_TABLE(AssetStore *, HashTableAssetStore, AssetStore_destructor)
 
 struct Assets {
   Allocator *allocator;

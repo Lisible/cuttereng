@@ -7,7 +7,7 @@
 #include <string.h>
 
 void HashTable_noop_destructor(Allocator *allocator, void *value);
-#define DECL_HASH_TABLE(V, name)                                               \
+#define DECL_STRING_HASH_TABLE(V, name)                                               \
   struct name##KV {                                                            \
     char *key;                                                                 \
     V value;                                                                   \
@@ -31,7 +31,7 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
   void name##_clear(name *table);                                              \
   bool name##_expand(name *table);
 
-#define DEF_HASH_TABLE(V, name, item_dctor_fn)                                 \
+#define DEF_STRING_HASH_TABLE(V, name, item_dctor_fn)                                 \
   name *name##_create(Allocator *allocator, size_t initial_capacity) {         \
     name *table = allocator_allocate(allocator, sizeof(name));                 \
     table->allocator = allocator;                                              \

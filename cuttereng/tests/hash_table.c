@@ -2,12 +2,12 @@
 #include <hash.h>
 #include <memory.h>
 
-DECL_HASH_TABLE(int *, HashTableInt)
+DECL_STRING_HASH_TABLE(int *, HashTableInt)
 
 void hash_table_int_item_dctor(Allocator *allocator, int *item) {
   allocator_free(allocator, item);
 }
-DEF_HASH_TABLE(int *, HashTableInt, hash_table_int_item_dctor)
+DEF_STRING_HASH_TABLE(int *, HashTableInt, hash_table_int_item_dctor)
 
 void t_hash_table_create(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
