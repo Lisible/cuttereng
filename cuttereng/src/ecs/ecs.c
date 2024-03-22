@@ -139,7 +139,7 @@ void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   allocator_free(store->allocator, store->bitset);
   allocator_free(store->allocator, store);
 }
-DEF_STRING_HASH_TABLE(ComponentStore *, HashTableComponentStore,
+DEF_HASH_TABLE(char *, ComponentStore *, HashTableComponentStore,
                component_store_destroy)
 
 void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
@@ -641,7 +641,8 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
   ASSERT(data != NULL || component_size == 0);
 
   LOG_DEBUG("Inserting component %s for entity %d", component_name, entity_id);
-  if (!HashTableComponentStore_has(ecs->component_stores, component_name)) {
+  if (!HashTableComponentStore_has(ecs->component_stores, component_name,
+                                   strlen(component_name))) {
     LOG_DEBUG("Component store not found for component %s, creating it",
               component_name);
     ComponentStore *store = component_store_new(ecs->allocator, component_size);
@@ -649,11 +650,12 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
       goto err;
     }
     LOG_DEBUG("Component store successfully created");
-    HashTableComponentStore_set(ecs->component_stores, component_name, store);
+    HashTableComponentStore_set_strkey(ecs->component_stores, component_name,
+                                       store);
   }
 
-  ComponentStore *store =
-      HashTableComponentStore_get(ecs->component_stores, component_name);
+  ComponentStore *store = HashTableComponentStore_get(
+      ecs->component_stores, component_name, strlen(component_name));
   component_store_set(store, entity_id, data);
 err:
   return;
@@ -673,8 +675,8 @@ bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name) {
   ASSERT(ecs != NULL);
 
-  ComponentStore *store =
-      HashTableComponentStore_get(ecs->component_stores, component_name);
+  ComponentStore *store = HashTableComponentStore_get(
+      ecs->component_stores, component_name, strlen(component_name));
   if (!store)
     return false;
 
@@ -685,8 +687,8 @@ void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
                          const char *component_name) {
   ASSERT(ecs != NULL);
 
-  ComponentStore *store =
-      HashTableComponentStore_get(ecs->component_stores, component_name);
+  ComponentStore *store = HashTableComponentStore_get(
+      ecs->component_stores, component_name, strlen(component_name));
 
   if (!store)
     return NULL;
@@ -721,7 +723,8 @@ bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
   while (component_index < query->component_count &&
          query->components[component_index] != NULL) {
     ComponentStore *component_store = HashTableComponentStore_get(
-        ecs->component_stores, query->components[component_index]);
+        ecs->component_stores, query->components[component_index],
+        strlen(query->components[component_index]));
 
     if (!component_store || component_store->capacity <= entity_id) {
       return false;
@@ -758,8 +761,9 @@ EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
   for (size_t i = 0; i < query->component_count; i++) {
     ASSERT(i < ECS_QUERY_MAX_COMPONENT_COUNT - 1,
            "Too many components in the query");
-    ComponentStore *component_store = HashTableComponentStore_get(
-        ecs->component_stores, query->components[i]);
+    ComponentStore *component_store =
+        HashTableComponentStore_get(ecs->component_stores, query->components[i],
+                                    strlen(query->components[i]));
     iterator.state->component_stores[i] = component_store;
   }
 

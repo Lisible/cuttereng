@@ -21,14 +21,14 @@ void HashTableRenderPipeline_destructor(Allocator *allocator, void *value) {
   (void)allocator;
   wgpuRenderPipelineRelease(value);
 }
-DEF_STRING_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline,
+DEF_HASH_TABLE(char *, WGPURenderPipeline, HashTableRenderPipeline,
                HashTableRenderPipeline_destructor)
 
 void HashTableShaderModule_destructor(Allocator *allocator, void *value) {
   (void)allocator;
   wgpuShaderModuleRelease(value);
 }
-DEF_STRING_HASH_TABLE(WGPUShaderModule, HashTableShaderModule,
+DEF_HASH_TABLE(char *, WGPUShaderModule, HashTableShaderModule,
                HashTableShaderModule_destructor)
 
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
@@ -288,7 +288,8 @@ void load_shader_modules(Allocator *allocator,
     if (!shader_module) {
       LOG_ERROR("Couldn't create shader module");
     } else {
-      HashTableShaderModule_set(shader_modules, dl->entries[i], shader_module);
+      HashTableShaderModule_set_strkey(shader_modules, dl->entries[i],
+                                       shader_module);
     }
   }
   filesystem_directory_listing_destroy(allocator, dl);

@@ -2,12 +2,12 @@
 #include <hash.h>
 #include <memory.h>
 
-DECL_STRING_HASH_TABLE(int *, HashTableInt)
+DECL_HASH_TABLE(char *, int *, HashTableInt)
 
 void hash_table_int_item_dctor(Allocator *allocator, int *item) {
   allocator_free(allocator, item);
 }
-DEF_STRING_HASH_TABLE(int *, HashTableInt, hash_table_int_item_dctor)
+DEF_HASH_TABLE(char *, int *, HashTableInt, hash_table_int_item_dctor)
 
 void t_hash_table_create(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
@@ -20,7 +20,8 @@ void t_hash_table_set(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 0;
-  HashTableInt_set(hash_table, "some_key", i);
+  char key[] = "some_key";
+  HashTableInt_set_strkey(hash_table, key, i);
   T_ASSERT_EQ(HashTableInt_length(hash_table), 1);
   HashTableInt_destroy(hash_table);
 }
@@ -29,8 +30,9 @@ void t_hash_table_has(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 532;
-  HashTableInt_set(hash_table, "some_key", i);
-  T_ASSERT(HashTableInt_has(hash_table, "some_key"));
+  char key[] = "some_key";
+  HashTableInt_set_strkey(hash_table, key, i);
+  T_ASSERT(HashTableInt_has(hash_table, "some_key", strlen(key)));
   HashTableInt_destroy(hash_table);
 }
 
@@ -38,8 +40,9 @@ void t_hash_table_get(void) {
   HashTableInt *hash_table = HashTableInt_create(&system_allocator, 16);
   int *i = malloc(sizeof(int));
   *i = 532;
-  HashTableInt_set(hash_table, "some_key", i);
-  T_ASSERT_EQ(*HashTableInt_get(hash_table, "some_key"), 532);
+  char key[] = "some_key";
+  HashTableInt_set_strkey(hash_table, key, i);
+  T_ASSERT_EQ(*HashTableInt_get(hash_table, key, strlen(key)), 532);
   HashTableInt_destroy(hash_table);
 }
 

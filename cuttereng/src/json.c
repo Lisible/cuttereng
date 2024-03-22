@@ -154,8 +154,8 @@ typedef struct {
   Json *value;
 } JsonObjectProperty;
 
-DECL_STRING_HASH_TABLE(Json *, HashTableJson)
-DEF_STRING_HASH_TABLE(Json *, HashTableJson, json_destroy)
+DECL_HASH_TABLE(char *, Json *, HashTableJson)
+DEF_HASH_TABLE(char *, Json *, HashTableJson, json_destroy)
 
 struct JsonObject {
 
@@ -572,7 +572,7 @@ Json *json_create(Allocator *allocator) {
 Json *json_object_get(const JsonObject *object, const char *key) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
-  return HashTableJson_get(object->hash_table, key);
+  return HashTableJson_get(object->hash_table, key, strlen(key));
 }
 JsonObject *json_as_object(const Json *json) {
   ASSERT(json != NULL);
@@ -681,13 +681,13 @@ const char *json_object_set(JsonObject *object, char *key, Json *value) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
   ASSERT(value != NULL);
-  return HashTableJson_set(object->hash_table, key, value);
+  return HashTableJson_set_strkey(object->hash_table, key, value);
 }
 
 void json_object_steal(JsonObject *object, const char *key) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
-  HashTableJson_steal(object->hash_table, key);
+  HashTableJson_steal(object->hash_table, key, strlen(key));
 }
 
 size_t json_array_length(const JsonArray *array) {

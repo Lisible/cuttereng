@@ -9,7 +9,7 @@ typedef size_t EcsId;
 typedef struct Ecs Ecs;
 
 typedef struct ComponentStore ComponentStore;
-DECL_STRING_HASH_TABLE(ComponentStore *, HashTableComponentStore)
+DECL_HASH_TABLE(char *, ComponentStore *, HashTableComponentStore)
 
 #define ECS_QUERY_MAX_COMPONENT_COUNT 16
 

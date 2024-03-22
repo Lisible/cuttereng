@@ -9,14 +9,15 @@
 
 #define ASSETS_BASE_PATH "assets/"
 
-DECL_STRING_HASH_TABLE(void *, HashTableAsset)
+DECL_HASH_TABLE(char *, void *, HashTableAsset)
 // FIXME there needs to be a destructor, this will leak on asset reload
-DEF_STRING_HASH_TABLE(void *, HashTableAsset, HashTable_noop_destructor)
+DEF_HASH_TABLE(char *, void *, HashTableAsset, HashTable_noop_destructor)
 
-DECL_STRING_HASH_TABLE(AssetLoader *, HashTableAssetLoader)
-DEF_STRING_HASH_TABLE(AssetLoader *, HashTableAssetLoader, HashTable_noop_destructor)
-DECL_STRING_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer)
-DEF_STRING_HASH_TABLE(AssetDeinitializer *, HashTableAssetDeinitializer,
+DECL_HASH_TABLE(char *, AssetLoader *, HashTableAssetLoader)
+DEF_HASH_TABLE(char *, AssetLoader *, HashTableAssetLoader,
+               HashTable_noop_destructor)
+DECL_HASH_TABLE(char *, AssetDeinitializer *, HashTableAssetDeinitializer)
+DEF_HASH_TABLE(char *, AssetDeinitializer *, HashTableAssetDeinitializer,
                HashTable_noop_destructor)
 
 typedef struct {
@@ -84,8 +85,8 @@ void AssetStore_destructor(Allocator *allocator, void *asset_store) {
   AssetStore_destroy(asset_store);
 }
 
-DECL_STRING_HASH_TABLE(AssetStore *, HashTableAssetStore)
-DEF_STRING_HASH_TABLE(AssetStore *, HashTableAssetStore, AssetStore_destructor)
+DECL_HASH_TABLE(char *, AssetStore *, HashTableAssetStore)
+DEF_HASH_TABLE(char *, AssetStore *, HashTableAssetStore, AssetStore_destructor)
 
 struct Assets {
   Allocator *allocator;
@@ -110,7 +111,8 @@ bool assets_load_asset(Assets *assets, const char *asset_type,
   ASSERT(asset_type != NULL);
   ASSERT(asset_path != NULL);
   LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
-  AssetLoader *loader = HashTableAssetLoader_get(assets->loaders, asset_type);
+  AssetLoader *loader =
+      HashTableAssetLoader_get(assets->loaders, asset_type, strlen(asset_type));
   if (!loader) {
     LOG_ERROR("No asset loader registered for asset type %s", asset_type);
     return false;
@@ -134,16 +136,17 @@ AssetHandle assets_store_(Assets *assets, const char *asset_type,
   ASSERT(asset_type != NULL);
   ASSERT(asset != NULL);
 
-  AssetStore *asset_store =
-      HashTableAssetStore_get(assets->asset_stores, asset_type);
+  AssetStore *asset_store = HashTableAssetStore_get(
+      assets->asset_stores, asset_type, strlen(asset_type));
   if (!asset_store) {
     LOG_DEBUG("No asset store found for assets of type %s, creating it",
               asset_type);
-    HashTableAssetStore_set(assets->asset_stores, asset_type,
-                            AssetStore_new(assets->allocator,
-                                           asset_type_alignment,
-                                           asset_type_size));
-    asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type);
+    HashTableAssetStore_set_strkey(assets->asset_stores, (char *)asset_type,
+                                   AssetStore_new(assets->allocator,
+                                                  asset_type_alignment,
+                                                  asset_type_size));
+    asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type,
+                                          strlen(asset_type));
   }
 
   AssetHandle asset_handle = AssetStore_store(asset_store, asset);
@@ -165,16 +168,17 @@ bool assets_load_(Assets *assets, const char *asset_type,
   ASSERT(asset_type != NULL);
   ASSERT(asset_path != NULL);
   LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
-  AssetStore *asset_store =
-      HashTableAssetStore_get(assets->asset_stores, asset_type);
+  AssetStore *asset_store = HashTableAssetStore_get(
+      assets->asset_stores, asset_type, strlen(asset_type));
   if (!asset_store) {
     LOG_DEBUG("No asset store found for assets of type %s, creating it",
               asset_type);
-    HashTableAssetStore_set(assets->asset_stores, asset_type,
-                            AssetStore_new(assets->allocator,
-                                           asset_type_alignment,
-                                           asset_type_size));
-    asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type);
+    HashTableAssetStore_set_strkey(assets->asset_stores, (char *)asset_type,
+                                   AssetStore_new(assets->allocator,
+                                                  asset_type_alignment,
+                                                  asset_type_size));
+    asset_store = HashTableAssetStore_get(assets->asset_stores, asset_type,
+                                          strlen(asset_type));
   }
 
   return assets_load_asset(assets, asset_type, asset_type_alignment,
@@ -184,8 +188,8 @@ void *assets_get_(Assets *assets, const char *asset_type,
                   AssetHandle asset_handle) {
   ASSERT(assets != NULL);
   ASSERT(asset_type != NULL);
-  AssetStore *asset_store =
-      HashTableAssetStore_get(assets->asset_stores, asset_type);
+  AssetStore *asset_store = HashTableAssetStore_get(
+      assets->asset_stores, asset_type, strlen(asset_type));
   if (!asset_store) {
     return NULL;
   }
@@ -200,15 +204,16 @@ void assets_register_asset_type_(Assets *assets, char *asset_type,
   ASSERT(asset_type != NULL);
   ASSERT(asset_loader != NULL);
   ASSERT(asset_deinitializer != NULL);
-  HashTableAssetLoader_set(assets->loaders, asset_type, asset_loader);
-  HashTableAssetDeinitializer_set(assets->destructors, asset_type,
-                                  asset_deinitializer);
+  HashTableAssetLoader_set_strkey(assets->loaders, asset_type, asset_loader);
+  HashTableAssetDeinitializer_set_strkey(assets->destructors, asset_type,
+                                         asset_deinitializer);
 }
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type) {
   ASSERT(assets != NULL);
   ASSERT(asset_type != NULL);
-  return HashTableAssetLoader_has(assets->loaders, asset_type);
+  return HashTableAssetLoader_has(assets->loaders, asset_type,
+                                  strlen(asset_type));
 }
 
 void assets_set_deinitializer_(Assets *assets, char *asset_type,
@@ -216,8 +221,8 @@ void assets_set_deinitializer_(Assets *assets, char *asset_type,
   ASSERT(assets != NULL);
   ASSERT(asset_type != NULL);
   ASSERT(asset_deinitializer != NULL);
-  HashTableAssetDeinitializer_set(assets->destructors, asset_type,
-                                  asset_deinitializer);
+  HashTableAssetDeinitializer_set_strkey(assets->destructors, asset_type,
+                                         asset_deinitializer);
 }
 
 void assets_destroy(Assets *assets) {
@@ -233,8 +238,8 @@ void assets_destroy(Assets *assets) {
     char *asset_type = assets->asset_stores->items[asset_store_index].key;
     AssetStore *asset_store =
         assets->asset_stores->items[asset_store_index].value;
-    AssetDeinitializer *deinitializer =
-        HashTableAssetDeinitializer_get(assets->destructors, asset_type);
+    AssetDeinitializer *deinitializer = HashTableAssetDeinitializer_get(
+        assets->destructors, asset_type, strlen(asset_type));
     for (size_t i = 0; i < asset_store->length; i++) {
       deinitializer->fn(asset_store->allocator,
                         &asset_store->assets[asset_store->asset_type_size * i]);
