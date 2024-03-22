@@ -20,8 +20,8 @@
 #define FONT_DIR "fonts/"
 #define TEXTURE_DIR "textures/"
 
-DECL_HASH_TABLE(char *, WGPURenderPipeline, HashTableRenderPipeline)
-DECL_HASH_TABLE(char *, WGPUShaderModule, HashTableShaderModule)
+DECL_STRING_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline)
+DECL_STRING_HASH_TABLE(WGPUShaderModule, HashTableShaderModule)
 
 typedef struct GPUMaterial GPUMaterial;
 

@@ -21,15 +21,15 @@ void HashTableRenderPipeline_destructor(Allocator *allocator, void *value) {
   (void)allocator;
   wgpuRenderPipelineRelease(value);
 }
-DEF_HASH_TABLE(char *, WGPURenderPipeline, HashTableRenderPipeline,
-               HashTableRenderPipeline_destructor)
+DEF_STRING_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline,
+                      HashTableRenderPipeline_destructor)
 
 void HashTableShaderModule_destructor(Allocator *allocator, void *value) {
   (void)allocator;
   wgpuShaderModuleRelease(value);
 }
-DEF_HASH_TABLE(char *, WGPUShaderModule, HashTableShaderModule,
-               HashTableShaderModule_destructor)
+DEF_STRING_HASH_TABLE(WGPUShaderModule, HashTableShaderModule,
+                      HashTableShaderModule_destructor)
 
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
 

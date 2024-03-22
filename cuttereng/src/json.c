@@ -154,8 +154,8 @@ typedef struct {
   Json *value;
 } JsonObjectProperty;
 
-DECL_HASH_TABLE(char *, Json *, HashTableJson)
-DEF_HASH_TABLE(char *, Json *, HashTableJson, json_destroy)
+DECL_STRING_HASH_TABLE(Json *, HashTableJson)
+DEF_STRING_HASH_TABLE(Json *, HashTableJson, json_destroy)
 
 struct JsonObject {
 

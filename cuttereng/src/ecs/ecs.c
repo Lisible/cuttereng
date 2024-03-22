@@ -139,8 +139,8 @@ void component_store_destroy(Allocator *allocator, ComponentStore *store) {
   allocator_free(store->allocator, store->bitset);
   allocator_free(store->allocator, store);
 }
-DEF_HASH_TABLE(char *, ComponentStore *, HashTableComponentStore,
-               component_store_destroy)
+DEF_STRING_HASH_TABLE(ComponentStore *, HashTableComponentStore,
+                      component_store_destroy)
 
 void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
   ASSERT(store != NULL);

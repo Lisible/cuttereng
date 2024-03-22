@@ -7,6 +7,7 @@
 #include <string.h>
 
 void HashTable_noop_destructor(Allocator *allocator, void *value);
+
 #define DECL_HASH_TABLE(K, V, name)                                            \
   struct name##KV {                                                            \
     K key;                                                                     \
@@ -33,6 +34,10 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
   void name##_clear(name *table);                                              \
   bool name##_expand(name *table);
 
+#define DECL_STRING_HASH_TABLE(V, name)                                        \
+  DECL_HASH_TABLE(char *, V, name)                                             \
+  char *name##_set_strkey(name *table, char *key, V value);
+
 #define DEF_HASH_TABLE(K, V, name, item_dctor_fn)                              \
   name *name##_create(Allocator *allocator, size_t initial_capacity) {         \
     name *table = allocator_allocate(allocator, sizeof(name));                 \
@@ -54,15 +59,6 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     ASSERT(key != NULL);                                                       \
     uint64_t hash = hash_fnv_1a(key, key_size);                                \
     return hash & (table->capacity - 1);                                       \
-  }                                                                            \
-  char *name##_set_strkey(name *table, char *key, V value) {                   \
-    ASSERT(table != NULL);                                                     \
-    ASSERT(key != NULL);                                                       \
-    char *cloned_key = memory_clone_string(table->allocator, key);             \
-    if (!cloned_key) {                                                         \
-      PANIC("Couldn't allocate hash table key");                               \
-    }                                                                          \
-    return name##_set(table, cloned_key, strlen(cloned_key), value);           \
   }                                                                            \
   char *name##_set(name *table, K key, size_t key_size, V value) {             \
     ASSERT(table != NULL);                                                     \
@@ -207,6 +203,18 @@ void HashTable_noop_destructor(Allocator *allocator, void *value);
     table->capacity = new_capacity;                                            \
     table->items = new_items;                                                  \
     return true;                                                               \
+  }
+
+#define DEF_STRING_HASH_TABLE(V, name, item_dctor_fn)                          \
+  DEF_HASH_TABLE(char *, V, name, item_dctor_fn)                               \
+  char *name##_set_strkey(name *table, char *key, V value) {                   \
+    ASSERT(table != NULL);                                                     \
+    ASSERT(key != NULL);                                                       \
+    char *cloned_key = memory_clone_string(table->allocator, key);             \
+    if (!cloned_key) {                                                         \
+      PANIC("Couldn't allocate hash table key");                               \
+    }                                                                          \
+    return name##_set(table, cloned_key, strlen(cloned_key), value);           \
   }
 
 uint64_t hash_fnv_1a(const char *bytes, size_t nbytes);
