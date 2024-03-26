@@ -266,8 +266,7 @@ void create_pipeline(RenderGraph *render_graph,
               .stripIndexFormat = WGPUIndexFormat_Undefined
 
           }});
-  HashTableRenderPipeline_set_strkey(res->pipelines,
-                                     render_pass_pipeline_identifier, pipeline);
+  HashTable_insert(&res->pipelines, render_pass_pipeline_identifier, pipeline);
   wgpuPipelineLayoutRelease(pipeline_layout);
 }
 RenderGraphPassId
@@ -285,9 +284,7 @@ render_graph_add_pass(Allocator *allocator, RenderGraph *render_graph,
     render_pass_pipeline_identifier =
         render_pass_descriptor_generate_identifier(allocator,
                                                    render_pass_descriptor);
-    if (!HashTableRenderPipeline_has(res->pipelines,
-                                     render_pass_pipeline_identifier,
-                                     strlen(render_pass_pipeline_identifier))) {
+    if (!HashTable_has(&res->pipelines, render_pass_pipeline_identifier)) {
       create_pipeline(render_graph, render_pass_pipeline_identifier, ctx, res,
                       render_pass_descriptor);
     }
@@ -444,9 +441,8 @@ void render_graph_execute(RenderGraph *render_graph,
                 .depthStencilAttachment = depth_stencil_attachment});
     if (render_pass->pipeline_identifier) {
       ASSERT(render_pass->dispatch_fn != NULL);
-      WGPURenderPipeline pass_pipeline = HashTableRenderPipeline_get(
-          res->pipelines, render_pass->pipeline_identifier,
-          strlen(render_pass->pipeline_identifier));
+      WGPURenderPipeline pass_pipeline =
+          HashTable_get(&res->pipelines, render_pass->pipeline_identifier);
       wgpuRenderPassEncoderSetPipeline(render_pass_encoder, pass_pipeline);
       uint32_t mesh_stride = 64;
 

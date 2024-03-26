@@ -54,6 +54,12 @@ Json *json_create(Allocator *allocator);
 void json_cleanup(Allocator *allocator, Json *value);
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
+void json_dctor(Allocator *allocator, void *v) {
+  ASSERT(allocator != NULL);
+  ASSERT(v != NULL);
+  json_destroy(allocator, v);
+}
+
 Json *json_parse_from_str(Allocator *allocator, const char *str) {
   ASSERT(str != NULL);
   GltfParsingContext ctx = {.allocator = allocator,
@@ -154,12 +160,8 @@ typedef struct {
   Json *value;
 } JsonObjectProperty;
 
-DECL_STRING_HASH_TABLE(Json *, HashTableJson)
-DEF_STRING_HASH_TABLE(Json *, HashTableJson, json_destroy)
-
 struct JsonObject {
-
-  HashTableJson *hash_table;
+  HashTable hash_table;
 };
 
 JsonObject *json_object_create(Allocator *allocator) {
@@ -169,8 +171,9 @@ JsonObject *json_object_create(Allocator *allocator) {
     goto err;
   }
 
-  object->hash_table = HashTableJson_create(allocator, 16);
-  if (!object->hash_table)
+  if (!HashTable_init_with_dctors(allocator, &object->hash_table, 16,
+                                  hash_str_hash, hash_str_eq, hash_str_dctor,
+                                  json_dctor))
     goto cleanup;
 
   return object;
@@ -209,7 +212,7 @@ bool parse_object(GltfParsingContext *ctx, Json *output_value) {
     if (!value) {
       return false;
     }
-    json_object_set(object, name->string, value);
+    json_object_set(object, strdup(name->string), value);
     json_destroy(ctx->allocator, name);
 
     eat_whitespaces(ctx);
@@ -496,7 +499,7 @@ void json_cleanup(Allocator *allocator, Json *value) {
     JsonArray_destroy(allocator, value->array);
     value->array = NULL;
   } else if (value->type == JSON_OBJECT) {
-    HashTableJson_destroy(value->object->hash_table);
+    HashTable_deinit(&value->object->hash_table);
     allocator_free(allocator, value->object);
     value->object = NULL;
   }
@@ -572,7 +575,7 @@ Json *json_create(Allocator *allocator) {
 Json *json_object_get(const JsonObject *object, const char *key) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
-  return HashTableJson_get(object->hash_table, key, strlen(key));
+  return HashTable_get(&object->hash_table, key);
 }
 JsonObject *json_as_object(const Json *json) {
   ASSERT(json != NULL);
@@ -656,16 +659,16 @@ bool json_object_get_boolean(const JsonObject *object, const char *key,
 
 size_t json_object_get_key_count(const JsonObject *object) {
   ASSERT(object != NULL);
-  return HashTableJson_length(object->hash_table);
+  return HashTable_length(&object->hash_table);
 }
 
 char *json_object_get_key(const JsonObject *object, size_t index) {
   ASSERT(object != NULL);
-  ASSERT(index < object->hash_table->length);
+  ASSERT(index < HashTable_length(&object->hash_table));
 
   size_t cur_index = 0;
-  for (size_t i = 0; i < object->hash_table->capacity; i++) {
-    HashTableJsonKV *item = &object->hash_table->items[i];
+  for (size_t i = 0; i < object->hash_table.capacity; i++) {
+    HashTableKV *item = &object->hash_table.items[i];
     if (item->key != NULL) {
       if (cur_index == index) {
         return item->key;
@@ -681,13 +684,16 @@ const char *json_object_set(JsonObject *object, char *key, Json *value) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
   ASSERT(value != NULL);
-  return HashTableJson_set_strkey(object->hash_table, key, value);
+  if (!HashTable_insert(&object->hash_table, key, value))
+    return NULL;
+
+  return key;
 }
 
 void json_object_steal(JsonObject *object, const char *key) {
   ASSERT(object != NULL);
   ASSERT(key != NULL);
-  HashTableJson_steal(object->hash_table, key, strlen(key));
+  HashTable_steal(&object->hash_table, key);
 }
 
 size_t json_array_length(const JsonArray *array) {

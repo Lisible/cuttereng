@@ -9,7 +9,6 @@ typedef size_t EcsId;
 typedef struct Ecs Ecs;
 
 typedef struct ComponentStore ComponentStore;
-DECL_STRING_HASH_TABLE(ComponentStore *, HashTableComponentStore)
 
 #define ECS_QUERY_MAX_COMPONENT_COUNT 16
 
@@ -127,7 +126,7 @@ DECL_VEC(EcsSystem, EcsSystemVec)
 
 struct Ecs {
   Allocator *allocator;
-  HashTableComponentStore *component_stores;
+  HashTable component_stores;
   size_t entity_count;
   size_t reserved_entity_count;
   EcsSystemVec systems;

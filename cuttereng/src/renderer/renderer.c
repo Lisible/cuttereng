@@ -17,19 +17,10 @@
 #include "webgpu/webgpu.h"
 #include <SDL2/SDL_syswm.h>
 
-void HashTableRenderPipeline_destructor(Allocator *allocator, void *value) {
+void RenderPipeline_dctor(Allocator *allocator, void *value) {
   (void)allocator;
   wgpuRenderPipelineRelease(value);
 }
-DEF_STRING_HASH_TABLE(WGPURenderPipeline, HashTableRenderPipeline,
-                      HashTableRenderPipeline_destructor)
-
-void HashTableShaderModule_destructor(Allocator *allocator, void *value) {
-  (void)allocator;
-  wgpuShaderModuleRelease(value);
-}
-DEF_STRING_HASH_TABLE(WGPUShaderModule, HashTableShaderModule,
-                      HashTableShaderModule_destructor)
 
 DEF_VEC(DrawCommand, DrawCommandQueue, 1000 * sizeof(DrawCommand))
 
@@ -103,10 +94,6 @@ WGPUDevice request_device(WGPUAdapter adapter,
   ASSERT(user_data.request_ended);
   return user_data.device;
 }
-
-void load_shader_modules(Allocator *allocator,
-                         HashTableShaderModule *shader_modules,
-                         WGPUDevice device, Assets *assets);
 
 void log_adapter_features(WGPUAdapter adapter, Allocator *allocator);
 void get_adapter_required_limits(WGPUAdapter adapter,
@@ -255,44 +242,6 @@ Material *load_material(Assets *assets, char *material_path) {
   }
 
   return assets_get(assets, Material, material_handle);
-}
-
-WGPUShaderModule create_shader_module(WGPUDevice device, Assets *assets,
-                                      char *shader_module_identifier) {
-  AssetHandle shader_handle;
-  if (!assets_load(assets, Shader, shader_module_identifier, &shader_handle)) {
-    return NULL;
-  }
-  Shader *shader = assets_get(assets, Shader, shader_handle);
-  WGPUShaderModuleWGSLDescriptor shader_module_wgsl_descriptor = {
-      .chain =
-          (WGPUChainedStruct){.sType = WGPUSType_ShaderModuleWGSLDescriptor},
-      .code = shader->source};
-  return wgpuDeviceCreateShaderModule(
-      device, &(const WGPUShaderModuleDescriptor){
-                  .label = shader_module_identifier,
-                  .nextInChain = &shader_module_wgsl_descriptor.chain});
-}
-
-void load_shader_modules(Allocator *allocator,
-                         HashTableShaderModule *shader_modules,
-                         WGPUDevice device, Assets *assets) {
-  DirectoryListing *dl =
-      filesystem_list_files_in_directory(allocator, "assets/shaders");
-  for (size_t i = 0; i < dl->entry_count; i++) {
-    char shader_path[sizeof(SHADER_DIR) + MAX_FILENAME_LENGTH] = SHADER_DIR;
-    strcat(shader_path, dl->entries[i]);
-    LOG_DEBUG("Creating shader module %s", dl->entries[i]);
-    WGPUShaderModule shader_module =
-        create_shader_module(device, assets, shader_path);
-    if (!shader_module) {
-      LOG_ERROR("Couldn't create shader module");
-    } else {
-      HashTableShaderModule_set_strkey(shader_modules, dl->entries[i],
-                                       shader_module);
-    }
-  }
-  filesystem_directory_listing_destroy(allocator, dl);
 }
 
 WGPUTexture load_texture(Allocator *allocator, WGPUDevice device,
@@ -670,7 +619,7 @@ void renderer_set_view_position(Renderer *renderer, v3f *view_position) {
 }
 void renderer_clear_caches(Renderer *renderer) {
   ASSERT(renderer != NULL);
-  HashTableRenderPipeline_clear(renderer->resources.pipelines);
+  HashTable_clear(&renderer->resources.pipelines);
   ResourceCaches_clear(renderer->allocator,
                        &renderer->resources.resource_caches);
 }
@@ -907,7 +856,9 @@ void RendererResources_init(Allocator *allocator, WGPUQueue queue,
       ctx->wgpu_device, resources->mesh_uniforms_bind_group_layout,
       resources->mesh_uniforms_buffer);
 
-  resources->pipelines = HashTableRenderPipeline_create(allocator, 32);
+  HashTable_init_with_dctors(allocator, &resources->pipelines, 32,
+                             hash_str_hash, hash_str_eq,
+                             HashTable_noop_dctor_fn, RenderPipeline_dctor);
   ResourceCaches_init(&resources->resource_caches);
 }
 void RendererResources_deinit(Allocator *allocator,
@@ -916,7 +867,7 @@ void RendererResources_deinit(Allocator *allocator,
   ASSERT(resources != NULL);
 
   ResourceCaches_clear(allocator, &resources->resource_caches);
-  HashTableRenderPipeline_destroy(resources->pipelines);
+  HashTable_deinit(&resources->pipelines);
 
   wgpuBindGroupRelease(resources->mesh_uniforms_bind_group);
   wgpuBindGroupLayoutRelease(resources->mesh_uniforms_bind_group_layout);
