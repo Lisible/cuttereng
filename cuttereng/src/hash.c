@@ -126,6 +126,9 @@ bool HashTable_insert(HashTable *hash_table, void *key, void *value) {
       return true;
     }
     index++;
+    if (index >= hash_table->capacity) {
+      index = 0;
+    }
   }
 
   hash_table->items[index].key = key;
@@ -144,6 +147,9 @@ void *HashTable_get(const HashTable *hash_table, const void *key) {
       return hash_table->items[index].value;
     }
     index++;
+    if (index >= hash_table->capacity) {
+      index = 0;
+    }
   }
 
   return NULL;
@@ -158,6 +164,9 @@ bool HashTable_has(const HashTable *hash_table, const void *key) {
       return true;
     }
     index++;
+    if (index >= hash_table->capacity) {
+      index = 0;
+    }
   }
 
   return false;
@@ -180,6 +189,9 @@ void HashTable_steal(HashTable *hash_table, const void *key) {
       break;
     }
     index++;
+    if (index >= hash_table->capacity) {
+      index = 0;
+    }
   }
 }
 void HashTable_clear(HashTable *hash_table) {
