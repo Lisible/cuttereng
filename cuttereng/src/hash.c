@@ -183,6 +183,8 @@ void HashTable_steal(HashTable *hash_table, const void *key) {
   size_t index = HashTable_index_for_key(hash_table, key);
   while (hash_table->items[index].is_present) {
     if (hash_table->key_eq_fn(hash_table->items[index].key, key)) {
+      hash_table->key_dctor_fn(hash_table->allocator,
+                               hash_table->items[index].key);
       hash_table->items[index].key = NULL;
       hash_table->items[index].value = NULL;
       hash_table->items[index].is_present = false;
@@ -193,6 +195,7 @@ void HashTable_steal(HashTable *hash_table, const void *key) {
       index = 0;
     }
   }
+  hash_table->length--;
 }
 void HashTable_clear(HashTable *hash_table) {
   ASSERT(hash_table != NULL);
