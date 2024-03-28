@@ -104,7 +104,7 @@ void RendererResources_deinit(Allocator *allocator,
                               RendererResources *resources);
 
 typedef struct {
-  Transform transform;
+  mat4 transform;
   AssetHandle mesh_handle;
   AssetHandle material_handle;
   bool uses_shader_material;
@@ -144,10 +144,9 @@ void renderer_destroy(Renderer *renderer);
 void renderer_add_light(Renderer *renderer, const Light *light);
 void renderer_set_view_position(Renderer *renderer, v3f *view_position);
 void renderer_set_view_projection(Renderer *renderer, mat4 view_projection);
-void renderer_draw_mesh(Renderer *renderer, Transform *transform,
+void renderer_draw_mesh(Renderer *renderer, mat4 transform,
                         AssetHandle mesh_handle, AssetHandle material_handle);
-void renderer_draw_mesh_with_shader_material(Renderer *renderer,
-                                             Transform *transform,
+void renderer_draw_mesh_with_shader_material(Renderer *renderer, mat4 transform,
                                              AssetHandle mesh_handle,
                                              AssetHandle material_handle);
 void renderer_render(Allocator *frame_allocator, Renderer *renderer,

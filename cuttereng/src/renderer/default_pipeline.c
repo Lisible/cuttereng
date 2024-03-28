@@ -408,8 +408,9 @@ void renderer_default_pipeline(RendererContext *ctx, RendererResources *res,
        command_index++) {
     DrawCommand *command = &draw_commands->data[command_index];
     MeshUniforms mesh_uniforms = {0};
-    transform_matrix(&command->transform,
-                     (float *)mesh_uniforms.world_from_local);
+
+    memcpy((float *)mesh_uniforms.world_from_local, command->transform,
+           sizeof(mat4));
     mat4_transpose(mesh_uniforms.world_from_local);
     wgpuQueueWriteBuffer(wgpu_queue, res->mesh_uniforms_buffer,
                          command_index * mesh_uniform_stride, &mesh_uniforms,

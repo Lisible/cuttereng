@@ -679,7 +679,7 @@ err:
 
 uint64_t ecs_id_hash_fn(const void *ecs_id) { return *(EcsId *)ecs_id; }
 bool ecs_id_eq_fn(const void *a, const void *b) {
-  return *(EcsId *)a == *(EcsId *)b;
+  return (*(EcsId *)a) == (*(EcsId *)b);
 }
 typedef struct {
   HashTable sources_for_entity;
@@ -818,24 +818,31 @@ void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
 
   return component_store_get(store, entity_id);
 }
-HashSet *ecs_get_relationship_sources_(const Ecs *ecs, EcsId target,
+HashSet *ecs_get_relationship_sources_(const Ecs *ecs,
+                                       const char *relationship_name,
+                                       EcsId target) {
+  ASSERT(ecs != NULL);
+  ASSERT(relationship_name != NULL);
+
+  RelationshipStore *store =
+      HashTable_get(&ecs->relationship_stores, relationship_name);
+  if (!store) {
+    return NULL;
+  }
+
+  return HashTable_get(&store->sources_for_entity, &target);
+}
+
+HashSet *ecs_get_relationship_targets_(const Ecs *ecs, EcsId source,
                                        const char *relationship_name) {
   ASSERT(ecs != NULL);
   ASSERT(relationship_name != NULL);
 
   RelationshipStore *store =
       HashTable_get(&ecs->relationship_stores, relationship_name);
-  return HashTable_get(&store->sources_for_entity, &target);
-}
-
-HashSet *ecs_get_relationship_targets_(const Ecs *ecs,
-                                       const char *relationship_name,
-                                       EcsId source) {
-  ASSERT(ecs != NULL);
-  ASSERT(relationship_name != NULL);
-
-  RelationshipStore *store =
-      HashTable_get(&ecs->relationship_stores, relationship_name);
+  if (!store) {
+    return NULL;
+  }
   return HashTable_get(&store->targets_for_entity, &source);
 }
 

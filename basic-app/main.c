@@ -26,6 +26,7 @@ void system_move_cubes(EcsCommandQueue *queue, EcsQueryIt *it) {
     transform->position.y =
         2.0 + sin(system_context->current_time_secs * 5.0 +
                   transform->position.x + transform->position.z);
+    transform->dirty = true;
   }
 }
 void system_move_light(EcsCommandQueue *queue, EcsQueryIt *it) {
@@ -236,6 +237,14 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
                                                   ecs_component_id(Camera)},
                                    .component_count = 2},
           .fn = system_move_camera_keyboard});
+  ecs_command_queue_register_system(
+      command_queue,
+      &(const EcsSystemDescriptor){
+          .query =
+              (EcsQueryDescriptor){.components = {ecs_component_id(Transform),
+                                                  ecs_component_id(Moving)},
+                                   .component_count = 2},
+          .fn = system_move_cubes});
 
   EcsId camera_entity = ecs_command_queue_create_entity(command_queue);
   Camera camera;
@@ -293,9 +302,12 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
        .material_handle = water_material_handle});
   ecs_command_queue_insert_component_with_ptr(command_queue, cube, Transform,
                                               &cube_transform);
+  ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
+
   EcsId second_cube = ecs_command_queue_create_entity(command_queue);
   Transform second_cube_transform = TRANSFORM_DEFAULT;
   second_cube_transform.position.y = 1.0;
+  second_cube_transform.position.x = 1.0;
   ecs_command_queue_insert_component(
       command_queue, second_cube, MeshInstance,
       {.mesh_handle = cube_mesh_handle,
@@ -303,6 +315,8 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   ecs_command_queue_insert_component_with_ptr(
       command_queue, second_cube, Transform, &second_cube_transform);
 
+  // ecs_command_queue_insert_relationship(command_queue, second_cube, ChildOf,
+  //                                       cube);
   ecs_command_queue_insert_relationship(command_queue, second_cube, ChildOf,
                                         cube);
 }

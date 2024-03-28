@@ -249,6 +249,77 @@ void HashSet_clear(HashSet *hash_set) {
   HashTable_clear(hash_set);
 }
 
+struct HashTableIt {
+  HashTable *table;
+  size_t current_index;
+  bool iterating;
+};
+
+HashTableIt *HashTableIt_create(Allocator *allocator, HashTable *table) {
+  ASSERT(allocator != NULL);
+  ASSERT(table != NULL);
+  HashTableIt *it = allocator_allocate(allocator, sizeof(HashTableIt));
+  it->table = table;
+  it->current_index = 0;
+  it->iterating = false;
+  return it;
+}
+
+void HashTableIt_destroy(Allocator *allocator, HashTableIt *it) {
+  ASSERT(allocator != NULL);
+  ASSERT(it != NULL);
+  allocator_free(allocator, it);
+}
+
+bool HashTableIt_next(HashTableIt *it) {
+  ASSERT(it != NULL);
+  if (it->table->length < 1) {
+    return false;
+  }
+
+  if (it->iterating) {
+    it->current_index++;
+  } else {
+    it->iterating = true;
+  }
+
+  while (!it->table->items[it->current_index].is_present) {
+    it->current_index++;
+    if (it->current_index >= it->table->capacity) {
+      return false;
+    }
+  }
+
+  return true;
+}
+void *HashTableIt_key(HashTableIt *it) {
+  ASSERT(it != NULL);
+  if (!it->iterating || it->current_index >= it->table->capacity)
+    return NULL;
+
+  if (!it->table->items[it->current_index].is_present) {
+    return NULL;
+  }
+
+  return it->table->items[it->current_index].key;
+}
+void *HashTableIt_value(HashTableIt *it) {
+  ASSERT(it != NULL);
+  if (!it->iterating || it->current_index >= it->table->capacity)
+    return NULL;
+
+  if (!it->table->items[it->current_index].is_present) {
+    return NULL;
+  }
+
+  return it->table->items[it->current_index].value;
+}
+
+HashTableIt *HashTable_iter(Allocator *allocator, HashTable *hash_table) {
+  ASSERT(hash_table != NULL);
+  return HashTableIt_create(allocator, hash_table);
+}
+
 uint64_t hash_fnv_1a(const char *bytes, size_t nbytes) {
   ASSERT(bytes != NULL);
   static const uint64_t FNV_OFFSET_BASIS = 14695981039346656037u;

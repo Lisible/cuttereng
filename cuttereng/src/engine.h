@@ -26,6 +26,7 @@ typedef struct {
   Renderer *renderer;
   const char *application_title;
   float current_time_secs;
+  mat4 *transform_cache;
   bool running;
   bool capturing_mouse;
 } Engine;

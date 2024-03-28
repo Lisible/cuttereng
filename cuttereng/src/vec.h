@@ -18,6 +18,7 @@
   void name##_deinit(name *vec);                                               \
   void name##_reserve(name *vec, size_t length_to_reserve);                    \
   void name##_push_back(name *vec, T value);                                   \
+  T name##_pop_back(name *vec);                                                \
   void name##_append(name *vec, const T *values, size_t count);                \
   void name##_clear(name *vec);                                                \
   size_t name##_length(name *vec);                                             \
@@ -65,6 +66,11 @@
     name##_reserve(vec, vec->length + 1);                                      \
     vec->data[vec->length] = value;                                            \
     vec->length++;                                                             \
+  }                                                                            \
+  T name##_pop_back(name *vec) {                                               \
+    ASSERT(vec != NULL);                                                       \
+    vec->length--;                                                             \
+    return vec->data[vec->length];                                             \
   }                                                                            \
   void name##_append(name *vec, const T *values, size_t count) {               \
     ASSERT(vec != NULL);                                                       \

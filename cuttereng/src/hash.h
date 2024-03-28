@@ -24,6 +24,12 @@ typedef struct {
   size_t length;
 } HashTable;
 
+typedef struct HashTableIt HashTableIt;
+void HashTableIt_destroy(Allocator *allocator, HashTableIt *it);
+bool HashTableIt_next(HashTableIt *it);
+void *HashTableIt_key(HashTableIt *it);
+void *HashTableIt_value(HashTableIt *it);
+
 bool HashTable_init(Allocator *allocator, HashTable *hash_table,
                     const size_t initial_capacity,
                     HashTableKeyHashFn key_hash_fn, HashTableKeyEqFn key_eq_fn);
@@ -35,6 +41,7 @@ bool HashTable_init_with_dctors(Allocator *allocator, HashTable *hash_table,
                                 HashTableDctorFn value_dctor_fn);
 void HashTable_deinit(HashTable *hash_table);
 bool HashTable_insert(HashTable *hash_table, void *key, void *value);
+HashTableIt *HashTable_iter(Allocator *allocator, HashTable *hash_table);
 void *HashTable_get(const HashTable *hash_table, const void *key);
 bool HashTable_has(const HashTable *hash_table, const void *key);
 size_t HashTable_length(const HashTable *hash_table);

@@ -294,7 +294,7 @@ void renderer_destroy(Renderer *renderer) {
   allocator_free(renderer->allocator, renderer);
 }
 
-void renderer_draw_mesh(Renderer *renderer, Transform *transform,
+void renderer_draw_mesh(Renderer *renderer, mat4 transform,
                         AssetHandle mesh_handle, AssetHandle material_handle) {
   ASSERT(renderer != NULL);
   ASSERT(transform != NULL);
@@ -302,11 +302,10 @@ void renderer_draw_mesh(Renderer *renderer, Transform *transform,
   draw_command.mesh_handle = mesh_handle;
   draw_command.material_handle = material_handle;
   draw_command.uses_shader_material = false;
-  memcpy(&draw_command.transform, transform, sizeof(Transform));
+  memcpy(&draw_command.transform, transform, sizeof(mat4));
   DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
 }
-void renderer_draw_mesh_with_shader_material(Renderer *renderer,
-                                             Transform *transform,
+void renderer_draw_mesh_with_shader_material(Renderer *renderer, mat4 transform,
                                              AssetHandle mesh_handle,
                                              AssetHandle material_handle) {
   ASSERT(renderer != NULL);
@@ -315,7 +314,7 @@ void renderer_draw_mesh_with_shader_material(Renderer *renderer,
   draw_command.mesh_handle = mesh_handle;
   draw_command.material_handle = material_handle;
   draw_command.uses_shader_material = false;
-  memcpy(&draw_command.transform, transform, sizeof(Transform));
+  memcpy(&draw_command.transform, transform, sizeof(mat4));
   DrawCommandQueue_append(&renderer->draw_commands, &draw_command, 1);
 }
 

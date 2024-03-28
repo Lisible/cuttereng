@@ -152,11 +152,11 @@ bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name);
 void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
                          const char *component_name);
-HashSet *ecs_get_relationship_sources_(const Ecs *ecs, EcsId target,
-                                       const char *relationship_name);
-HashSet *ecs_get_relationship_targets_(const Ecs *ecs,
+HashSet *ecs_get_relationship_sources_(const Ecs *ecs,
                                        const char *relationship_name,
-                                       EcsId source);
+                                       EcsId target);
+HashSet *ecs_get_relationship_targets_(const Ecs *ecs, EcsId source,
+                                       const char *relationship_name);
 size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query);
 EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query);
 bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
@@ -165,6 +165,9 @@ bool ecs_query_it_next(EcsQueryIt *it);
 void *ecs_query_it_get_(const EcsQueryIt *it, size_t component);
 EcsId ecs_query_it_entity_id(const EcsQueryIt *it);
 void ecs_query_it_deinit(EcsQueryIt *it);
+uint64_t ecs_id_hash_fn(const void *ecs_id);
+bool ecs_id_eq_fn(const void *a, const void *b);
+void ecs_id_dctor_fn(Allocator *allocator, void *ecs_id);
 
 #define ecs_insert_component_with_ptr(ecs, entity_id, component_type, ptr)     \
   ecs_insert_component_(ecs, entity_id, #component_type,                       \
@@ -175,10 +178,10 @@ void ecs_query_it_deinit(EcsQueryIt *it);
 #define ecs_insert_relationship(ecs, source, relationship_type, target)        \
   ecs_insert_relationship_(ecs, source, #relationship_type, target)
 
-#define ecs_get_relationship_sources(ecs, target, relationship_type)           \
-  ecs_get_relationship_sources_(ecs, target, #relationship_type)
-#define ecs_get_relationship_targets(ecs, relationship_type, source)           \
-  ecs_get_relationship_targets_(ecs, #relationship_type, source)
+#define ecs_get_relationship_sources(ecs, relationship_type, target)           \
+  ecs_get_relationship_sources_(ecs, #relationship_type, target)
+#define ecs_get_relationship_targets(ecs, source, relationship_type)           \
+  ecs_get_relationship_targets_(ecs, source, #relationship_type)
 
 #define ecs_component_id(component_type) #component_type
 

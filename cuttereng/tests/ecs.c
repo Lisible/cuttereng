@@ -51,15 +51,14 @@ void t_ecs_insert_relationship(void) {
   ecs_insert_relationship(&ecs, entity, ChildOf, child_entity);
   ecs_insert_relationship(&ecs, entity, ChildOf, second_child_entity);
 
-  HashSet *sources = ecs_get_relationship_sources(&ecs, child_entity, ChildOf);
+  HashSet *sources = ecs_get_relationship_sources(&ecs, ChildOf, child_entity);
   T_ASSERT_EQ(HashSet_length(sources), 1);
   T_ASSERT(HashSet_has(sources, &entity));
 
-  HashSet *targets = ecs_get_relationship_targets(&ecs, ChildOf, entity);
+  HashSet *targets = ecs_get_relationship_targets(&ecs, entity, ChildOf);
   T_ASSERT_EQ(HashSet_length(targets), 2);
   T_ASSERT(HashSet_has(targets, &child_entity));
   T_ASSERT(HashSet_has(targets, &second_child_entity));
-
   ecs_deinit(&ecs);
 }
 

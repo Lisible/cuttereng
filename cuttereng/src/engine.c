@@ -5,14 +5,16 @@
 #include "image.h"
 #include "log.h"
 #include "memory.h"
-#include "renderer/material.h"
 #include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
 #include "src/graphics/camera.h"
 #include "src/graphics/light.h"
 #include "src/graphics/mesh_instance.h"
+#include "src/hash.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
+#include "src/transform.h"
+#include <signal.h>
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  EcsSystemFn ecs_init_system, SDL_Window *window) {
@@ -28,6 +30,8 @@ void engine_init(Engine *engine, const Configuration *configuration,
   engine->application_title = configuration->application_title;
   engine->running = true;
   engine->capturing_mouse = false;
+  engine->transform_cache =
+      allocator_allocate_array(&system_allocator, 1024, sizeof(mat4));
   ecs_init(&system_allocator, &engine->ecs, ecs_init_system,
            &(SystemContext){.input_state = &engine->input_state,
                             .assets = engine->assets,
@@ -38,6 +42,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
 void engine_deinit(Engine *engine) {
   ASSERT(engine != NULL);
   ecs_deinit(&engine->ecs);
+  allocator_free(&system_allocator, engine->transform_cache);
   assets_destroy(engine->assets);
   renderer_destroy(engine->renderer);
 
@@ -75,6 +80,85 @@ void engine_set_current_time(Engine *engine, float current_time_secs) {
   ASSERT(engine != NULL);
   engine->current_time_secs = current_time_secs;
 }
+DECL_VEC(EcsId, EcsIdVec)
+DEF_VEC(EcsId, EcsIdVec, 512)
+
+void engine_update_transform_cache(Engine *engine) {
+  ASSERT(engine != NULL);
+  size_t entity_count = ecs_get_entity_count(&engine->ecs);
+  EcsIdVec queue;
+  EcsIdVec_init(&system_allocator, &queue);
+
+  EcsIdVec ord;
+  EcsIdVec_init(&system_allocator, &ord);
+
+  HashSet updated_ids = {0};
+  HashSet_init_with_dctor(&system_allocator, &updated_ids, 128, ecs_id_hash_fn,
+                          ecs_id_eq_fn, ecs_id_dctor_fn);
+
+  for (size_t i = 0; i < entity_count; i++) {
+    HashSet *targets = ecs_get_relationship_targets(&engine->ecs, i, ChildOf);
+    if (!targets || (HashSet_length(targets) == 0)) {
+      EcsIdVec_push_back(&queue, i);
+    }
+  }
+
+  while (queue.length > 0) {
+    EcsId n = EcsIdVec_pop_back(&queue);
+    EcsIdVec_push_back(&ord, n);
+    HashSet *children = ecs_get_relationship_sources(&engine->ecs, ChildOf, n);
+    if (!children || HashSet_length(children) < 1)
+      continue;
+
+    HashTableIt *it = HashTable_iter(&system_allocator, children);
+    while (HashTableIt_next(it)) {
+      EcsIdVec_push_back(&queue, *(size_t *)HashTableIt_key(it));
+    }
+    HashTableIt_destroy(&system_allocator, it);
+  }
+
+  for (size_t i = 0; i < ord.length; i++) {
+    EcsId entity_id = ord.data[i];
+    LOG_DEBUG("Current entity: %zu", entity_id);
+    Transform *transform =
+        ecs_get_component(&engine->ecs, entity_id, Transform);
+    float *parent_transform_mat = (float[])MAT4_IDENTITY;
+
+    bool parent_dirty = false;
+    HashSet *targets =
+        ecs_get_relationship_targets(&engine->ecs, entity_id, ChildOf);
+    if (targets) {
+      HashTableIt *it = HashTable_iter(&system_allocator, targets);
+      if (HashTableIt_next(it)) {
+        EcsId *parent_id = HashTableIt_key(it);
+        if (HashSet_has(&updated_ids, parent_id)) {
+          parent_dirty = true;
+        }
+        parent_transform_mat = (float *)engine->transform_cache[*parent_id];
+      }
+      HashTableIt_destroy(&system_allocator, it);
+    }
+
+    if (!transform->dirty && !parent_dirty) {
+      continue;
+    }
+
+    EcsId *owned_id = malloc(sizeof(EcsId));
+    *owned_id = entity_id;
+    HashSet_insert(&updated_ids, owned_id);
+
+    mat4 entity_transform_mat = MAT4_IDENTITY;
+    transform_matrix(transform, entity_transform_mat);
+    mat4_mul(entity_transform_mat, parent_transform_mat,
+             engine->transform_cache[entity_id]);
+
+    transform->dirty = false;
+  }
+
+  HashSet_deinit(&updated_ids);
+  EcsIdVec_deinit(&ord);
+  EcsIdVec_deinit(&queue);
+}
 
 void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
   ASSERT(engine != NULL);
@@ -88,6 +172,7 @@ void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
                                         .assets = engine->assets};
   ecs_run_systems(&engine->ecs, &system_context);
   ecs_process_command_queue(&engine->ecs);
+  engine_update_transform_cache(engine);
 }
 
 void engine_emit_draw_commands(Allocator *allocator, Engine *engine);
@@ -146,28 +231,6 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   ecs_query_it_deinit(&query_directional_light_it);
   EcsQuery_destroy(query_directional_light, allocator);
 
-  // {
-  //   EcsQuery *query_meshes = EcsQuery_new(
-  //       allocator, &(const EcsQueryDescriptor){
-  //                      .components = {ecs_component_id(Transform),
-  //                                     ecs_component_id(MeshInstance),
-  //                                     ecs_component_id(ShaderMaterial)},
-  //                      .component_count = 3});
-  //   EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
-  //   while (ecs_query_it_next(&query_it)) {
-  //     Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
-  //     MeshInstance *mesh_instance =
-  //         ecs_query_it_get(&query_it, MeshInstance, 1);
-  //     ShaderMaterial *shader_material =
-  //         ecs_query_it_get(&query_it, ShaderMaterial, 2);
-  //     renderer_draw_mesh_with_shader_material(engine->renderer, transform,
-  //                                             mesh_instance->mesh_handle,
-  //                                             shader_material->shader_handle);
-  //   }
-  //   ecs_query_it_deinit(&query_it);
-  //   EcsQuery_destroy(query_meshes, allocator);
-  // }
-
   {
     EcsQuery *query_meshes = EcsQuery_new(
         allocator,
@@ -179,14 +242,14 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
                                     .component_count = 2});
     EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
     while (ecs_query_it_next(&query_it)) {
-      Transform *transform = ecs_query_it_get(&query_it, Transform, 0);
       MeshInstance *mesh_instance =
           ecs_query_it_get(&query_it, MeshInstance, 1);
       // Material*material=
       //     ecs_query_it_get(&query_it, Material, 2);
-      renderer_draw_mesh(engine->renderer, transform,
-                         mesh_instance->mesh_handle,
-                         mesh_instance->material_handle);
+      renderer_draw_mesh(
+          engine->renderer,
+          engine->transform_cache[ecs_query_it_entity_id(&query_it)],
+          mesh_instance->mesh_handle, mesh_instance->material_handle);
     }
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);
