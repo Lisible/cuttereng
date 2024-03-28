@@ -111,7 +111,6 @@ bool HashTable_expand(HashTable *hash_table) {
 bool HashTable_insert(HashTable *hash_table, void *key, void *value) {
   ASSERT(hash_table != NULL);
   ASSERT(key != NULL);
-  ASSERT(value != NULL);
 
   if (hash_table->length >= hash_table->capacity / 2) {
     if (!HashTable_expand(hash_table)) {
@@ -210,6 +209,44 @@ void HashTable_clear(HashTable *hash_table) {
   }
 
   hash_table->length = 0;
+}
+
+bool HashSet_init(Allocator *allocator, HashSet *hash_set,
+                  const size_t initial_capacity, HashTableKeyHashFn hash_fn,
+                  HashTableKeyEqFn eq_fn) {
+  ASSERT(allocator != NULL);
+  ASSERT(hash_set != NULL);
+  return HashTable_init(allocator, hash_set, initial_capacity, hash_fn, eq_fn);
+}
+bool HashSet_init_with_dctor(Allocator *allocator, HashSet *hash_set,
+                             const size_t initial_capacity,
+                             HashTableKeyHashFn hash_fn, HashTableKeyEqFn eq_fn,
+                             HashTableDctorFn dctor_fn) {
+  ASSERT(allocator != NULL);
+  ASSERT(hash_set != NULL);
+  return HashTable_init_with_dctors(allocator, hash_set, initial_capacity,
+                                    hash_fn, eq_fn, dctor_fn,
+                                    HashTable_noop_dctor_fn);
+}
+void HashSet_deinit(HashSet *hash_set) {
+  ASSERT(hash_set != NULL);
+  HashTable_deinit(hash_set);
+}
+bool HashSet_insert(HashSet *hash_set, void *set_value) {
+  ASSERT(hash_set != NULL);
+  return HashTable_insert(hash_set, set_value, NULL);
+}
+bool HashSet_has(const HashSet *hash_set, const void *set_value) {
+  ASSERT(hash_set != NULL);
+  return HashTable_has(hash_set, set_value);
+}
+size_t HashSet_length(const HashSet *hash_set) {
+  ASSERT(hash_set != NULL);
+  return HashTable_length(hash_set);
+}
+void HashSet_clear(HashSet *hash_set) {
+  ASSERT(hash_set != NULL);
+  HashTable_clear(hash_set);
 }
 
 uint64_t hash_fnv_1a(const char *bytes, size_t nbytes) {

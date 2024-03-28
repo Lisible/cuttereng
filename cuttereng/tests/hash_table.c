@@ -122,6 +122,56 @@ static void hash_table_heap_allocated_str(void) {
   HashTable_deinit(&hash_table);
 }
 
+static uint64_t int_hash_fn(const void *v) { return *(uint64_t *)v; }
+static bool int_eq_fn(const void *a, const void *b) {
+  return *(uint64_t *)a == *(uint64_t *)b;
+}
+
+static void hash_set_init(void) {
+  HashSet set;
+  HashSet_init(&system_allocator, &set, 16, int_hash_fn, int_eq_fn);
+  T_ASSERT_EQ(HashSet_length(&set), 0u);
+  HashSet_deinit(&set);
+}
+
+static void hash_set_insert(void) {
+  HashSet set;
+  HashSet_init(&system_allocator, &set, 16, int_hash_fn, int_eq_fn);
+  T_ASSERT_EQ(HashSet_length(&set), 0u);
+
+  uint64_t a = 15;
+  HashSet_insert(&set, &a);
+  T_ASSERT_EQ(HashSet_length(&set), 1u);
+  uint64_t b = 26;
+  HashSet_insert(&set, &b);
+  uint64_t c = 28;
+  HashSet_insert(&set, &c);
+  T_ASSERT_EQ(HashSet_length(&set), 3u);
+  HashSet_deinit(&set);
+}
+
+static void hash_set_has(void) {
+  HashSet set;
+  HashSet_init(&system_allocator, &set, 16, int_hash_fn, int_eq_fn);
+  T_ASSERT_EQ(HashSet_length(&set), 0u);
+
+  uint64_t a = 15;
+  HashSet_insert(&set, &a);
+  uint64_t b = 26;
+  HashSet_insert(&set, &b);
+  uint64_t c = 28;
+  HashSet_insert(&set, &c);
+
+  uint64_t d = 0;
+  T_ASSERT(HashSet_has(&set, &a));
+  T_ASSERT(HashSet_has(&set, &b));
+  T_ASSERT(HashSet_has(&set, &c));
+  T_ASSERT(!HashSet_has(&set, &d));
+  T_ASSERT_EQ(HashSet_length(&set), 3u);
+  HashSet_deinit(&set);
+}
+
 TEST_SUITE(TEST(hash_table_create), TEST(hash_table_insert),
            TEST(hash_table_get), TEST(hash_table_heap_allocated_str),
-           TEST(hash_table_has), TEST(hash_table_expand))
+           TEST(hash_table_has), TEST(hash_table_expand), TEST(hash_set_init),
+           TEST(hash_set_insert), TEST(hash_set_has))

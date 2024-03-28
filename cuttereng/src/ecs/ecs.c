@@ -213,7 +213,6 @@ void component_store_set(ComponentStore *store, EcsId entity_id,
 
 void *component_store_get(ComponentStore *store, EcsId entity_id) {
   ASSERT(store != NULL);
-
   if (!BITTEST(store->bitset, entity_id)) {
     return NULL;
   }
@@ -257,6 +256,9 @@ void ecs_command_deinit(Allocator *allocator, EcsCommand *command) {
   case EcsCommandType_InsertComponent:
     allocator_free(allocator, command->insert_component.component_name);
     allocator_free(allocator, command->insert_component.component_data);
+    break;
+  case EcsCommandType_InsertRelationship:
+    allocator_free(allocator, command->insert_relationship.relationship_name);
     break;
   default:
     break;
@@ -576,6 +578,7 @@ void ecs_default_init_system(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
   (void)it;
 }
+void RelationshipStore_dctor(Allocator *allocator, void *store);
 void ecs_init(Allocator *allocator, Ecs *ecs, EcsSystemFn init_system,
               void *system_context) {
   ASSERT(allocator != NULL);
@@ -584,9 +587,17 @@ void ecs_init(Allocator *allocator, Ecs *ecs, EcsSystemFn init_system,
   ecs->allocator = allocator;
   ecs->entity_count = 0;
   ecs->reserved_entity_count = 0;
-  HashTable_init_with_dctors(allocator, &ecs->component_stores, 16,
-                             hash_str_hash, hash_str_eq, hash_str_dctor,
-                             component_store_dctor);
+  if (!HashTable_init_with_dctors(allocator, &ecs->component_stores, 16,
+                                  hash_str_hash, hash_str_eq, hash_str_dctor,
+                                  component_store_dctor)) {
+    PANIC("Couldn't create component store hash table");
+  }
+  if (!HashTable_init_with_dctors(ecs->allocator, &ecs->relationship_stores, 16,
+                                  hash_str_hash, hash_str_eq, hash_str_dctor,
+                                  RelationshipStore_dctor)) {
+    PANIC("Couldn't create relationship store hash table");
+  }
+
   EcsSystemVec_init(allocator, &ecs->systems);
   ecs_command_queue_init(allocator, &ecs->command_queue, ecs);
   EcsQueryIt it = {.allocator = ecs->allocator, .ctx = system_context};
@@ -599,6 +610,7 @@ void ecs_deinit(Ecs *ecs) {
     EcsQuery_destroy(ecs->systems.data[i].query, ecs->allocator);
   }
   EcsSystemVec_deinit(&ecs->systems);
+  HashTable_deinit(&ecs->relationship_stores);
   HashTable_deinit(&ecs->component_stores);
 }
 void ecs_register_system(Ecs *ecs,
@@ -665,14 +677,123 @@ err:
   return;
 }
 
+uint64_t ecs_id_hash_fn(const void *ecs_id) { return *(EcsId *)ecs_id; }
+bool ecs_id_eq_fn(const void *a, const void *b) {
+  return *(EcsId *)a == *(EcsId *)b;
+}
+typedef struct {
+  HashTable sources_for_entity;
+  HashTable targets_for_entity;
+} RelationshipStore;
+
+void ecs_id_dctor_fn(Allocator *allocator, void *ecs_id) {
+  ASSERT(allocator != NULL);
+  ASSERT(ecs_id != NULL);
+  allocator_free(allocator, ecs_id);
+}
+
+void HashSet_dctor_fn(Allocator *allocator, void *set) {
+  ASSERT(allocator != NULL);
+  ASSERT(set != NULL);
+  HashSet_deinit(set);
+  allocator_free(allocator, set);
+}
+
+bool RelationshipStore_init(Allocator *allocator,
+                            RelationshipStore *relationship_store) {
+  ASSERT(allocator != NULL);
+  ASSERT(relationship_store != NULL);
+  if (!HashTable_init_with_dctors(
+          allocator, &relationship_store->sources_for_entity, 16,
+          ecs_id_hash_fn, ecs_id_eq_fn, ecs_id_dctor_fn, HashSet_dctor_fn)) {
+    return false;
+  }
+  return HashTable_init_with_dctors(
+      allocator, &relationship_store->targets_for_entity, 16, ecs_id_hash_fn,
+      ecs_id_eq_fn, ecs_id_dctor_fn, HashSet_dctor_fn);
+}
+
+RelationshipStore *RelationshipStore_create(Allocator *allocator) {
+  ASSERT(allocator != NULL);
+  RelationshipStore *relationship_store =
+      allocator_allocate(allocator, sizeof(RelationshipStore));
+  RelationshipStore_init(allocator, relationship_store);
+  return relationship_store;
+}
+
+void RelationshipStore_deinit(RelationshipStore *store) {
+  ASSERT(store != NULL);
+  HashTable_deinit(&store->sources_for_entity);
+  HashTable_deinit(&store->targets_for_entity);
+}
+
+void RelationshipStore_destroy(Allocator *allocator, RelationshipStore *store) {
+  ASSERT(allocator != NULL);
+  ASSERT(store != NULL);
+  RelationshipStore_deinit(store);
+  allocator_free(allocator, store);
+}
+
+void RelationshipStore_dctor(Allocator *allocator, void *store) {
+  ASSERT(allocator != NULL);
+  ASSERT(store != NULL);
+  RelationshipStore_destroy(allocator, store);
+}
+
 void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
                               EcsId target) {
   ASSERT(ecs != NULL);
   ASSERT(relationship_name != NULL);
 
-  (void)source;
-  (void)target;
-  LOG_DEBUG("insert relationship is not implemented yet");
+  if (!HashTable_has(&ecs->relationship_stores, relationship_name)) {
+    RelationshipStore *relationship_store =
+        RelationshipStore_create(ecs->allocator);
+    if (!relationship_store) {
+      PANIC("Couldn't allocate relationship store");
+    }
+
+    char *owned_relationship_name =
+        memory_clone_string(ecs->allocator, relationship_name);
+    HashTable_insert(&ecs->relationship_stores, owned_relationship_name,
+                     relationship_store);
+  }
+
+  RelationshipStore *relationship_store =
+      HashTable_get(&ecs->relationship_stores, relationship_name);
+  if (!relationship_store) {
+    PANIC("Relationship store not found");
+  }
+
+  if (!HashTable_has(&relationship_store->sources_for_entity, &target)) {
+    EcsId *key = allocator_allocate(ecs->allocator, sizeof(EcsId));
+    *key = target;
+    HashSet *hash_set = allocator_allocate(ecs->allocator, sizeof(HashSet));
+    HashSet_init_with_dctor(ecs->allocator, hash_set, 16, ecs_id_hash_fn,
+                            ecs_id_eq_fn, ecs_id_dctor_fn);
+
+    HashTable_insert(&relationship_store->sources_for_entity, key, hash_set);
+  }
+  HashSet *sources =
+      HashTable_get(&relationship_store->sources_for_entity, &target);
+
+  if (!HashTable_has(&relationship_store->targets_for_entity, &source)) {
+    EcsId *key = allocator_allocate(ecs->allocator, sizeof(EcsId));
+    *key = source;
+    HashSet *hash_set = allocator_allocate(ecs->allocator, sizeof(HashSet));
+    HashSet_init_with_dctor(ecs->allocator, hash_set, 16, ecs_id_hash_fn,
+                            ecs_id_eq_fn, ecs_id_dctor_fn);
+    HashTable_insert(&relationship_store->targets_for_entity, key, hash_set);
+  }
+  HashSet *targets =
+      HashTable_get(&relationship_store->targets_for_entity, &source);
+
+  EcsId *owned_source = allocator_allocate(ecs->allocator, sizeof(EcsId));
+  *owned_source = source;
+  EcsId *owned_target = allocator_allocate(ecs->allocator, sizeof(EcsId));
+  *owned_target = target;
+
+  HashSet_insert(sources, owned_source);
+  HashSet_insert(targets, owned_target);
 }
 
 bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,

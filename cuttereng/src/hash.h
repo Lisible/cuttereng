@@ -41,6 +41,21 @@ size_t HashTable_length(const HashTable *hash_table);
 void HashTable_steal(HashTable *hash_table, const void *key);
 void HashTable_clear(HashTable *hash_table);
 
+typedef HashTable HashSet;
+
+bool HashSet_init(Allocator *allocator, HashSet *hash_set,
+                  const size_t initial_capacity, HashTableKeyHashFn hash_fn,
+                  HashTableKeyEqFn eq_fn);
+bool HashSet_init_with_dctor(Allocator *allocator, HashSet *hash_set,
+                             const size_t initial_capacity,
+                             HashTableKeyHashFn hash_fn, HashTableKeyEqFn eq_fn,
+                             HashTableDctorFn dctor_fn);
+void HashSet_deinit(HashSet *hash_set);
+bool HashSet_insert(HashSet *hash_set, void *set_value);
+bool HashSet_has(const HashSet *hash_set, const void *set_value);
+size_t HashSet_length(const HashSet *hash_set);
+void HashSet_clear(HashSet *hash_set);
+
 void HashTable_noop_dctor_fn(Allocator *, void *v);
 
 uint64_t hash_str_hash(const void *str);

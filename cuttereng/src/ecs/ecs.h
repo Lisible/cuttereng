@@ -127,6 +127,7 @@ DECL_VEC(EcsSystem, EcsSystemVec)
 struct Ecs {
   Allocator *allocator;
   HashTable component_stores;
+  HashTable relationship_stores;
   size_t entity_count;
   size_t reserved_entity_count;
   EcsSystemVec systems;
