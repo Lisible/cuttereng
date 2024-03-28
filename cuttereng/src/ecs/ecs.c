@@ -818,6 +818,26 @@ void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
 
   return component_store_get(store, entity_id);
 }
+HashSet *ecs_get_relationship_sources_(const Ecs *ecs, EcsId target,
+                                       const char *relationship_name) {
+  ASSERT(ecs != NULL);
+  ASSERT(relationship_name != NULL);
+
+  RelationshipStore *store =
+      HashTable_get(&ecs->relationship_stores, relationship_name);
+  return HashTable_get(&store->sources_for_entity, &target);
+}
+
+HashSet *ecs_get_relationship_targets_(const Ecs *ecs,
+                                       const char *relationship_name,
+                                       EcsId source) {
+  ASSERT(ecs != NULL);
+  ASSERT(relationship_name != NULL);
+
+  RelationshipStore *store =
+      HashTable_get(&ecs->relationship_stores, relationship_name);
+  return HashTable_get(&store->targets_for_entity, &source);
+}
 
 size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query) {
   ASSERT(ecs != NULL);

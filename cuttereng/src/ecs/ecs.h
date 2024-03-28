@@ -152,6 +152,11 @@ bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name);
 void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
                          const char *component_name);
+HashSet *ecs_get_relationship_sources_(const Ecs *ecs, EcsId target,
+                                       const char *relationship_name);
+HashSet *ecs_get_relationship_targets_(const Ecs *ecs,
+                                       const char *relationship_name,
+                                       EcsId source);
 size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query);
 EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query);
 bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
@@ -169,6 +174,11 @@ void ecs_query_it_deinit(EcsQueryIt *it);
                         sizeof(component_type), &(component_type)__VA_ARGS__)
 #define ecs_insert_relationship(ecs, source, relationship_type, target)        \
   ecs_insert_relationship_(ecs, source, #relationship_type, target)
+
+#define ecs_get_relationship_sources(ecs, target, relationship_type)           \
+  ecs_get_relationship_sources_(ecs, target, #relationship_type)
+#define ecs_get_relationship_targets(ecs, relationship_type, source)           \
+  ecs_get_relationship_targets_(ecs, #relationship_type, source)
 
 #define ecs_component_id(component_type) #component_type
 

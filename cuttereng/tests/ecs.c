@@ -42,6 +42,27 @@ void t_ecs_insert_component(void) {
   ecs_deinit(&ecs);
 }
 
+void t_ecs_insert_relationship(void) {
+  Ecs ecs;
+  ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
+  EcsId entity = ecs_create_entity(&ecs);
+  EcsId child_entity = ecs_create_entity(&ecs);
+  EcsId second_child_entity = ecs_create_entity(&ecs);
+  ecs_insert_relationship(&ecs, entity, ChildOf, child_entity);
+  ecs_insert_relationship(&ecs, entity, ChildOf, second_child_entity);
+
+  HashSet *sources = ecs_get_relationship_sources(&ecs, child_entity, ChildOf);
+  T_ASSERT_EQ(HashSet_length(sources), 1);
+  T_ASSERT(HashSet_has(sources, &entity));
+
+  HashSet *targets = ecs_get_relationship_targets(&ecs, ChildOf, entity);
+  T_ASSERT_EQ(HashSet_length(targets), 2);
+  T_ASSERT(HashSet_has(targets, &child_entity));
+  T_ASSERT(HashSet_has(targets, &second_child_entity));
+
+  ecs_deinit(&ecs);
+}
+
 void t_ecs_get_component(void) {
   Ecs ecs;
   ecs_init(&system_allocator, &ecs, ecs_default_init_system, NULL);
@@ -225,4 +246,5 @@ void t_ecs_register_system(void) {
 TEST_SUITE(TEST(t_ecs_init), TEST(t_ecs_create_entity),
            TEST(t_ecs_insert_component), TEST(t_ecs_get_component),
            TEST(t_ecs_count_matching), TEST(t_ecs_query),
-           TEST(t_ecs_query_two_components), TEST(t_ecs_register_system))
+           TEST(t_ecs_query_two_components), TEST(t_ecs_register_system),
+           TEST(t_ecs_insert_relationship))
