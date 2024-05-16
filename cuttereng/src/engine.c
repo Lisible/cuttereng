@@ -26,7 +26,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   assets_register_asset_type(engine->assets, Image, &image_loader,
                              &image_deinitializer);
 
-  engine->renderer = renderer_new(&system_allocator, window, engine->assets);
+  // engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
   engine->capturing_mouse = false;
@@ -44,7 +44,7 @@ void engine_deinit(Engine *engine) {
   ecs_deinit(&engine->ecs);
   allocator_free(&system_allocator, engine->transform_cache);
   assets_destroy(engine->assets);
-  renderer_destroy(engine->renderer);
+  // renderer_destroy(engine->renderer);
 
   allocator_free(&system_allocator, (char *)engine->application_title);
 }
@@ -58,7 +58,7 @@ void engine_handle_events(Engine *engine, Event *event) {
   case EventType_KeyDown:
     if (event->key_event.key == Key_F1) {
       engine_reload_assets(engine);
-      renderer_clear_caches(engine->renderer);
+      // renderer_clear_caches(engine->renderer);
     } else {
       InputState_handle_event(&engine->input_state, event);
     }
@@ -179,8 +179,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine);
 void engine_render(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
   engine_emit_draw_commands(frame_allocator, engine);
-  renderer_render(frame_allocator, engine->renderer, engine->assets,
-                  engine->current_time_secs);
+  // renderer_render(frame_allocator, engine->renderer, engine->assets,
+  //                 engine->current_time_secs);
   InputState_on_frame_end(&engine->input_state);
 }
 
@@ -210,8 +210,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
   LOG_DEBUG("view_position: %f,%f,%f", transform->position.x,
             transform->position.y, transform->position.z);
-  renderer_set_view_position(engine->renderer, &transform->position);
-  renderer_set_view_projection(engine->renderer, view_projection_matrix);
+  // renderer_set_view_position(engine->renderer, &transform->position);
+  // renderer_set_view_projection(engine->renderer, view_projection_matrix);
   ecs_query_it_deinit(&camera_query_it);
   EcsQuery_destroy(query_camera, allocator);
 
@@ -224,9 +224,10 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   while (ecs_query_it_next(&query_directional_light_it)) {
     DirectionalLight *directional_light =
         ecs_query_it_get(&query_directional_light_it, DirectionalLight, 0);
-    renderer_add_light(engine->renderer,
-                       &(const Light){.type = LightType_Directional,
-                                      .directional_light = *directional_light});
+    // renderer_add_light(engine->renderer,
+    //                    &(const Light){.type = LightType_Directional,
+    //                                   .directional_light =
+    //                                   *directional_light});
   }
   ecs_query_it_deinit(&query_directional_light_it);
   EcsQuery_destroy(query_directional_light, allocator);
@@ -246,10 +247,10 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
           ecs_query_it_get(&query_it, MeshInstance, 1);
       // Material*material=
       //     ecs_query_it_get(&query_it, Material, 2);
-      renderer_draw_mesh(
-          engine->renderer,
-          engine->transform_cache[ecs_query_it_entity_id(&query_it)],
-          mesh_instance->mesh_handle, mesh_instance->material_handle);
+      // renderer_draw_mesh(
+      //     engine->renderer,
+      //     engine->transform_cache[ecs_query_it_entity_id(&query_it)],
+      //     mesh_instance->mesh_handle, mesh_instance->material_handle);
     }
     ecs_query_it_deinit(&query_it);
     EcsQuery_destroy(query_meshes, allocator);
