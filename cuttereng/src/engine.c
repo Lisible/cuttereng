@@ -30,8 +30,9 @@ void engine_init(Engine *engine, const Configuration *configuration,
   engine->application_title = configuration->application_title;
   engine->running = true;
   engine->capturing_mouse = false;
+  // FIXME The transform cache should grow as the number of entity grows
   engine->transform_cache =
-      allocator_allocate_array(&system_allocator, 1024, sizeof(mat4));
+      allocator_allocate_array(&system_allocator, 4096, sizeof(mat4));
   ecs_init(&system_allocator, &engine->ecs, ecs_init_system,
            &(SystemContext){.input_state = &engine->input_state,
                             .assets = engine->assets,
@@ -201,8 +202,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   Transform *transform = ecs_query_it_get(&camera_query_it, Transform, 1);
   mat4 projection = {0};
   memcpy(projection, camera->projection_matrix, 16 * sizeof(mat4_value_type));
-  mat4 transform_mat;
-  transform_matrix(transform, transform_mat);
+  float *transform_mat =
+      engine->transform_cache[ecs_query_it_entity_id(&camera_query_it)];
   mat4 inverse_transform_mat;
   mat4_transpose(inverse_transform_mat);
   mat4_inverse(transform_mat, inverse_transform_mat);

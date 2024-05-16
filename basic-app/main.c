@@ -84,6 +84,7 @@ void system_rotate_camera_mouse(EcsCommandQueue *queue, EcsQueryIt *it) {
     quaternion_mul(&result, &rotation);
     quaternion_mul(&result, &x_rotation);
     memcpy(&transform->rotation, &result, sizeof(Quaternion));
+    transform->dirty = true;
   }
 }
 
@@ -112,6 +113,7 @@ void system_rotate_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
     quaternion_mul(&result, &rotation);
     quaternion_mul(&result, &x_rotation);
     memcpy(&transform->rotation, &result, sizeof(Quaternion));
+    transform->dirty = true;
   }
 }
 
@@ -123,7 +125,7 @@ void system_move_camera_keyboard(EcsCommandQueue *queue, EcsQueryIt *it) {
   float speed = 5.0;
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-
+    transform->dirty = true;
     v3f forward = {0.0, 0.0, 1.0};
     quaternion_apply_to_vector(&transform->rotation, &forward);
     v3f_mul_scalar(&forward, dt * speed);
@@ -190,6 +192,7 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
     if (InputState_is_controller_button_down(input_state, ControllerButton_B)) {
       v3f_sub(&transform->position, &up);
     }
+    transform->dirty = true;
   }
 }
 
@@ -256,7 +259,7 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   camera_transform.position.y = 7.0;
   camera_transform.position.z = -13.0;
   quaternion_set_to_axis_angle(&camera_transform.rotation,
-                               &(const v3f){.y = 0.9, .x = 0.3}, M_PI_4);
+                               &(const v3f){.y = 0.9}, M_PI_4);
   ecs_command_queue_insert_component_with_ptr(command_queue, camera_entity,
                                               Transform, &camera_transform);
 
@@ -304,18 +307,25 @@ void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
                                               &cube_transform);
   ecs_command_queue_insert_tag_component(command_queue, cube, Moving);
 
-  EcsId second_cube = ecs_command_queue_create_entity(command_queue);
-  Transform second_cube_transform = TRANSFORM_DEFAULT;
-  second_cube_transform.position.y = 1.0;
-  second_cube_transform.position.x = 1.0;
-  ecs_command_queue_insert_component(
-      command_queue, second_cube, MeshInstance,
-      {.mesh_handle = cube_mesh_handle,
-       .material_handle = water_material_handle});
-  ecs_command_queue_insert_component_with_ptr(
-      command_queue, second_cube, Transform, &second_cube_transform);
-  ecs_command_queue_insert_relationship(command_queue, second_cube, ChildOf,
-                                        cube);
+  EcsId last_parent = cube;
+  for (size_t i = 0; i < 100; i++) {
+    for (size_t j = 0; j < 10; j++) {
+      EcsId new_cube = ecs_command_queue_create_entity(command_queue);
+      Transform new_cube_transform = TRANSFORM_DEFAULT;
+      new_cube_transform.position.y = cos(j / 10.0);
+      new_cube_transform.position.x = sin(i / 10.0);
+      ecs_command_queue_insert_component(
+          command_queue, new_cube, MeshInstance,
+          {.mesh_handle = cube_mesh_handle,
+           .material_handle = water_material_handle});
+      ecs_command_queue_insert_component_with_ptr(
+          command_queue, new_cube, Transform, &new_cube_transform);
+
+      ecs_command_queue_insert_relationship(command_queue, new_cube, ChildOf,
+                                            last_parent);
+      last_parent = new_cube;
+    }
+  }
 }
 
 int main(int argc, char **argv) {
