@@ -2,6 +2,7 @@
 #include "assert.h"
 #include "bytes.h"
 #include "src/json.h"
+#include "src/math/matrix.h"
 #include "src/memory.h"
 #include <string.h>
 
@@ -225,9 +226,9 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   json_destroy(allocator, gltf_json);
   return gltf;
 
-cleanup_gltf_json:
-  allocator_free(allocator, gltf_json);
-  allocator_free(allocator, gltf);
+// cleanup_gltf_json:
+//   allocator_free(allocator, gltf_json);
+//   allocator_free(allocator, gltf);
 err:
   return NULL;
 }
@@ -424,7 +425,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   JsonArray *matrix = NULL;
   if (!json_object_get_array(gltf_node_json, "matrix", &matrix)) {
     gltf_node->has_matrix = false;
-    memset(gltf_node->matrix, 0, 16);
+    memset(gltf_node->matrix, 0, 16 * sizeof(mat4_value_type));
     gltf_node->matrix[0] = 1.0;
     gltf_node->matrix[5] = 1.0;
     gltf_node->matrix[10] = 1.0;

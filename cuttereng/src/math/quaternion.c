@@ -1,6 +1,7 @@
 #include "quaternion.h"
 #include "../assert.h"
 #include "src/math/vector.h"
+#include <math.h>
 
 void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
                                   float angle) {

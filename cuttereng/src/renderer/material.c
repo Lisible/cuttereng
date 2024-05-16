@@ -79,7 +79,9 @@ err:
 
 AssetDeinitializer material_deinitializer = {.fn = material_deinitializer_fn};
 void material_deinitializer_fn(Allocator *allocator, void *asset) {
+  (void)allocator;
   Material *material = asset;
+  (void)material;
 }
 
 GPUMaterial *gpu_material_create(Allocator *allocator, ResourceCaches *caches,

@@ -2,12 +2,16 @@
 #define CUTTERENG_MATH_QUATERNION_H
 #include "matrix.h"
 #include "vector.h"
-#include <math.h>
 
 typedef struct {
   float scalar_part;
   v3f vector_part;
 } Quaternion;
+
+#define QUATERNION_IDENTITY                                                    \
+  {                                                                            \
+    .scalar_part = 1, .vector_part = { 0 }                                     \
+  }
 
 void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
                                   float angle);

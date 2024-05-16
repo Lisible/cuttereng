@@ -69,17 +69,17 @@ void system_rotate_camera_mouse(EcsCommandQueue *queue, EcsQueryIt *it) {
 
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    Quaternion y_rotation = {1, {0}};
+    Quaternion y_rotation = QUATERNION_IDENTITY;
     quaternion_set_to_axis_angle(&y_rotation, &(const v3f){.y = 1.0},
                                  motion_x * 0.02);
-    Quaternion rotation = {1, {0}};
+    Quaternion rotation = QUATERNION_IDENTITY;
     memcpy(&rotation, &transform->rotation, sizeof(Quaternion));
 
-    Quaternion x_rotation = {1, {0}};
+    Quaternion x_rotation = QUATERNION_IDENTITY;
     quaternion_set_to_axis_angle(&x_rotation, &(const v3f){.x = 1.0},
                                  motion_y * 0.02);
 
-    Quaternion result = {1.f, {0.f, 0.f, 0.f}};
+    Quaternion result = QUATERNION_IDENTITY;
     quaternion_mul(&result, &y_rotation);
     quaternion_mul(&result, &rotation);
     quaternion_mul(&result, &x_rotation);
@@ -98,17 +98,17 @@ void system_rotate_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
 
   while (ecs_query_it_next(it)) {
     Transform *transform = ecs_query_it_get(it, Transform, 0);
-    Quaternion y_rotation = {1, {0}};
+    Quaternion y_rotation = QUATERNION_IDENTITY;
     quaternion_set_to_axis_angle(&y_rotation, &(const v3f){.y = 1.0},
                                  motion_x * 0.02);
-    Quaternion rotation = {1, {0}};
+    Quaternion rotation = QUATERNION_IDENTITY;
     memcpy(&rotation, &transform->rotation, sizeof(Quaternion));
 
-    Quaternion x_rotation = {1, {0}};
+    Quaternion x_rotation = QUATERNION_IDENTITY;
     quaternion_set_to_axis_angle(&x_rotation, &(const v3f){.x = 1.0},
                                  motion_y * 0.02);
 
-    Quaternion result = {1.f, {0.f, 0.f, 0.f}};
+    Quaternion result = QUATERNION_IDENTITY;
     quaternion_mul(&result, &y_rotation);
     quaternion_mul(&result, &rotation);
     quaternion_mul(&result, &x_rotation);
@@ -198,7 +198,7 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
   LOG_DEBUG("Initializing");
-  SystemContext *ctx = it->ctx;
+  const SystemContext *ctx = it->ctx;
   ecs_command_queue_register_system(
       command_queue,
       &(const EcsSystemDescriptor){

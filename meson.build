@@ -5,8 +5,6 @@ if get_option('buildtype') == 'debug'
 endif
 
 add_project_arguments('-fstack-protector', language: 'c')
-add_project_arguments('-Wno-gnu-zero-variadic-macro-arguments', language: 'c')
-add_project_arguments('-Wno-gnu-binary-literal', language: 'c')
 
 subdir('cuttereng')
 subdir('basic-app')

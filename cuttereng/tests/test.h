@@ -1,7 +1,7 @@
 #ifndef TEST_H
 #define TEST_H
 
-#include <math.h>
+#include <math.h> // IWYU pragma: keep
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,6 +57,6 @@ inline static void assert(int boolean, const char *fmt, ...) {
   Test tests[] = {__VA_ARGS__};                                                \
   size_t test_count = ARG_COUNT(__VA_ARGS__);
 #define TEST(x)                                                                \
-  (Test) { .name = #x, .fn = x }
+  { .name = #x, .fn = x }
 
 #endif // TEST_H

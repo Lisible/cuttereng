@@ -5,16 +5,12 @@
 #include "image.h"
 #include "log.h"
 #include "memory.h"
-#include "renderer/renderer.h"
 #include "src/ecs/ecs.h"
 #include "src/graphics/camera.h"
-#include "src/graphics/light.h"
-#include "src/graphics/mesh_instance.h"
 #include "src/hash.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
 #include "src/transform.h"
-#include <signal.h>
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  EcsSystemFn ecs_init_system, SDL_Window *window) {
@@ -223,8 +219,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
   EcsQueryIt query_directional_light_it =
       ecs_query(&engine->ecs, query_directional_light);
   while (ecs_query_it_next(&query_directional_light_it)) {
-    DirectionalLight *directional_light =
-        ecs_query_it_get(&query_directional_light_it, DirectionalLight, 0);
+    // DirectionalLight *directional_light =
+    //     ecs_query_it_get(&query_directional_light_it, DirectionalLight, 0);
     // renderer_add_light(engine->renderer,
     //                    &(const Light){.type = LightType_Directional,
     //                                   .directional_light =
@@ -244,8 +240,8 @@ void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
                                     .component_count = 2});
     EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
     while (ecs_query_it_next(&query_it)) {
-      MeshInstance *mesh_instance =
-          ecs_query_it_get(&query_it, MeshInstance, 1);
+      // MeshInstance *mesh_instance =
+      //     ecs_query_it_get(&query_it, MeshInstance, 1);
       // Material*material=
       //     ecs_query_it_get(&query_it, Material, 2);
       // renderer_draw_mesh(
