@@ -6,7 +6,7 @@
 #include "event.h"
 #include "input.h"
 #include "json.h"
-#include "renderer/renderer.h"
+#include "math/matrix.h"
 #include <SDL.h>
 
 typedef struct {
@@ -23,7 +23,6 @@ typedef struct {
   Ecs ecs;
   InputState input_state;
   Assets *assets;
-  Renderer *renderer;
   const char *application_title;
   float current_time_secs;
   mat4 *transform_cache;

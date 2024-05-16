@@ -6,7 +6,6 @@
 #include "log.h"
 #include "memory.h"
 #include "src/ecs/ecs.h"
-#include "src/graphics/camera.h"
 #include "src/hash.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
@@ -22,7 +21,6 @@ void engine_init(Engine *engine, const Configuration *configuration,
   assets_register_asset_type(engine->assets, Image, &image_loader,
                              &image_deinitializer);
 
-  // engine->renderer = renderer_new(&system_allocator, window, engine->assets);
   engine->application_title = configuration->application_title;
   engine->running = true;
   engine->capturing_mouse = false;
@@ -41,8 +39,6 @@ void engine_deinit(Engine *engine) {
   ecs_deinit(&engine->ecs);
   allocator_free(&system_allocator, engine->transform_cache);
   assets_destroy(engine->assets);
-  // renderer_destroy(engine->renderer);
-
   allocator_free(&system_allocator, (char *)engine->application_title);
 }
 
@@ -55,7 +51,6 @@ void engine_handle_events(Engine *engine, Event *event) {
   case EventType_KeyDown:
     if (event->key_event.key == Key_F1) {
       engine_reload_assets(engine);
-      // renderer_clear_caches(engine->renderer);
     } else {
       InputState_handle_event(&engine->input_state, event);
     }
@@ -172,86 +167,15 @@ void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
   engine_update_transform_cache(engine);
 }
 
-void engine_emit_draw_commands(Allocator *allocator, Engine *engine);
 void engine_render(Allocator *frame_allocator, Engine *engine) {
   ASSERT(engine != NULL);
-  engine_emit_draw_commands(frame_allocator, engine);
-  // renderer_render(frame_allocator, engine->renderer, engine->assets,
-  //                 engine->current_time_secs);
+  (void)frame_allocator;
   InputState_on_frame_end(&engine->input_state);
 }
 
 bool engine_is_running(Engine *engine) {
   ASSERT(engine != NULL);
   return engine->running;
-}
-
-void engine_emit_draw_commands(Allocator *allocator, Engine *engine) {
-  EcsQuery *query_camera = EcsQuery_new(
-      allocator,
-      &(const EcsQueryDescriptor){
-          .components = {ecs_component_id(Camera), ecs_component_id(Transform)},
-          .component_count = 2});
-  EcsQueryIt camera_query_it = ecs_query(&engine->ecs, query_camera);
-  ecs_query_it_next(&camera_query_it);
-  Camera *camera = ecs_query_it_get(&camera_query_it, Camera, 0);
-  Transform *transform = ecs_query_it_get(&camera_query_it, Transform, 1);
-  mat4 projection = {0};
-  memcpy(projection, camera->projection_matrix, 16 * sizeof(mat4_value_type));
-  float *transform_mat =
-      engine->transform_cache[ecs_query_it_entity_id(&camera_query_it)];
-  mat4 inverse_transform_mat;
-  mat4_transpose(inverse_transform_mat);
-  mat4_inverse(transform_mat, inverse_transform_mat);
-  mat4 view_projection_matrix = {0};
-  mat4_mul(projection, inverse_transform_mat, view_projection_matrix);
-  LOG_DEBUG("view_position: %f,%f,%f", transform->position.x,
-            transform->position.y, transform->position.z);
-  // renderer_set_view_position(engine->renderer, &transform->position);
-  // renderer_set_view_projection(engine->renderer, view_projection_matrix);
-  ecs_query_it_deinit(&camera_query_it);
-  EcsQuery_destroy(query_camera, allocator);
-
-  EcsQuery *query_directional_light = EcsQuery_new(
-      allocator, &(const EcsQueryDescriptor){
-                     .component_count = 1,
-                     .components = {ecs_component_id(DirectionalLight)}});
-  EcsQueryIt query_directional_light_it =
-      ecs_query(&engine->ecs, query_directional_light);
-  while (ecs_query_it_next(&query_directional_light_it)) {
-    // DirectionalLight *directional_light =
-    //     ecs_query_it_get(&query_directional_light_it, DirectionalLight, 0);
-    // renderer_add_light(engine->renderer,
-    //                    &(const Light){.type = LightType_Directional,
-    //                                   .directional_light =
-    //                                   *directional_light});
-  }
-  ecs_query_it_deinit(&query_directional_light_it);
-  EcsQuery_destroy(query_directional_light, allocator);
-
-  {
-    EcsQuery *query_meshes = EcsQuery_new(
-        allocator,
-        &(const EcsQueryDescriptor){.components =
-                                        {
-                                            ecs_component_id(Transform),
-                                            ecs_component_id(MeshInstance),
-                                        },
-                                    .component_count = 2});
-    EcsQueryIt query_it = ecs_query(&engine->ecs, query_meshes);
-    while (ecs_query_it_next(&query_it)) {
-      // MeshInstance *mesh_instance =
-      //     ecs_query_it_get(&query_it, MeshInstance, 1);
-      // Material*material=
-      //     ecs_query_it_get(&query_it, Material, 2);
-      // renderer_draw_mesh(
-      //     engine->renderer,
-      //     engine->transform_cache[ecs_query_it_entity_id(&query_it)],
-      //     mesh_instance->mesh_handle, mesh_instance->material_handle);
-    }
-    ecs_query_it_deinit(&query_it);
-    EcsQuery_destroy(query_meshes, allocator);
-  }
 }
 
 bool configuration_from_json(Json *configuration_json,

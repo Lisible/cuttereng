@@ -4,8 +4,7 @@
 #include "common.h"
 #include "math/matrix.h"
 #include "math/vector.h"
-#include "renderer/mesh.h"
-#include "src/json.h"
+#include "memory.h"
 #include "src/math/quaternion.h"
 
 typedef struct {

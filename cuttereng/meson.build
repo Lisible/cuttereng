@@ -1,13 +1,6 @@
 cc = meson.get_compiler('c')
 
 cuttereng_deps = []
-if host_machine.cpu() == 'wasm32'
-cc = meson.get_compiler('c')
-wgpu_native_dir = get_option('opt_wgpu_native_path')
-wgpu_native_lib = cc.find_library('wgpu_native', dirs: [wgpu_native_dir])
-wgpu_native_dep = declare_dependency(dependencies: wgpu_native_lib, include_directories: wgpu_native_dir)
-cuttereng_deps += wgpu_native_dep
-else
 m_dep = cc.find_library('m', required: true)
 cuttereng_deps += m_dep
 
@@ -18,11 +11,6 @@ lisiblepng_dep = dependency('lisiblepng', default_options: ['c_args=[\'-DLPNG_DE
 cuttereng_deps += lisiblepng_dep
 
 cc = meson.get_compiler('c')
-wgpu_native_dir = get_option('opt_wgpu_native_path')
-wgpu_native_lib = cc.find_library('wgpu_native', dirs: [wgpu_native_dir])
-wgpu_native_dep = declare_dependency(dependencies: wgpu_native_lib, include_directories: wgpu_native_dir)
-cuttereng_deps += wgpu_native_dep
-endif
 cuttereng_incdir = include_directories('src/')
 cuttereng_lib = library(
   'cuttereng',
@@ -43,21 +31,13 @@ cuttereng_lib = library(
   'src/math/vector.c',
   'src/math/matrix.c',
   'src/math/quaternion.c',
-  'src/renderer/renderer.c',
-  'src/renderer/resource_cache.c',
-  'src/renderer/render_graph.c',
-  'src/renderer/default_pipeline.c',
-  'src/renderer/shader.c',
-  'src/renderer/mesh.c',
-  'src/renderer/material.c',
-  'src/renderer/font.c',
   'src/image.c',
   'src/gltf.c',
   'src/transform.c',
   dependencies: cuttereng_deps,
 )
 
-cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: [cuttereng_lib], dependencies: [wgpu_native_dep])
+cuttereng_dep = declare_dependency(include_directories: cuttereng_incdir, link_with: [cuttereng_lib], dependencies: [])
 
 test_json = executable('test_json', 'tests/test_runner.c', 'tests/json.c', dependencies: [cuttereng_dep])
 test('test_json', test_json)
@@ -73,8 +53,6 @@ test_matrix= executable('test_matrix', 'tests/test_runner.c', 'tests/math/matrix
 test('test_matrix', test_matrix)
 test_quaternion= executable('test_quaternion', 'tests/test_runner.c', 'tests/math/quaternion.c', dependencies: [cuttereng_dep])
 test('test_quaternion', test_quaternion)
-test_mesh = executable('test_mesh', 'tests/test_runner.c', 'tests/renderer/mesh.c', dependencies: [cuttereng_dep])
-test('test_mesh', test_mesh)
 test_vec = executable('test_vec', 'tests/test_runner.c', 'tests/vec.c', dependencies: [cuttereng_dep])
 test('test_vec', test_vec)
 test_memory = executable('test_memory', 'tests/test_runner.c', 'tests/memory.c', dependencies: [cuttereng_dep])
