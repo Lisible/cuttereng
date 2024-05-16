@@ -283,6 +283,10 @@ bool HashTableIt_next(HashTableIt *it) {
     it->iterating = true;
   }
 
+  if (it->current_index >= it->table->capacity) {
+    return false;
+  }
+
   while (!it->table->items[it->current_index].is_present) {
     it->current_index++;
     if (it->current_index >= it->table->capacity) {
