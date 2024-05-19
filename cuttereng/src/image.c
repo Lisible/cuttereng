@@ -1,7 +1,7 @@
 #include "image.h"
-#include "assert.h"
 #include "asset.h"
 #include "lisiblepng.h"
+#include <lisiblestd/assert.h>
 #include <string.h>
 
 PixelFormat PixelFormat_from_LisPngColourType(LisPngColourType colour_type) {
@@ -14,16 +14,16 @@ PixelFormat PixelFormat_from_LisPngColourType(LisPngColourType colour_type) {
 }
 
 void Image_destroy(Allocator *allocator, Image *image) {
-  ASSERT(image != NULL);
+  LSTD_ASSERT(image != NULL);
   if (!image) {
     return;
   }
 
-  allocator_free(allocator, image);
+  Allocator_free(allocator, image);
 }
 
 Image *Image_from_png(Allocator *allocator, LisPng *png) {
-  Image *image = allocator_allocate(allocator, sizeof(Image));
+  Image *image = Allocator_allocate(allocator, sizeof(Image));
   if (!image) {
     return NULL;
   }
@@ -37,7 +37,7 @@ Image *Image_from_png(Allocator *allocator, LisPng *png) {
   image->width = LisPng_width(png);
   image->height = LisPng_height(png);
   image->data =
-      allocator_allocate(allocator, image->width * image->height * 32);
+      Allocator_allocate(allocator, image->width * image->height * 32);
   LisPng_write_RGBA8_data(png, image->data);
   image->pixel_format = PixelFormat_R8G8B8A8;
   image->bytes_per_pixel = 4;
@@ -46,7 +46,7 @@ Image *Image_from_png(Allocator *allocator, LisPng *png) {
 
 AssetLoader image_loader = {.fn = Image_loader_fn};
 void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path) {
-  ASSERT(path != NULL);
+  LSTD_ASSERT(path != NULL);
   (void)assets;
 
   size_t png_file_content_size;
@@ -57,7 +57,7 @@ void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path) {
   LisPng *png = LisPng_decode(png_data_stream);
   fclose(png_data_stream);
   Image *image = Image_from_png(allocator, png);
-  allocator_free(allocator, png_file_content);
+  Allocator_free(allocator, png_file_content);
   LisPng_destroy(png);
   return image;
 }
@@ -65,5 +65,5 @@ void *Image_loader_fn(Allocator *allocator, Assets *assets, const char *path) {
 AssetDeinitializer image_deinitializer = {.fn = Image_deinitializer_fn};
 void Image_deinitializer_fn(Allocator *allocator, void *asset) {
   Image *image = asset;
-  allocator_free(allocator, image->data);
+  Allocator_free(allocator, image->data);
 }

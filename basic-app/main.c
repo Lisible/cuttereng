@@ -31,7 +31,7 @@ void system_move_light(EcsCommandQueue *queue, EcsQueryIt *it) {
 
   const SystemContext *system_context = it->ctx;
   if (InputState_is_key_down(system_context->input_state, Key_P)) {
-    LOG_DEBUG("Pressing P");
+    LOG0_DEBUG("Pressing P");
     light_angle += 0.05;
   } else if (InputState_is_key_down(system_context->input_state, Key_O)) {
     light_angle -= 0.05;
@@ -194,7 +194,7 @@ void system_move_camera_controller(EcsCommandQueue *queue, EcsQueryIt *it) {
 }
 
 void init_system(EcsCommandQueue *command_queue, EcsQueryIt *it) {
-  LOG_DEBUG("Initializing");
+  LOG0_DEBUG("Initializing");
   (void)it;
   ecs_command_queue_register_system(
       command_queue,

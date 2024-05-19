@@ -1,8 +1,7 @@
 #include "filesystem.h"
-#include "memory.h"
-#include "src/log.h"
 #include <dirent.h>
 #include <errno.h>
+#include <lisiblestd/log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +10,7 @@ DirectoryListing *
 filesystem_list_files_in_directory(Allocator *allocator,
                                    const char *directory_path) {
   DirectoryListing *result =
-      allocator_allocate(allocator, sizeof(DirectoryListing));
+      Allocator_allocate(allocator, sizeof(DirectoryListing));
   if (!result)
     goto err;
 
@@ -32,7 +31,7 @@ filesystem_list_files_in_directory(Allocator *allocator,
   rewinddir(d);
   result->entry_count = file_count;
   result->entries =
-      allocator_allocate_array(allocator, file_count, sizeof(char[256]));
+      Allocator_allocate_array(allocator, file_count, sizeof(char[256]));
   if (!result->entries) {
     goto err_alloc_entries;
   }
@@ -50,14 +49,14 @@ filesystem_list_files_in_directory(Allocator *allocator,
 err_alloc_entries:
   closedir(d);
 err_open_dir:
-  allocator_free(allocator, result);
+  Allocator_free(allocator, result);
 err:
   return NULL;
 }
 void filesystem_directory_listing_destroy(Allocator *allocator,
                                           DirectoryListing *directory_listing) {
-  allocator_free(allocator, directory_listing->entries);
-  allocator_free(allocator, directory_listing);
+  Allocator_free(allocator, directory_listing->entries);
+  Allocator_free(allocator, directory_listing);
 }
 
 char *filesystem_read_file_to_string(Allocator *allocator, const char *path,
@@ -79,7 +78,7 @@ char *filesystem_read_file_to_string(Allocator *allocator, const char *path,
   if (fseek(file, 0, SEEK_SET) < 0)
     goto err_2;
 
-  char *content = allocator_allocate(allocator, length + 1);
+  char *content = Allocator_allocate(allocator, length + 1);
   if (content == NULL)
     goto err_2;
 

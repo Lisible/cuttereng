@@ -1,0 +1,7 @@
+[wrap-git]
+url = https://github.com/Lisible/lisiblestd.git
+revision = v0.1.0
+depth = 1
+
+[provide]
+lisiblestd = lisiblestd_dep

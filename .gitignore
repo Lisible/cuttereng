@@ -4,3 +4,4 @@ compile_commands.json
 documentation/
 subprojects/**/
 subprojects/lisiblepng
+subprojects/lisiblestd

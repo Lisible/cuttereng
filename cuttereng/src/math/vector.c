@@ -1,5 +1,4 @@
 #include "vector.h"
-#include "../assert.h"
 #include <math.h>
 
 IMPL_V4(float, v4f)

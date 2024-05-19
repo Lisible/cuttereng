@@ -1,11 +1,11 @@
 #include "input.h"
-#include "assert.h"
 #include "event.h"
-#include "log.h"
+#include <lisiblestd/assert.h>
+#include <lisiblestd/log.h>
 #include <stddef.h>
 
 void InputState_init(InputState *state) {
-  ASSERT(state != NULL);
+  LSTD_ASSERT(state != NULL);
   for (size_t key_index = 0; key_index < Key_Count; key_index++) {
     state->key_states[key_index].is_down = false;
   }
@@ -20,8 +20,8 @@ void InputState_init(InputState *state) {
   }
 }
 void InputState_handle_event(InputState *state, Event *event) {
-  ASSERT(state != NULL);
-  ASSERT(event != NULL);
+  LSTD_ASSERT(state != NULL);
+  LSTD_ASSERT(event != NULL);
   switch (event->type) {
   case EventType_MouseMotion: {
     int x = event->mouse_motion_event.relative_x;
@@ -79,18 +79,18 @@ void InputState_handle_event(InputState *state, Event *event) {
   }
 }
 bool InputState_is_key_down(InputState *state, Key key) {
-  ASSERT(state != NULL);
+  LSTD_ASSERT(state != NULL);
   return state->key_states[key].is_down;
 }
 bool InputState_is_controller_button_down(InputState *state,
                                           ControllerButton button) {
-  ASSERT(state != NULL);
+  LSTD_ASSERT(state != NULL);
   return state->controller.button_states[button].is_down;
 }
 
 const JoystickState *InputState_get_joystick(InputState *state,
                                              ControllerJoystick joystick) {
-  ASSERT(state != NULL);
+  LSTD_ASSERT(state != NULL);
   if (joystick == ControllerJoystick_Left) {
     return &state->controller.left_joystick_state;
   } else {
@@ -98,7 +98,7 @@ const JoystickState *InputState_get_joystick(InputState *state,
   }
 }
 void InputState_on_frame_end(InputState *state) {
-  ASSERT(state != NULL);
+  LSTD_ASSERT(state != NULL);
   state->last_mouse_motion.x = 0.f;
   state->last_mouse_motion.y = 0.f;
 }

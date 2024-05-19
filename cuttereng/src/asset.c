@@ -1,10 +1,10 @@
 #include "asset.h"
-#include "assert.h"
+#include "common.h"
 #include "filesystem.h"
-#include "hash.h"
-#include "log.h"
-#include "memory.h"
 #include <errno.h>
+#include <lisiblestd/assert.h>
+#include <lisiblestd/hash.h>
+#include <lisiblestd/log.h>
 #include <string.h>
 
 #define ASSETS_BASE_PATH "assets/"
@@ -20,14 +20,14 @@ typedef struct {
 
 AssetStore *AssetStore_new(Allocator *allocator, size_t asset_type_alignment,
                            size_t asset_type_size) {
-  ASSERT(allocator != NULL);
-  AssetStore *asset_store = allocator_allocate(allocator, sizeof(AssetStore));
+  LSTD_ASSERT(allocator != NULL);
+  AssetStore *asset_store = Allocator_allocate(allocator, sizeof(AssetStore));
   asset_store->allocator = allocator;
   asset_store->asset_type_size = asset_type_size;
   asset_store->asset_type_alignment = asset_type_alignment;
   asset_store->capacity = ASSET_STORE_CAPACITY;
   asset_store->length = 0;
-  asset_store->assets = allocator_allocate_aligned(
+  asset_store->assets = Allocator_allocate_aligned(
       allocator, asset_store->asset_type_alignment,
       asset_store->asset_type_size * asset_store->capacity);
   if (!asset_store->assets) {
@@ -38,18 +38,18 @@ AssetStore *AssetStore_new(Allocator *allocator, size_t asset_type_alignment,
   return asset_store;
 
 cleanup_asset_store:
-  allocator_free(allocator, asset_store);
+  Allocator_free(allocator, asset_store);
   return NULL;
 }
 
 void AssetStore_destroy(AssetStore *asset_store) {
-  allocator_free(asset_store->allocator, asset_store->assets);
-  allocator_free(asset_store->allocator, asset_store);
+  Allocator_free(asset_store->allocator, asset_store->assets);
+  Allocator_free(asset_store->allocator, asset_store);
 }
 
 AssetHandle AssetStore_store(AssetStore *asset_store, const void *asset) {
-  ASSERT(asset_store != NULL);
-  ASSERT(asset != NULL);
+  LSTD_ASSERT(asset_store != NULL);
+  LSTD_ASSERT(asset != NULL);
 
   if (asset_store->length == asset_store->capacity) {
     PANIC("AssetStore is full");
@@ -64,13 +64,13 @@ AssetHandle AssetStore_store(AssetStore *asset_store, const void *asset) {
 }
 
 void *AssetStore_get(AssetStore *asset_store, AssetHandle handle) {
-  ASSERT(asset_store != NULL);
+  LSTD_ASSERT(asset_store != NULL);
   return &asset_store->assets[handle * asset_store->asset_type_size];
 }
 
 void AssetStore_destructor(Allocator *allocator, void *asset_store) {
-  ASSERT(allocator != NULL);
-  ASSERT(asset_store != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(asset_store != NULL);
   AssetStore_destroy(asset_store);
 }
 
@@ -82,7 +82,7 @@ struct Assets {
 };
 
 Assets *assets_new(Allocator *allocator) {
-  Assets *assets = allocator_allocate(allocator, sizeof(Assets));
+  Assets *assets = Allocator_allocate(allocator, sizeof(Assets));
   assets->allocator = allocator;
   HashTable_init(allocator, &assets->loaders, 16, hash_str_hash, hash_str_eq);
   HashTable_init(allocator, &assets->destructors, 16, hash_str_hash,
@@ -96,9 +96,9 @@ Assets *assets_new(Allocator *allocator) {
 bool assets_load_asset(Assets *assets, const char *asset_type,
                        size_t asset_type_alignment, size_t asset_type_size,
                        const char *asset_path, AssetHandle *out_asset_handle) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
-  ASSERT(asset_path != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
+  LSTD_ASSERT(asset_path != NULL);
   LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
   AssetLoader *loader = HashTable_get(&assets->loaders, asset_type);
   if (!loader) {
@@ -114,15 +114,15 @@ bool assets_load_asset(Assets *assets, const char *asset_type,
 
   *out_asset_handle = assets_store_(assets, asset_type, asset_type_alignment,
                                     asset_type_size, asset);
-  allocator_free(assets->allocator, asset);
+  Allocator_free(assets->allocator, asset);
   return true;
 }
 AssetHandle assets_store_(Assets *assets, const char *asset_type,
                           size_t asset_type_alignment, size_t asset_type_size,
                           const void *asset) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
-  ASSERT(asset != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
+  LSTD_ASSERT(asset != NULL);
 
   AssetStore *asset_store = HashTable_get(&assets->asset_stores, asset_type);
   if (!asset_store) {
@@ -135,23 +135,23 @@ AssetHandle assets_store_(Assets *assets, const char *asset_type,
   }
 
   AssetHandle asset_handle = AssetStore_store(asset_store, asset);
-  LOG_DEBUG("Asset %d of type %s successfully stored", asset_handle,
+  LOG_DEBUG("Asset %zu of type %s successfully stored", asset_handle,
             asset_type);
   return asset_handle;
 }
 
 void assets_clear(Assets *assets) {
-  ASSERT(assets != NULL);
-  LOG_DEBUG("Clearing assets...");
+  LSTD_ASSERT(assets != NULL);
+  LOG0_DEBUG("Clearing assets...");
   HashTable_clear(&assets->asset_stores);
 }
 
 bool assets_load_(Assets *assets, const char *asset_type,
                   size_t asset_type_alignment, size_t asset_type_size,
                   const char *asset_path, AssetHandle *out_asset_handle) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
-  ASSERT(asset_path != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
+  LSTD_ASSERT(asset_path != NULL);
   LOG_DEBUG("Loading asset %s of type %s", asset_path, asset_type);
   AssetStore *asset_store = HashTable_get(&assets->asset_stores, asset_type);
   if (!asset_store) {
@@ -168,8 +168,8 @@ bool assets_load_(Assets *assets, const char *asset_type,
 }
 void *assets_get_(Assets *assets, const char *asset_type,
                   AssetHandle asset_handle) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
   AssetStore *asset_store = HashTable_get(&assets->asset_stores, asset_type);
   if (!asset_store) {
     return NULL;
@@ -181,30 +181,30 @@ void *assets_get_(Assets *assets, const char *asset_type,
 void assets_register_asset_type_(Assets *assets, char *asset_type,
                                  AssetLoader *asset_loader,
                                  AssetDeinitializer *asset_deinitializer) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
-  ASSERT(asset_loader != NULL);
-  ASSERT(asset_deinitializer != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
+  LSTD_ASSERT(asset_loader != NULL);
+  LSTD_ASSERT(asset_deinitializer != NULL);
   HashTable_insert(&assets->loaders, asset_type, asset_loader);
   HashTable_insert(&assets->destructors, asset_type, asset_deinitializer);
 }
 bool assets_is_loader_registered_for_type_(const Assets *assets,
                                            const char *asset_type) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
   return HashTable_has(&assets->loaders, asset_type);
 }
 
 void assets_set_deinitializer_(Assets *assets, char *asset_type,
                                AssetDeinitializer *asset_deinitializer) {
-  ASSERT(assets != NULL);
-  ASSERT(asset_type != NULL);
-  ASSERT(asset_deinitializer != NULL);
+  LSTD_ASSERT(assets != NULL);
+  LSTD_ASSERT(asset_type != NULL);
+  LSTD_ASSERT(asset_deinitializer != NULL);
   HashTable_insert(&assets->destructors, asset_type, asset_deinitializer);
 }
 
 void assets_destroy(Assets *assets) {
-  ASSERT(assets != NULL);
+  LSTD_ASSERT(assets != NULL);
 
   for (size_t asset_store_index = 0;
        asset_store_index < assets->asset_stores.capacity; asset_store_index++) {
@@ -226,14 +226,14 @@ void assets_destroy(Assets *assets) {
   HashTable_deinit(&assets->asset_stores);
   HashTable_deinit(&assets->loaders);
   HashTable_deinit(&assets->destructors);
-  allocator_free(assets->allocator, assets);
+  Allocator_free(assets->allocator, assets);
 }
 
 char *asset_get_effective_path(Allocator *allocator, const char *path) {
-  ASSERT(allocator != NULL);
-  ASSERT(path != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(path != NULL);
   size_t effective_path_length = strlen(ASSETS_BASE_PATH) + strlen(path) + 1;
-  char *effective_path = allocator_allocate(allocator, effective_path_length);
+  char *effective_path = Allocator_allocate(allocator, effective_path_length);
   memset(effective_path, 0, effective_path_length);
   strcat(effective_path, ASSETS_BASE_PATH);
   strcat(effective_path, path);
@@ -244,6 +244,6 @@ char *asset_read_file_to_string(Allocator *allocator, const char *path,
   char *effective_path = asset_get_effective_path(allocator, path);
   char *result =
       filesystem_read_file_to_string(allocator, effective_path, out_size);
-  allocator_free(allocator, effective_path);
+  Allocator_free(allocator, effective_path);
   return result;
 }

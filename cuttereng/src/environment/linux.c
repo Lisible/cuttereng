@@ -1,7 +1,7 @@
-#include "../assert.h"
-#include "../log.h"
 #include "environment.h"
 #include <errno.h>
+#include <lisiblestd/assert.h>
+#include <lisiblestd/log.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -22,7 +22,7 @@ char *env_get_configuration_file_path(Allocator *allocator) {
   char *configuration_file_path =
       get_process_base_path(allocator, &buffer_size);
   size_t executable_directory_path_length = strlen(configuration_file_path);
-  configuration_file_path = allocator_reallocate(
+  configuration_file_path = Allocator_reallocate(
       allocator, configuration_file_path, buffer_size,
       executable_directory_path_length + CONFIGURATION_FILE_NAME_LENGTH + 2);
   strcat(configuration_file_path, CONFIGURATION_FILE_NAME);
@@ -31,11 +31,11 @@ char *env_get_configuration_file_path(Allocator *allocator) {
 
 char *get_symlink_target(Allocator *allocator, size_t *out_buffer_size,
                          char *symlink_path) {
-  ASSERT(symlink_path != NULL);
+  LSTD_ASSERT(symlink_path != NULL);
   ssize_t buffer_size = 512;
   ssize_t result;
 
-  char *buffer = allocator_allocate(allocator, buffer_size);
+  char *buffer = Allocator_allocate(allocator, buffer_size);
   if (!buffer)
     goto err_alloc;
   while ((result = readlink(symlink_path, buffer, buffer_size)) >=
@@ -44,7 +44,7 @@ char *get_symlink_target(Allocator *allocator, size_t *out_buffer_size,
     buffer_size *= 2;
 
     buffer =
-        allocator_reallocate(allocator, buffer, old_buffer_size, buffer_size);
+        Allocator_reallocate(allocator, buffer, old_buffer_size, buffer_size);
     if (!buffer)
       goto err_alloc;
   }

@@ -1,6 +1,6 @@
-#include "log.h"
 #include "test.h"
 #include <ecs/ecs.h>
+#include <lisiblestd/log.h>
 #include <memory.h>
 
 typedef struct {
@@ -191,7 +191,7 @@ void t_ecs_query_two_components(void) {
 
 void print_position_system(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
-  LOG_DEBUG("Running print_position_system");
+  LOG0_DEBUG("Running print_position_system");
   while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
     LOG_INFO("Position: (%d, %d)", position->x, position->y);
@@ -200,7 +200,7 @@ void print_position_system(EcsCommandQueue *queue, EcsQueryIt *it) {
 
 void move_right_system(EcsCommandQueue *queue, EcsQueryIt *it) {
   (void)queue;
-  LOG_DEBUG("Running move_right_system");
+  LOG0_DEBUG("Running move_right_system");
   while (ecs_query_it_next(it)) {
     Position *position = ecs_query_it_get(it, Position, 0);
     position->x++;

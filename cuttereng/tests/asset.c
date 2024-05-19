@@ -1,6 +1,6 @@
 #include "test.h"
 #include <asset.h>
-#include <memory.h>
+#include <lisiblestd/memory.h>
 
 struct SomeAssetType;
 void *some_asset_type_loader_fn(Allocator *allocator, Assets *assets,
@@ -28,7 +28,7 @@ void *int_asset_loader_fn(Allocator *allocator, Assets *assets,
                           const char *path) {
   (void)path;
   (void)assets;
-  IntAsset *int_asset = allocator_allocate(allocator, sizeof(IntAsset));
+  IntAsset *int_asset = Allocator_allocate(allocator, sizeof(IntAsset));
   int_asset->value = 4;
   return int_asset;
 }

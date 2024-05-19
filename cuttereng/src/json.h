@@ -1,10 +1,12 @@
 #ifndef CUTTERENG_JSON_H
 #define CUTTERENG_JSON_H
-#include "memory.h"
+#include <lisiblestd/memory.h>
 #include <stdbool.h>
 
-#define JSON_LOG_PARSE_ERROR(ctx, msg, ...)                                    \
-  LOG_ERROR("%d:%d " msg, ctx->line, ctx->column, ##__VA_ARGS__)
+#define JSON_LOG_PARSE_ERROR(ctx, fmt, ...)                                    \
+  LOG_ERROR("%zu:%zu " fmt, ctx->line, ctx->column, __VA_ARGS__)
+#define JSON_LOG0_PARSE_ERROR(ctx, msg)                                        \
+  LOG_ERROR("%zu:%zu %s", ctx->line, ctx->column, msg)
 
 typedef enum {
   JSON_OBJECT,

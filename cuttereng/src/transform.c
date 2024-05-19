@@ -1,10 +1,10 @@
 #include "transform.h"
-#include "assert.h"
 #include "math/matrix.h"
 #include "math/quaternion.h"
+#include <lisiblestd/assert.h>
 
 void transform_matrix(const Transform *transform, mat4 transform_matrix) {
-  ASSERT(transform != NULL);
+  LSTD_ASSERT(transform != NULL);
   mat4 translation_matrix = {0};
   mat4_set_to_translation(translation_matrix, &transform->position);
   mat4 rotation_matrix = {0};

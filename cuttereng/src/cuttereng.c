@@ -4,15 +4,15 @@
 #include "SDL_keyboard.h"
 #include "SDL_mouse.h"
 #include "SDL_timer.h"
-#include "assert.h"
 #include "engine.h"
 #include "environment/environment.h"
 #include "event.h"
 #include "filesystem.h"
 #include "json.h"
-#include "log.h"
-#include "src/memory.h"
 #include <SDL2/SDL.h>
+#include <lisiblestd/assert.h>
+#include <lisiblestd/log.h>
+#include <lisiblestd/memory.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +22,7 @@ static const size_t KB = 1000;
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
 void cutter_bootstrap(EcsSystemFn ecs_init_system) {
-  LOG_INFO("Bootstrapping...");
+  LOG0_INFO("Bootstrapping...");
   char *configuration_file_path =
       env_get_configuration_file_path(&system_allocator);
   LOG_DEBUG("Configuration file path: %s", configuration_file_path);
@@ -52,8 +52,8 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
   engine_init(&engine, &config, ecs_init_system, window);
 
   Arena frame_arena;
-  Allocator frame_allocator = arena_allocator(&frame_arena);
-  arena_init(&frame_arena, &system_allocator, 1000 * KB);
+  Allocator frame_allocator = Arena_allocator(&frame_arena);
+  Arena_init(&frame_arena, &system_allocator, 1000 * KB);
 
   bool capture_mouse = false;
   float last_frame_time = 0;
@@ -92,11 +92,11 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
     float render_duration = (SDL_GetTicks() - render_start_time) / 1000.f;
     LOG_DEBUG("Render time: %fs", render_duration);
 
-    arena_clear(&frame_arena);
+    Arena_clear(&frame_arena);
 
     last_frame_time = current_time;
   }
-  arena_deinit(&frame_arena, &system_allocator);
+  Arena_deinit(&frame_arena, &system_allocator);
 
   SDL_GameControllerClose(controller);
   SDL_DestroyWindow(window);
@@ -217,8 +217,8 @@ controller_button_sdl_controller_button(SDL_GameControllerButton button) {
   }
 }
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
-  ASSERT(sdl_event != NULL);
-  ASSERT(event != NULL);
+  LSTD_ASSERT(sdl_event != NULL);
+  LSTD_ASSERT(event != NULL);
 
   switch (sdl_event->type) {
   case SDL_QUIT:

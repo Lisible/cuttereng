@@ -1,8 +1,7 @@
 #include "json.h"
-#include "assert.h"
-#include "hash.h"
-#include "log.h"
-#include "memory.h"
+#include <lisiblestd/assert.h>
+#include <lisiblestd/hash.h>
+#include <lisiblestd/log.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -55,13 +54,13 @@ void json_cleanup(Allocator *allocator, Json *value);
 const char *json_object_set(JsonObject *object, char *key, Json *value);
 
 void json_dctor(Allocator *allocator, void *v) {
-  ASSERT(allocator != NULL);
-  ASSERT(v != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(v != NULL);
   json_destroy(allocator, v);
 }
 
 Json *json_parse_from_str(Allocator *allocator, const char *str) {
-  ASSERT(str != NULL);
+  LSTD_ASSERT(str != NULL);
   GltfParsingContext ctx = {.allocator = allocator,
                             .str = str,
                             .len = strlen(str),
@@ -72,10 +71,10 @@ Json *json_parse_from_str(Allocator *allocator, const char *str) {
 }
 
 Json *parse_element(GltfParsingContext *ctx) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   eat_whitespaces(ctx);
 
-  Json *json = allocator_allocate(ctx->allocator, sizeof(Json));
+  Json *json = Allocator_allocate(ctx->allocator, sizeof(Json));
   if (!parse_value(ctx, json)) {
     return NULL;
   }
@@ -85,8 +84,8 @@ Json *parse_element(GltfParsingContext *ctx) {
 }
 
 bool parse_value(GltfParsingContext *ctx, Json *value) {
-  ASSERT(ctx != NULL);
-  ASSERT(value != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(value != NULL);
   if (ctx->index + 4 <= ctx->len &&
       strncmp(&ctx->str[ctx->index], TOKEN_TRUE, 4) == 0) {
     value->type = JSON_BOOLEAN;
@@ -106,17 +105,17 @@ bool parse_value(GltfParsingContext *ctx, Json *value) {
     parse_number(ctx, value);
   } else if (current_character(ctx) == TOKEN_DOUBLE_QUOTE) {
     if (!parse_string(ctx, value)) {
-      JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json string");
+      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json string");
       goto err;
     }
   } else if (current_character(ctx) == TOKEN_ARRAY_BEGIN) {
     if (!parse_array(ctx, value)) {
-      JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json array");
+      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json array");
       goto err;
     }
   } else if (current_character(ctx) == TOKEN_OBJECT_BEGIN) {
     if (!parse_object(ctx, value)) {
-      JSON_LOG_PARSE_ERROR(ctx, "couldn't parse json object");
+      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json object");
       goto err;
     }
   } else {
@@ -136,23 +135,23 @@ struct JsonArray {
 };
 
 JsonArray *JsonArray_create(Allocator *allocator, size_t length) {
-  ASSERT(allocator != NULL);
-  JsonArray *array = allocator_allocate(allocator, sizeof(JsonArray));
-  array->elements = allocator_allocate_array(allocator, length, sizeof(Json));
+  LSTD_ASSERT(allocator != NULL);
+  JsonArray *array = Allocator_allocate(allocator, sizeof(JsonArray));
+  array->elements = Allocator_allocate_array(allocator, length, sizeof(Json));
   array->length = length;
   return array;
 }
 
 void JsonArray_destroy(Allocator *allocator, JsonArray *array) {
-  ASSERT(allocator != NULL);
-  ASSERT(array != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(array != NULL);
 
   for (size_t i = 0; i < array->length; i++) {
     json_cleanup(allocator, &array->elements[i]);
   }
 
-  allocator_free(allocator, array->elements);
-  allocator_free(allocator, array);
+  Allocator_free(allocator, array->elements);
+  Allocator_free(allocator, array);
 }
 
 typedef struct {
@@ -165,9 +164,9 @@ struct JsonObject {
 };
 
 JsonObject *json_object_create(Allocator *allocator) {
-  JsonObject *object = allocator_allocate(allocator, sizeof(JsonObject));
+  JsonObject *object = Allocator_allocate(allocator, sizeof(JsonObject));
   if (!object) {
-    LOG_ERROR("json object allocation failed");
+    LOG0_ERROR("json object allocation failed");
     goto err;
   }
 
@@ -179,14 +178,14 @@ JsonObject *json_object_create(Allocator *allocator) {
   return object;
 
 cleanup:
-  allocator_free(allocator, object);
+  Allocator_free(allocator, object);
 err:
   return NULL;
 }
 
 bool parse_object(GltfParsingContext *ctx, Json *output_value) {
-  ASSERT(ctx != NULL);
-  ASSERT(output_value != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(output_value != NULL);
   JsonObject *object = json_object_create(ctx->allocator);
   if (!object) {
     return false;
@@ -207,7 +206,7 @@ bool parse_object(GltfParsingContext *ctx, Json *output_value) {
     eat_character(ctx, TOKEN_COLON);
     eat_whitespaces(ctx);
 
-    Json *value = allocator_allocate(ctx->allocator, sizeof(Json));
+    Json *value = Allocator_allocate(ctx->allocator, sizeof(Json));
     parse_value(ctx, value);
     if (!value) {
       return false;
@@ -228,16 +227,16 @@ bool parse_object(GltfParsingContext *ctx, Json *output_value) {
 }
 
 bool parse_array(GltfParsingContext *ctx, Json *output_value) {
-  ASSERT(ctx != NULL);
-  ASSERT(output_value != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(output_value != NULL);
   static const size_t MINIMUM_ARRAY_CAPACITY = 16;
 
   eat_character(ctx, TOKEN_ARRAY_BEGIN);
   size_t capacity = MINIMUM_ARRAY_CAPACITY;
 
-  Json *elements = allocator_allocate(ctx->allocator, capacity * sizeof(Json));
+  Json *elements = Allocator_allocate(ctx->allocator, capacity * sizeof(Json));
   if (!elements) {
-    LOG_ERROR("memory allocation failed");
+    LOG0_ERROR("memory allocation failed");
     goto err;
   }
 
@@ -247,11 +246,11 @@ bool parse_array(GltfParsingContext *ctx, Json *output_value) {
     if (length == capacity) {
       size_t old_capacity = capacity;
       capacity *= 2;
-      elements = allocator_reallocate(ctx->allocator, elements,
+      elements = Allocator_reallocate(ctx->allocator, elements,
                                       old_capacity * sizeof(Json),
                                       capacity * sizeof(Json));
       if (!elements) {
-        LOG_ERROR("memory reallocation failed");
+        LOG0_ERROR("memory reallocation failed");
         goto err;
       }
     }
@@ -274,7 +273,7 @@ bool parse_array(GltfParsingContext *ctx, Json *output_value) {
 
   output_value->type = JSON_ARRAY;
 
-  JsonArray *json_array = allocator_allocate(ctx->allocator, sizeof(JsonArray));
+  JsonArray *json_array = Allocator_allocate(ctx->allocator, sizeof(JsonArray));
   json_array->elements = elements;
   json_array->length = length;
   output_value->array = json_array;
@@ -295,14 +294,14 @@ bool is_utf16_leading_surrogate(uint32_t code_point);
 uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
                                     uint16_t trailing_surrogate);
 bool parse_string(GltfParsingContext *ctx, Json *output_value) {
-  ASSERT(ctx != NULL);
-  ASSERT(output_value != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(output_value != NULL);
   eat_character(ctx, TOKEN_DOUBLE_QUOTE);
   size_t estimated_string_size = estimate_string_size(&ctx->str[ctx->index]);
-  char *string = allocator_allocate_array(ctx->allocator, estimated_string_size,
+  char *string = Allocator_allocate_array(ctx->allocator, estimated_string_size,
                                           sizeof(char));
   if (!string) {
-    LOG_ERROR("json string allocation failed");
+    LOG0_ERROR("json string allocation failed");
     goto err;
   }
 
@@ -348,7 +347,7 @@ bool parse_string(GltfParsingContext *ctx, Json *output_value) {
   return true;
 
 cleanup_string:
-  allocator_free(ctx->allocator, string);
+  Allocator_free(ctx->allocator, string);
 
 err:
   return false;
@@ -368,7 +367,7 @@ uint32_t code_point_from_surrogates(uint16_t leading_surrogate,
 }
 size_t write_utf8_from_code_point(char *string, size_t current_index,
                                   uint32_t code_point) {
-  ASSERT(string != NULL);
+  LSTD_ASSERT(string != NULL);
   if (code_point <= 0x7f) {
     string[current_index] = code_point;
     return 1;
@@ -395,7 +394,7 @@ size_t write_utf8_from_code_point(char *string, size_t current_index,
 }
 
 uint16_t parse_unicode_hex(GltfParsingContext *ctx) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   uint16_t parsed_codepoint = 0;
   for (int i = 3; i >= 0; i--) {
     char v = current_character(ctx);
@@ -416,7 +415,7 @@ uint16_t parse_unicode_hex(GltfParsingContext *ctx) {
 }
 
 size_t estimate_string_size(const char *str) {
-  ASSERT(str != NULL);
+  LSTD_ASSERT(str != NULL);
   size_t i = 0;
   size_t estimated_str_length = 0;
   while (str[i] != TOKEN_DOUBLE_QUOTE) {
@@ -439,8 +438,8 @@ size_t estimate_string_size(const char *str) {
 }
 
 void parse_number(GltfParsingContext *ctx, Json *output_value) {
-  ASSERT(ctx != NULL);
-  ASSERT(output_value != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(output_value != NULL);
   int sign = 1;
   if (current_character(ctx) == TOKEN_MINUS) {
     sign = -1;
@@ -491,16 +490,16 @@ void parse_number(GltfParsingContext *ctx, Json *output_value) {
 }
 
 void json_cleanup(Allocator *allocator, Json *value) {
-  ASSERT(value != NULL);
+  LSTD_ASSERT(value != NULL);
   if (value->type == JSON_STRING) {
-    allocator_free(allocator, value->string);
+    Allocator_free(allocator, value->string);
     value->string = NULL;
   } else if (value->type == JSON_ARRAY) {
     JsonArray_destroy(allocator, value->array);
     value->array = NULL;
   } else if (value->type == JSON_OBJECT) {
     HashTable_deinit(&value->object->hash_table);
-    allocator_free(allocator, value->object);
+    Allocator_free(allocator, value->object);
     value->object = NULL;
   }
 }
@@ -510,19 +509,19 @@ void json_destroy(Allocator *allocator, Json *value) {
     return;
 
   json_cleanup(allocator, value);
-  allocator_free(allocator, value);
+  Allocator_free(allocator, value);
 }
 
 void json_destroy_without_cleanup(Allocator *allocator, Json *value) {
   if (!value)
     return;
 
-  allocator_free(allocator, value);
+  Allocator_free(allocator, value);
 }
 
 void eat_character(GltfParsingContext *ctx, char expected) {
-  ASSERT(ctx != NULL);
-  ASSERT(current_character(ctx) == expected);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(current_character(ctx) == expected);
   advance(ctx, 1);
 }
 
@@ -532,7 +531,7 @@ bool is_whitespace(char c) {
 }
 
 void eat_whitespaces(GltfParsingContext *ctx) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   while (ctx->index < ctx->len && is_whitespace(current_character(ctx))) {
 
     if (current_character(ctx) == CODEPOINT_LINE_FEED) {
@@ -545,17 +544,17 @@ void eat_whitespaces(GltfParsingContext *ctx) {
 }
 
 void advance(GltfParsingContext *ctx, size_t count) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   ctx->index += count;
   ctx->column += count;
 }
 
 char current_character(GltfParsingContext *ctx) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   return ctx->str[ctx->index];
 }
 char next_character(GltfParsingContext *ctx) {
-  ASSERT(ctx != NULL);
+  LSTD_ASSERT(ctx != NULL);
   return ctx->str[ctx->index + 1];
 }
 
@@ -569,16 +568,16 @@ bool is_digit(char c) { return c >= '0' && c <= '9'; }
 bool is_non_zero_digit(char c) { return is_digit(c) && c != '0'; }
 
 Json *json_create(Allocator *allocator) {
-  return allocator_allocate(allocator, (sizeof(Json)));
+  return Allocator_allocate(allocator, (sizeof(Json)));
 }
 
 Json *json_object_get(const JsonObject *object, const char *key) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
   return HashTable_get(&object->hash_table, key);
 }
 JsonObject *json_as_object(const Json *json) {
-  ASSERT(json != NULL);
+  LSTD_ASSERT(json != NULL);
   if (json->type != JSON_OBJECT) {
     return NULL;
   }
@@ -587,9 +586,9 @@ JsonObject *json_as_object(const Json *json) {
 }
 bool json_object_get_object(const JsonObject *object, const char *key,
                             JsonObject **out_object) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(out_object != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(out_object != NULL);
 
   Json *json = json_object_get(object, key);
   if (json == NULL || json->type != JSON_OBJECT) {
@@ -601,9 +600,9 @@ bool json_object_get_object(const JsonObject *object, const char *key,
 }
 bool json_object_get_array(const JsonObject *object, const char *key,
                            JsonArray **out_array) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(out_array != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(out_array != NULL);
 
   Json *json = json_object_get(object, key);
   if (json == NULL || json->type != JSON_ARRAY) {
@@ -615,9 +614,9 @@ bool json_object_get_array(const JsonObject *object, const char *key,
 }
 bool json_object_get_string(const JsonObject *object, const char *key,
                             char **out_str) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(out_str != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(out_str != NULL);
 
   Json *json = json_object_get(object, key);
   if (json == NULL || json->type != JSON_STRING) {
@@ -630,9 +629,9 @@ bool json_object_get_string(const JsonObject *object, const char *key,
 
 bool json_object_get_number(const JsonObject *object, const char *key,
                             double *out_number) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(out_number != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(out_number != NULL);
 
   Json *json = json_object_get(object, key);
   if (json == NULL || json->type != JSON_NUMBER) {
@@ -644,9 +643,9 @@ bool json_object_get_number(const JsonObject *object, const char *key,
 }
 bool json_object_get_boolean(const JsonObject *object, const char *key,
                              bool *out_bool) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(out_bool != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(out_bool != NULL);
 
   Json *json = json_object_get(object, key);
   if (json == NULL || json->type != JSON_BOOLEAN) {
@@ -658,13 +657,13 @@ bool json_object_get_boolean(const JsonObject *object, const char *key,
 }
 
 size_t json_object_get_key_count(const JsonObject *object) {
-  ASSERT(object != NULL);
+  LSTD_ASSERT(object != NULL);
   return HashTable_length(&object->hash_table);
 }
 
 char *json_object_get_key(const JsonObject *object, size_t index) {
-  ASSERT(object != NULL);
-  ASSERT(index < HashTable_length(&object->hash_table));
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(index < HashTable_length(&object->hash_table));
 
   size_t cur_index = 0;
   for (size_t i = 0; i < object->hash_table.capacity; i++) {
@@ -681,9 +680,9 @@ char *json_object_get_key(const JsonObject *object, size_t index) {
   return NULL;
 }
 const char *json_object_set(JsonObject *object, char *key, Json *value) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
-  ASSERT(value != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
+  LSTD_ASSERT(value != NULL);
   if (!HashTable_insert(&object->hash_table, key, value))
     return NULL;
 
@@ -691,18 +690,18 @@ const char *json_object_set(JsonObject *object, char *key, Json *value) {
 }
 
 void json_object_steal(JsonObject *object, const char *key) {
-  ASSERT(object != NULL);
-  ASSERT(key != NULL);
+  LSTD_ASSERT(object != NULL);
+  LSTD_ASSERT(key != NULL);
   HashTable_steal(&object->hash_table, key);
 }
 
 size_t json_array_length(const JsonArray *array) {
-  ASSERT(array != NULL);
+  LSTD_ASSERT(array != NULL);
   return array->length;
 }
 
 Json *json_array_at(const JsonArray *array, size_t index) {
-  ASSERT(array != NULL);
-  ASSERT(index < array->length);
+  LSTD_ASSERT(array != NULL);
+  LSTD_ASSERT(index < array->length);
   return &array->elements[index];
 }

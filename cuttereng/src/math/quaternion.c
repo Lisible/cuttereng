@@ -1,12 +1,12 @@
 #include "quaternion.h"
-#include "../assert.h"
 #include "src/math/vector.h"
+#include <lisiblestd/assert.h>
 #include <math.h>
 
 void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
                                   float angle) {
-  ASSERT(quaternion != NULL);
-  ASSERT(axis != NULL);
+  LSTD_ASSERT(quaternion != NULL);
+  LSTD_ASSERT(axis != NULL);
   float half_angle = angle / 2.0;
   float half_angle_sin = sin(half_angle);
   float x = axis->x * half_angle_sin;
@@ -21,8 +21,8 @@ void quaternion_set_to_axis_angle(Quaternion *quaternion, const v3f *axis,
 }
 
 void quaternion_mul(Quaternion *lhs, const Quaternion *rhs) {
-  ASSERT(lhs != NULL);
-  ASSERT(rhs != NULL);
+  LSTD_ASSERT(lhs != NULL);
+  LSTD_ASSERT(rhs != NULL);
   float x1 = lhs->vector_part.x;
   float y1 = lhs->vector_part.y;
   float z1 = lhs->vector_part.z;
@@ -41,8 +41,8 @@ void quaternion_mul(Quaternion *lhs, const Quaternion *rhs) {
 
 void quaternion_rotation_matrix(const Quaternion *quaternion,
                                 mat4 rotation_matrix) {
-  ASSERT(quaternion != NULL);
-  ASSERT(rotation_matrix != NULL);
+  LSTD_ASSERT(quaternion != NULL);
+  LSTD_ASSERT(rotation_matrix != NULL);
   float w = quaternion->scalar_part;
   float x = quaternion->vector_part.x;
   float y = quaternion->vector_part.y;
@@ -80,8 +80,8 @@ void quaternion_rotation_matrix(const Quaternion *quaternion,
 }
 
 void quaternion_apply_to_vector(const Quaternion *quaternion, v3f *vector) {
-  ASSERT(quaternion != NULL);
-  ASSERT(vector != NULL);
+  LSTD_ASSERT(quaternion != NULL);
+  LSTD_ASSERT(vector != NULL);
   float s = quaternion->scalar_part;
   v3f u = quaternion->vector_part;
   v3f v = *vector;

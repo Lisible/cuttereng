@@ -3,9 +3,9 @@
 
 #include "common.h"
 #include "math/matrix.h"
+#include "math/quaternion.h"
 #include "math/vector.h"
-#include "memory.h"
-#include "src/math/quaternion.h"
+#include <lisiblestd/memory.h>
 
 typedef struct {
   char *name;

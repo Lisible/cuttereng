@@ -1,6 +1,8 @@
 #ifndef CUTTERENG_MATH_VECTOR_H
 #define CUTTERENG_MATH_VECTOR_H
 
+#include <lisiblestd/assert.h>
+
 #define DEFINE_V4(T, name)                                                     \
   typedef struct {                                                             \
     T x;                                                                       \
@@ -20,8 +22,8 @@
 
 #define IMPL_V4(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \
     lhs->z += rhs->z;                                                          \
@@ -29,8 +31,8 @@
   }                                                                            \
                                                                                \
   void name##_sub(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x -= rhs->x;                                                          \
     lhs->y -= rhs->y;                                                          \
     lhs->z -= rhs->z;                                                          \
@@ -38,7 +40,7 @@
   }                                                                            \
                                                                                \
   void name##_mul_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x *= rhs;                                                             \
     lhs->y *= rhs;                                                             \
     lhs->z *= rhs;                                                             \
@@ -46,7 +48,7 @@
   }                                                                            \
                                                                                \
   void name##_div_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
     lhs->z /= rhs;                                                             \
@@ -54,15 +56,15 @@
   }                                                                            \
                                                                                \
   void name##_neg(name *v) {                                                   \
-    ASSERT(v != NULL);                                                         \
+    LSTD_ASSERT(v != NULL);                                                    \
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
     v->z = -v->z;                                                              \
     v->w = -v->w;                                                              \
   }                                                                            \
   T name##_dot(const name *lhs, const name *rhs) {                             \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     return lhs->x * rhs->x + lhs->y * rhs->y + lhs->z * rhs->z +               \
            lhs->w * rhs->w;                                                    \
   }                                                                            \
@@ -98,44 +100,44 @@ DEFINE_V4(float, v4f)
 
 #define IMPL_V3(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \
     lhs->z += rhs->z;                                                          \
   }                                                                            \
                                                                                \
   void name##_sub(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x -= rhs->x;                                                          \
     lhs->y -= rhs->y;                                                          \
     lhs->z -= rhs->z;                                                          \
   }                                                                            \
                                                                                \
   void name##_mul_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x *= rhs;                                                             \
     lhs->y *= rhs;                                                             \
     lhs->z *= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_div_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
     lhs->z /= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_neg(name *v) {                                                   \
-    ASSERT(v != NULL);                                                         \
+    LSTD_ASSERT(v != NULL);                                                    \
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
     v->z = -v->z;                                                              \
   }                                                                            \
   T name##_dot(const name *lhs, const name *rhs) {                             \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     return lhs->x * rhs->x + lhs->y * rhs->y + lhs->z * rhs->z;                \
   }                                                                            \
   void name##_cross(name *lhs, const name *rhs) {                              \
@@ -177,34 +179,34 @@ typedef float v3_value_type;
 
 #define IMPL_V2(T, name)                                                       \
   void name##_add(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x += rhs->x;                                                          \
     lhs->y += rhs->y;                                                          \
   }                                                                            \
                                                                                \
   void name##_sub(name *lhs, const name *rhs) {                                \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     lhs->x -= rhs->x;                                                          \
     lhs->y -= rhs->y;                                                          \
   }                                                                            \
                                                                                \
   void name##_mul_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x *= rhs;                                                             \
     lhs->y *= rhs;                                                             \
   }                                                                            \
                                                                                \
   void name##_div_scalar(name *lhs, T rhs) {                                   \
-    ASSERT(lhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
     lhs->x /= rhs;                                                             \
     lhs->y /= rhs;                                                             \
   }                                                                            \
   T name##_length(const name *v) { return sqrt(v->x * v->x + v->y * v->y); }   \
                                                                                \
   void name##_neg(name *v) {                                                   \
-    ASSERT(v != NULL);                                                         \
+    LSTD_ASSERT(v != NULL);                                                    \
     v->x = -v->x;                                                              \
     v->y = -v->y;                                                              \
   }

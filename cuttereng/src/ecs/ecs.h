@@ -2,8 +2,8 @@
 #define CUTTERENG_ECS_ECS_H
 
 #include "../asset.h"
-#include "../hash.h"
-#include "../vec.h"
+#include <lisiblestd/hash.h>
+#include <lisiblestd/vec.h>
 
 typedef size_t EcsId;
 typedef struct Ecs Ecs;

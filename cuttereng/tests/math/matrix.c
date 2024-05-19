@@ -1,5 +1,5 @@
 #include "../test.h"
-#include <log.h>
+#include <lisiblestd/log.h>
 #include <math/matrix.h>
 
 void t_mat_mul(void) {

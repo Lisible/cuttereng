@@ -1,21 +1,21 @@
 #include "engine.h"
-#include "assert.h"
 #include "asset.h"
 #include "event.h"
 #include "image.h"
-#include "log.h"
-#include "memory.h"
 #include "src/ecs/ecs.h"
-#include "src/hash.h"
 #include "src/input.h"
 #include "src/math/matrix.h"
 #include "src/transform.h"
+#include <lisiblestd/assert.h>
+#include <lisiblestd/hash.h>
+#include <lisiblestd/log.h>
+#include <lisiblestd/memory.h>
 
 void engine_init(Engine *engine, const Configuration *configuration,
                  EcsSystemFn ecs_init_system, SDL_Window *window) {
-  ASSERT(engine != NULL);
-  ASSERT(configuration != NULL);
-  ASSERT(window != NULL);
+  LSTD_ASSERT(engine != NULL);
+  LSTD_ASSERT(configuration != NULL);
+  LSTD_ASSERT(window != NULL);
   InputState_init(&engine->input_state);
   engine->assets = assets_new(&system_allocator);
   assets_register_asset_type(engine->assets, Image, &image_loader,
@@ -26,7 +26,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   engine->capturing_mouse = false;
   // FIXME The transform cache should grow as the number of entity grows
   engine->transform_cache =
-      allocator_allocate_array(&system_allocator, 4096, sizeof(mat4));
+      Allocator_allocate_array(&system_allocator, 4096, sizeof(mat4));
   ecs_init(&system_allocator, &engine->ecs, ecs_init_system,
            &(SystemContext){.input_state = &engine->input_state,
                             .assets = engine->assets,
@@ -35,18 +35,18 @@ void engine_init(Engine *engine, const Configuration *configuration,
 }
 
 void engine_deinit(Engine *engine) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   ecs_deinit(&engine->ecs);
-  allocator_free(&system_allocator, engine->transform_cache);
+  Allocator_free(&system_allocator, engine->transform_cache);
   assets_destroy(engine->assets);
-  allocator_free(&system_allocator, (char *)engine->application_title);
+  Allocator_free(&system_allocator, (char *)engine->application_title);
 }
 
 void engine_reload_assets(Engine *engine) { assets_clear(engine->assets); }
 
 void engine_handle_events(Engine *engine, Event *event) {
-  ASSERT(engine != NULL);
-  ASSERT(event != NULL);
+  LSTD_ASSERT(engine != NULL);
+  LSTD_ASSERT(event != NULL);
   switch (event->type) {
   case EventType_KeyDown:
     if (event->key_event.key == Key_F1) {
@@ -69,14 +69,14 @@ void engine_handle_events(Engine *engine, Event *event) {
   }
 }
 void engine_set_current_time(Engine *engine, float current_time_secs) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   engine->current_time_secs = current_time_secs;
 }
 DECL_VEC(EcsId, EcsIdVec)
 DEF_VEC(EcsId, EcsIdVec, 512)
 
 void engine_update_transform_cache(Engine *engine) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   size_t entity_count = ecs_get_entity_count(&engine->ecs);
   EcsIdVec queue;
   EcsIdVec_init(&system_allocator, &queue);
@@ -153,7 +153,7 @@ void engine_update_transform_cache(Engine *engine) {
 }
 
 void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   (void)frame_allocator;
 
   LOG_DEBUG("Delta time: %fs", dt);
@@ -168,34 +168,34 @@ void engine_update(Allocator *frame_allocator, Engine *engine, float dt) {
 }
 
 void engine_render(Allocator *frame_allocator, Engine *engine) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   (void)frame_allocator;
   InputState_on_frame_end(&engine->input_state);
 }
 
 bool engine_is_running(Engine *engine) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   return engine->running;
 }
 
 bool configuration_from_json(Json *configuration_json,
                              Configuration *output_configuration) {
-  ASSERT(configuration_json != NULL);
-  ASSERT(output_configuration != NULL);
+  LSTD_ASSERT(configuration_json != NULL);
+  LSTD_ASSERT(output_configuration != NULL);
 
   if (configuration_json->type != JSON_OBJECT) {
-    LOG_ERROR("project_configuration.json's root should be an object");
+    LOG0_ERROR("project_configuration.json's root should be an object");
     return false;
   }
   JsonObject *configuration_json_object = configuration_json->object;
   Json *title_json = json_object_get(configuration_json_object, "title");
   if (!title_json) {
-    LOG_ERROR("no property title found in project_configuration.json");
+    LOG0_ERROR("no property title found in project_configuration.json");
     return false;
   }
 
   if (title_json->type != JSON_STRING) {
-    LOG_ERROR("title is not a string");
+    LOG0_ERROR("title is not a string");
     return false;
   }
 
@@ -206,7 +206,7 @@ bool configuration_from_json(Json *configuration_json,
   Json *window_size_json =
       json_object_get(configuration_json->object, "window_size");
   if (!window_size_json) {
-    LOG_ERROR("no window_size property found in project_configuration.json");
+    LOG0_ERROR("no window_size property found in project_configuration.json");
     return false;
   }
 
@@ -219,33 +219,33 @@ bool configuration_from_json(Json *configuration_json,
 }
 
 bool window_size_from_json(Json *json_value, WindowSize *window_size) {
-  ASSERT(json_value != NULL);
-  ASSERT(window_size != NULL);
+  LSTD_ASSERT(json_value != NULL);
+  LSTD_ASSERT(window_size != NULL);
 
   if (json_value->type != JSON_OBJECT) {
-    LOG_ERROR("window_size property is not an object");
+    LOG0_ERROR("window_size property is not an object");
     return false;
   }
 
   Json *width = json_object_get(json_value->object, "width");
   if (!width) {
-    LOG_ERROR("window_size.width not found");
+    LOG0_ERROR("window_size.width not found");
     return false;
   }
 
   if (width->type != JSON_NUMBER) {
-    LOG_ERROR("window_size.width should be a number");
+    LOG0_ERROR("window_size.width should be a number");
     return false;
   }
   window_size->width = width->number;
 
   Json *height = json_object_get(json_value->object, "height");
   if (!height) {
-    LOG_ERROR("window_size.height not found");
+    LOG0_ERROR("window_size.height not found");
     return false;
   }
   if (height->type != JSON_NUMBER) {
-    LOG_ERROR("window_size.height should be a number");
+    LOG0_ERROR("window_size.height should be a number");
     return false;
   }
   window_size->height = height->number;
@@ -253,16 +253,16 @@ bool window_size_from_json(Json *json_value, WindowSize *window_size) {
 }
 
 void configuration_debug_print(Configuration *configuration) {
-  ASSERT(configuration != NULL);
-  LOG_DEBUG("Configuration");
+  LSTD_ASSERT(configuration != NULL);
+  LOG0_DEBUG("Configuration");
   LOG_DEBUG("title: %s", configuration->application_title);
   window_size_debug_print(&configuration->window_size);
 }
 void window_size_debug_print(WindowSize *window_size) {
-  ASSERT(window_size != NULL);
+  LSTD_ASSERT(window_size != NULL);
   LOG_DEBUG("window size: (%d, %d)", window_size->width, window_size->height);
 }
 bool engine_should_mouse_be_captured(Engine *engine) {
-  ASSERT(engine != NULL);
+  LSTD_ASSERT(engine != NULL);
   return engine->capturing_mouse;
 }

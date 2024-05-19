@@ -2,6 +2,7 @@
 #define CUTTERENG_MATH_MATRIX_H
 
 #include "vector.h"
+#include <lisiblestd/assert.h>
 
 #define DEFINE_MAT4(T, name)                                                   \
   typedef T name[16];                                                          \
@@ -10,7 +11,7 @@
 
 #define IMPL_MAT4(T, name)                                                     \
   void name##_transpose(name mat) {                                            \
-    ASSERT(mat != NULL);                                                       \
+    LSTD_ASSERT(mat != NULL);                                                  \
     for (int row = 0; row < 4; row++) {                                        \
       for (int col = 0; col < row; col++) {                                    \
         T tmp = mat[row * 4 + col];                                            \
@@ -21,8 +22,8 @@
   }                                                                            \
   void name##_mul(name lhs, name rhs, name out) {                              \
     static const size_t COLS = 4;                                              \
-    ASSERT(lhs != NULL);                                                       \
-    ASSERT(rhs != NULL);                                                       \
+    LSTD_ASSERT(lhs != NULL);                                                  \
+    LSTD_ASSERT(rhs != NULL);                                                  \
     for (int j = 0; j < 4; j++) {                                              \
       for (int i = 0; i < 4; i++) {                                            \
         out[j * COLS + i] = lhs[j * COLS] * rhs[i] +                           \

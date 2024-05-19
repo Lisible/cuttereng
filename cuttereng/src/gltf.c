@@ -1,9 +1,8 @@
 #include "gltf.h"
-#include "assert.h"
-#include "bytes.h"
 #include "src/json.h"
 #include "src/math/matrix.h"
-#include "src/memory.h"
+#include <lisiblestd/assert.h>
+#include <lisiblestd/bytes.h>
 #include <string.h>
 
 #define GLB_MAGIC_NUMBER 0x46546C67
@@ -28,14 +27,14 @@ void GltfParsingContext_init(GltfParsingContext *ctx, Allocator *allocator,
 }
 u32 GltfParsingContext_parse_u32(GltfParsingContext *ctx) {
   size_t advance = sizeof(u32);
-  ASSERT(ctx->current_index + advance < ctx->data_size);
+  LSTD_ASSERT(ctx->current_index + advance < ctx->data_size);
   u32 value = u32_from_bytes_le(&ctx->data[ctx->current_index]);
   ctx->current_index += advance;
   return value;
 }
 void GltfParsingContext_skip_bytes(GltfParsingContext *ctx, size_t byte_count) {
   // FIXME
-  // ASSERT(ctx->current_index + byte_count <= ctx->data_size);
+  // LSTD_ASSERT(ctx->current_index + byte_count <= ctx->data_size);
   ctx->current_index += byte_count;
 }
 
@@ -123,21 +122,21 @@ void GltfBufferView_deinit(Allocator *allocator,
 
 Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
                      const size_t data_size) {
-  ASSERT(data != NULL);
+  LSTD_ASSERT(data != NULL);
   GltfParsingContext ctx;
   GltfParsingContext_init(&ctx, allocator, data, data_size);
 
   u32 magic_number = GltfParsingContext_parse_u32(&ctx);
   LOG_DEBUG("GLB magic number: %x", magic_number);
   if (magic_number != GLB_MAGIC_NUMBER) {
-    LOG_ERROR("Invalid GLB magic number");
+    LOG0_ERROR("Invalid GLB magic number");
     goto err;
   }
 
   u32 version = GltfParsingContext_parse_u32(&ctx);
   LOG_DEBUG("%x", version);
   if (version != 2) {
-    LOG_ERROR("Only GLB version 2 is supported");
+    LOG0_ERROR("Only GLB version 2 is supported");
     goto err;
   }
   u32 length = GltfParsingContext_parse_u32(&ctx);
@@ -147,20 +146,20 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   LOG_DEBUG("GLB json chunk data length: %d", json_chunk_data_length);
   u32 json_chunk_type = GltfParsingContext_parse_u32(&ctx);
   if (json_chunk_type != GLB_CHUNK_TYPE_JSON) {
-    LOG_ERROR("GLB JSON chunk has wrong type");
+    LOG0_ERROR("GLB JSON chunk has wrong type");
     goto err;
   }
   const u8 *json_chunk_data = &ctx.data[ctx.current_index];
   GltfParsingContext_skip_bytes(&ctx, json_chunk_data_length);
   Json *gltf_json = json_parse_from_str(allocator, (char *)json_chunk_data);
   if (gltf_json == NULL) {
-    LOG_ERROR("Couldn't parse GLTF json");
+    LOG0_ERROR("Couldn't parse GLTF json");
     goto err;
   }
 
   JsonObject *gltf_json_object = json_as_object(gltf_json);
   if (gltf_json_object == NULL) {
-    LOG_ERROR("The root value of GLTF json is not an object");
+    LOG0_ERROR("The root value of GLTF json is not an object");
     goto err;
   }
 
@@ -168,13 +167,13 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   LOG_DEBUG("GLB binary chunk data length: %d", binary_chunk_data_length);
   u32 binary_chunk_type = GltfParsingContext_parse_u32(&ctx);
   if (binary_chunk_type != GLB_CHUNK_TYPE_BIN) {
-    LOG_ERROR("GLB binary chunk has wrong type");
+    LOG0_ERROR("GLB binary chunk has wrong type");
     goto err;
   }
   const u8 *binary_chunk_data = &ctx.data[ctx.current_index];
   GltfParsingContext_skip_bytes(&ctx, binary_chunk_data_length);
 
-  Gltf *gltf = allocator_allocate(allocator, sizeof(Gltf));
+  Gltf *gltf = Allocator_allocate(allocator, sizeof(Gltf));
   parse_main_scene(&ctx, gltf, gltf_json_object);
 
   JsonArray *gltf_scenes_json = NULL;
@@ -227,8 +226,8 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   return gltf;
 
 // cleanup_gltf_json:
-//   allocator_free(allocator, gltf_json);
-//   allocator_free(allocator, gltf);
+//   Allocator_free(allocator, gltf_json);
+//   Allocator_free(allocator, gltf);
 err:
   return NULL;
 }
@@ -238,34 +237,49 @@ void Gltf_destroy(Allocator *allocator, Gltf *gltf) {
        accessor_index++) {
     GltfAccessor_deinit(allocator, &gltf->accessors[accessor_index]);
   }
-  allocator_free(allocator, gltf->accessors);
+  Allocator_free(allocator, gltf->accessors);
+
+  for (size_t buffer_view_index = 0;
+       buffer_view_index < gltf->buffer_view_count; buffer_view_index++) {
+    GltfBufferView_deinit(allocator, &gltf->buffer_views[buffer_view_index]);
+  }
+  Allocator_free(allocator, gltf->buffer_views);
+
+  Allocator_free(allocator, gltf->images);
+  Allocator_free(allocator, gltf->samplers);
+  Allocator_free(allocator, gltf->textures);
+  for (size_t material_index = 0; material_index < gltf->material_count;
+       material_index++) {
+    GltfMaterial_deinit(allocator, &gltf->materials[material_index]);
+  }
+  Allocator_free(allocator, gltf->materials);
 
   for (size_t mesh_index = 0; mesh_index < gltf->mesh_count; mesh_index++) {
     GltfMesh_deinit(allocator, &gltf->meshes[mesh_index]);
   }
-  allocator_free(allocator, gltf->meshes);
+  Allocator_free(allocator, gltf->meshes);
 
   for (size_t node_index = 0; node_index < gltf->node_count; node_index++) {
     GltfNode_deinit(allocator, &gltf->nodes[node_index]);
   }
-  allocator_free(allocator, gltf->nodes);
+  Allocator_free(allocator, gltf->nodes);
 
   for (size_t scene_index = 0; scene_index < gltf->scene_count; scene_index++) {
     GltfScene_deinit(allocator, &gltf->scenes[scene_index]);
   }
-  allocator_free(allocator, gltf->scenes);
+  Allocator_free(allocator, gltf->scenes);
 
-  allocator_free(allocator, gltf);
+  Allocator_free(allocator, gltf);
 }
 
 void parse_main_scene(const GltfParsingContext *ctx, Gltf *gltf,
                       const JsonObject *gltf_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_json != NULL);
   double main_scene;
   if (!json_object_get_number(gltf_json, "mainScene", &main_scene)) {
-    LOG_DEBUG("no main scene found", gltf->main_scene);
+    LOG0_DEBUG("no main scene found");
     gltf->has_main_scene = false;
   } else {
     gltf->main_scene = (int)main_scene;
@@ -276,15 +290,15 @@ void parse_main_scene(const GltfParsingContext *ctx, Gltf *gltf,
 
 bool parse_scenes(const GltfParsingContext *ctx, Gltf *gltf,
                   const JsonArray *gltf_scenes_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_scenes_json != NULL);
-  LOG_DEBUG("Parsing scenes");
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_scenes_json != NULL);
+  LOG0_DEBUG("Parsing scenes");
   size_t scene_count = json_array_length(gltf_scenes_json);
-  LOG_DEBUG("Scene count: %d", scene_count);
+  LOG_DEBUG("Scene count: %zu", scene_count);
   gltf->scene_count = scene_count;
   gltf->scenes =
-      allocator_allocate_array(ctx->allocator, scene_count, sizeof(GltfScene));
+      Allocator_allocate_array(ctx->allocator, scene_count, sizeof(GltfScene));
 
   for (size_t scene_index = 0; scene_index < scene_count; scene_index++) {
     Json *scene_json = json_array_at(gltf_scenes_json, scene_index);
@@ -292,7 +306,7 @@ bool parse_scenes(const GltfParsingContext *ctx, Gltf *gltf,
       return false;
     }
 
-    LOG_DEBUG("Parsing scene %d", scene_index);
+    LOG_DEBUG("Parsing scene %zu", scene_index);
     if (!GltfScene_parse(ctx, &gltf->scenes[scene_index], scene_json->object)) {
       return false;
     }
@@ -303,9 +317,9 @@ bool parse_scenes(const GltfParsingContext *ctx, Gltf *gltf,
 
 bool GltfScene_parse(const GltfParsingContext *ctx, GltfScene *gltf_scene,
                      const JsonObject *gltf_scene_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_scene != NULL);
-  ASSERT(gltf_scene_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_scene != NULL);
+  LSTD_ASSERT(gltf_scene_json != NULL);
 
   char *scene_name = NULL;
   json_object_get_string(gltf_scene_json, "name", &scene_name);
@@ -322,7 +336,7 @@ bool GltfScene_parse(const GltfParsingContext *ctx, GltfScene *gltf_scene,
     size_t node_count = json_array_length(nodes_array);
     gltf_scene->node_count = node_count;
     gltf_scene->nodes =
-        allocator_allocate_array(ctx->allocator, node_count, sizeof(size_t));
+        Allocator_allocate_array(ctx->allocator, node_count, sizeof(size_t));
     for (size_t node_index = 0; node_index < node_count; node_index++) {
       Json *node_json = json_array_at(nodes_array, node_index);
       if (node_json->type != JSON_NUMBER) {
@@ -330,7 +344,7 @@ bool GltfScene_parse(const GltfParsingContext *ctx, GltfScene *gltf_scene,
       }
 
       gltf_scene->nodes[node_index] = (size_t)node_json->number;
-      LOG_DEBUG("Node %d = %d", node_index, gltf_scene->nodes[node_index]);
+      LOG_DEBUG("Node %zu = %zu", node_index, gltf_scene->nodes[node_index]);
     }
   }
 
@@ -339,26 +353,26 @@ bool GltfScene_parse(const GltfParsingContext *ctx, GltfScene *gltf_scene,
 
 bool parse_nodes(const GltfParsingContext *ctx, Gltf *gltf,
                  const JsonArray *gltf_nodes_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_nodes_json != NULL);
-  LOG_DEBUG("Parsing nodes");
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_nodes_json != NULL);
+  LOG0_DEBUG("Parsing nodes");
 
   size_t node_count = json_array_length(gltf_nodes_json);
   gltf->node_count = node_count;
   gltf->nodes =
-      allocator_allocate_array(ctx->allocator, node_count, sizeof(GltfNode));
+      Allocator_allocate_array(ctx->allocator, node_count, sizeof(GltfNode));
 
   for (size_t node_index = 0; node_index < node_count; node_index++) {
-    LOG_DEBUG("Parsing node %d", node_index);
+    LOG_DEBUG("Parsing node %zu", node_index);
     Json *node_json = json_array_at(gltf_nodes_json, node_index);
     if (node_json->type != JSON_OBJECT) {
-      LOG_DEBUG("Node type is not object");
+      LOG0_DEBUG("Node type is not object");
       return false;
     }
 
     if (!GltfNode_parse(ctx, &gltf->nodes[node_index], node_json->object)) {
-      LOG_DEBUG("Couldn't parse node");
+      LOG0_DEBUG("Couldn't parse node");
       return false;
     }
   }
@@ -368,9 +382,9 @@ bool parse_nodes(const GltfParsingContext *ctx, Gltf *gltf,
 
 bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
                     const JsonObject *gltf_node_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_node != NULL);
-  ASSERT(gltf_node_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_node != NULL);
+  LSTD_ASSERT(gltf_node_json != NULL);
 
   char *node_name = NULL;
   json_object_get_string(gltf_node_json, "name", &node_name);
@@ -384,21 +398,21 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   double camera;
   if (!json_object_get_number(gltf_node_json, "camera", &camera)) {
     gltf_node->has_camera = false;
-    LOG_DEBUG("Node has no camera");
+    LOG0_DEBUG("Node has no camera");
   } else {
     gltf_node->camera = (size_t)camera;
     gltf_node->has_camera = true;
-    LOG_DEBUG("Node camera: %d", gltf_node->camera);
+    LOG_DEBUG("Node camera: %zu", gltf_node->camera);
   }
 
   JsonArray *children = NULL;
   if (!json_object_get_array(gltf_node_json, "children", &children)) {
     gltf_node->children_count = 0;
-    LOG_DEBUG("Node has no child");
+    LOG0_DEBUG("Node has no child");
   } else {
     size_t children_count = json_array_length(children);
     gltf_node->children_count = children_count;
-    gltf_node->children = allocator_allocate_array(
+    gltf_node->children = Allocator_allocate_array(
         ctx->allocator, children_count, sizeof(size_t));
     for (size_t child_index = 0; child_index < children_count; child_index++) {
       Json *child = json_array_at(children, child_index);
@@ -407,7 +421,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
       }
 
       gltf_node->children[child_index] = (size_t)child->number;
-      LOG_DEBUG("node->children[%d]: %d", child_index,
+      LOG_DEBUG("node->children[%zu]: %zu", child_index,
                 gltf_node->children[child_index]);
     }
   }
@@ -415,11 +429,11 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   double skin;
   if (!json_object_get_number(gltf_node_json, "skin", &skin)) {
     gltf_node->has_skin = false;
-    LOG_DEBUG("Node has no skin");
+    LOG0_DEBUG("Node has no skin");
   } else {
     gltf_node->skin = (size_t)skin;
     gltf_node->has_skin = true;
-    LOG_DEBUG("Node has skin");
+    LOG0_DEBUG("Node has skin");
   }
 
   JsonArray *matrix = NULL;
@@ -445,7 +459,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
 
   double mesh;
   if (!json_object_get_number(gltf_node_json, "mesh", &mesh)) {
-    LOG_DEBUG("Node has no mesh");
+    LOG0_DEBUG("Node has no mesh");
     gltf_node->has_mesh = false;
   } else {
     gltf_node->mesh = (size_t)mesh;
@@ -546,7 +560,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   } else {
     size_t weights_length = json_array_length(weights);
     gltf_node->weight_count = weights_length;
-    gltf_node->weights = allocator_allocate_array(
+    gltf_node->weights = Allocator_allocate_array(
         ctx->allocator, weights_length, sizeof(double));
     for (size_t weight_index = 0; weight_index < weights_length;
          weight_index++) {
@@ -564,14 +578,14 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
 bool parse_meshes(const GltfParsingContext *ctx, Gltf *gltf,
                   const JsonArray *gltf_meshes_json) {
 
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_meshes_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_meshes_json != NULL);
 
   size_t mesh_count = json_array_length(gltf_meshes_json);
   gltf->mesh_count = mesh_count;
   gltf->meshes =
-      allocator_allocate_array(ctx->allocator, mesh_count, sizeof(GltfMesh));
+      Allocator_allocate_array(ctx->allocator, mesh_count, sizeof(GltfMesh));
 
   for (size_t mesh_index = 0; mesh_index < mesh_count; mesh_index++) {
     Json *mesh_json = json_array_at(gltf_meshes_json, mesh_index);
@@ -588,10 +602,10 @@ bool parse_meshes(const GltfParsingContext *ctx, Gltf *gltf,
 }
 bool GltfMesh_parse(const GltfParsingContext *ctx, GltfMesh *gltf_mesh,
                     const JsonObject *gltf_mesh_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_mesh != NULL);
-  ASSERT(gltf_mesh_json != NULL);
-  LOG_DEBUG("Parsing mesh");
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_mesh != NULL);
+  LSTD_ASSERT(gltf_mesh_json != NULL);
+  LOG0_DEBUG("Parsing mesh");
 
   char *mesh_name = NULL;
   json_object_get_string(gltf_mesh_json, "name", &mesh_name);
@@ -608,7 +622,7 @@ bool GltfMesh_parse(const GltfParsingContext *ctx, GltfMesh *gltf_mesh,
     size_t weight_count = json_array_length(weights_json);
     gltf_mesh->weight_count = weight_count;
     gltf_mesh->weights =
-        allocator_allocate_array(ctx->allocator, weight_count, sizeof(double));
+        Allocator_allocate_array(ctx->allocator, weight_count, sizeof(double));
     for (size_t weight_index = 0; weight_index < weight_count; weight_index++) {
       Json *weight_json = json_array_at(weights_json, weight_index);
       if (weight_json->type != JSON_NUMBER) {
@@ -626,7 +640,7 @@ bool GltfMesh_parse(const GltfParsingContext *ctx, GltfMesh *gltf_mesh,
 
   size_t primitive_count = json_array_length(primitives_json);
   gltf_mesh->primitive_count = primitive_count;
-  gltf_mesh->primitives = allocator_allocate_array(
+  gltf_mesh->primitives = Allocator_allocate_array(
       ctx->allocator, primitive_count, sizeof(GltfMeshPrimitive));
   for (size_t primitive_index = 0; primitive_index < primitive_count;
        primitive_index++) {
@@ -645,16 +659,16 @@ bool GltfMesh_parse(const GltfParsingContext *ctx, GltfMesh *gltf_mesh,
 bool GltfMeshPrimitive_parse(const GltfParsingContext *ctx,
                              GltfMeshPrimitive *gltf_mesh_primitive,
                              const JsonObject *gltf_mesh_primitive_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_mesh_primitive != NULL);
-  ASSERT(gltf_mesh_primitive_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_mesh_primitive != NULL);
+  LSTD_ASSERT(gltf_mesh_primitive_json != NULL);
 
   JsonObject *attributes_json;
   json_object_get_object(gltf_mesh_primitive_json, "attributes",
                          &attributes_json);
   size_t attribute_count = json_object_get_key_count(attributes_json);
   gltf_mesh_primitive->attribute_count = attribute_count;
-  gltf_mesh_primitive->attributes = allocator_allocate_array(
+  gltf_mesh_primitive->attributes = Allocator_allocate_array(
       ctx->allocator, attribute_count, sizeof(GltfMeshPrimitiveAttribute));
   for (size_t i = 0; i < attribute_count; i++) {
     char *key = json_object_get_key(attributes_json, i);
@@ -697,13 +711,13 @@ bool GltfMeshPrimitive_parse(const GltfParsingContext *ctx,
 }
 bool parse_textures(const GltfParsingContext *ctx, Gltf *gltf,
                     const JsonArray *gltf_textures_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_textures_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_textures_json != NULL);
 
   size_t texture_count = json_array_length(gltf_textures_json);
   gltf->texture_count = texture_count;
-  gltf->textures = allocator_allocate_array(ctx->allocator, texture_count,
+  gltf->textures = Allocator_allocate_array(ctx->allocator, texture_count,
                                             sizeof(GltfTexture));
 
   for (size_t texture_index = 0; texture_index < texture_count;
@@ -723,9 +737,9 @@ bool parse_textures(const GltfParsingContext *ctx, Gltf *gltf,
 }
 bool GltfTexture_parse(const GltfParsingContext *ctx, GltfTexture *gltf_texture,
                        const JsonObject *gltf_texture_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_texture != NULL);
-  ASSERT(gltf_texture_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_texture != NULL);
+  LSTD_ASSERT(gltf_texture_json != NULL);
 
   double sampler_d;
   if (!json_object_get_number(gltf_texture_json, "sampler", &sampler_d)) {
@@ -743,14 +757,14 @@ bool GltfTexture_parse(const GltfParsingContext *ctx, GltfTexture *gltf_texture,
 }
 bool parse_images(const GltfParsingContext *ctx, Gltf *gltf,
                   const JsonArray *gltf_images_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_images_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_images_json != NULL);
 
   size_t image_count = json_array_length(gltf_images_json);
   gltf->image_count = image_count;
   gltf->images =
-      allocator_allocate_array(ctx->allocator, image_count, sizeof(GltfImage));
+      Allocator_allocate_array(ctx->allocator, image_count, sizeof(GltfImage));
 
   for (size_t image_index = 0; image_index < image_count; image_index++) {
     Json *image_json = json_array_at(gltf_images_json, image_index);
@@ -767,9 +781,9 @@ bool parse_images(const GltfParsingContext *ctx, Gltf *gltf,
 }
 bool GltfImage_parse(const GltfParsingContext *ctx, GltfImage *gltf_image,
                      const JsonObject *gltf_image_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_image != NULL);
-  ASSERT(gltf_image_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_image != NULL);
+  LSTD_ASSERT(gltf_image_json != NULL);
 
   char *image_name = NULL;
   json_object_get_string(gltf_image_json, "name", &image_name);
@@ -782,14 +796,14 @@ bool GltfImage_parse(const GltfParsingContext *ctx, GltfImage *gltf_image,
   char *mime_type = NULL;
   if (json_object_get_string(gltf_image_json, "mimeType", &mime_type)) {
     if (strncmp(mime_type, "image/png", 10) != 0) {
-      LOG_ERROR("Only image/png mime type is supported for glTF image data");
+      LOG0_ERROR("Only image/png mime type is supported for glTF image data");
       return false;
     }
   }
 
   double buffer_view_id;
   if (!json_object_get_number(gltf_image_json, "bufferView", &buffer_view_id)) {
-    LOG_ERROR("Gltf image needs a buffer view as uri images aren't supported");
+    LOG0_ERROR("Gltf image needs a buffer view as uri images aren't supported");
     return false;
   }
 
@@ -799,13 +813,13 @@ bool GltfImage_parse(const GltfParsingContext *ctx, GltfImage *gltf_image,
 }
 bool parse_samplers(const GltfParsingContext *ctx, Gltf *gltf,
                     const JsonArray *gltf_samplers_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_samplers_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_samplers_json != NULL);
 
   size_t sampler_count = json_array_length(gltf_samplers_json);
   gltf->sampler_count = sampler_count;
-  gltf->samplers = allocator_allocate_array(ctx->allocator, sampler_count,
+  gltf->samplers = Allocator_allocate_array(ctx->allocator, sampler_count,
                                             sizeof(GltfSampler));
 
   for (size_t sampler_index = 0; sampler_index < sampler_count;
@@ -825,9 +839,9 @@ bool parse_samplers(const GltfParsingContext *ctx, Gltf *gltf,
 }
 bool GltfSampler_parse(const GltfParsingContext *ctx, GltfSampler *gltf_sampler,
                        const JsonObject *gltf_sampler_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_sampler != NULL);
-  ASSERT(gltf_sampler_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_sampler != NULL);
+  LSTD_ASSERT(gltf_sampler_json != NULL);
 
   GltfSamplerMinMagFilter mag_filter = GltfSamplerMinMagFilter_Nearest;
   double mag_filter_d;
@@ -861,13 +875,13 @@ bool GltfSampler_parse(const GltfParsingContext *ctx, GltfSampler *gltf_sampler,
 }
 bool parse_materials(const GltfParsingContext *ctx, Gltf *gltf,
                      const JsonArray *gltf_materials_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_materials_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_materials_json != NULL);
 
   size_t material_count = json_array_length(gltf_materials_json);
   gltf->material_count = material_count;
-  gltf->materials = allocator_allocate_array(ctx->allocator, material_count,
+  gltf->materials = Allocator_allocate_array(ctx->allocator, material_count,
                                              sizeof(GltfMaterial));
 
   for (size_t material_index = 0; material_index < material_count;
@@ -888,11 +902,11 @@ bool parse_materials(const GltfParsingContext *ctx, Gltf *gltf,
 bool GltfMaterial_parse(const GltfParsingContext *ctx,
                         GltfMaterial *gltf_material,
                         const JsonObject *gltf_material_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_material != NULL);
-  ASSERT(gltf_material_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_material != NULL);
+  LSTD_ASSERT(gltf_material_json != NULL);
 
-  LOG_DEBUG("Parsing material");
+  LOG0_DEBUG("Parsing material");
 
   char *material_name = NULL;
   json_object_get_string(gltf_material_json, "name", &material_name);
@@ -916,17 +930,18 @@ bool GltfMaterial_parse(const GltfParsingContext *ctx,
   return true;
 }
 void GltfMaterial_deinit(Allocator *allocator, GltfMaterial *gltf_material) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_material != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_material != NULL);
+  Allocator_free(allocator, gltf_material->name);
 }
 
 bool GltfMaterialPbrMetallicRoughness_parse(
     const GltfParsingContext *ctx,
     GltfMaterialPbrMetallicRoughness *gltf_material_pbr_metallic_roughness,
     JsonObject *gltf_material_pbr_metallic_roughness_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_material_pbr_metallic_roughness != NULL);
-  ASSERT(gltf_material_pbr_metallic_roughness_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_material_pbr_metallic_roughness != NULL);
+  LSTD_ASSERT(gltf_material_pbr_metallic_roughness_json != NULL);
 
   JsonArray *base_color_factor_json = NULL;
   if (!json_object_get_array(gltf_material_pbr_metallic_roughness_json,
@@ -981,20 +996,20 @@ bool GltfMaterialPbrMetallicRoughness_parse(
 void GltfMaterialPbrMetallicRoughness_deinit(
     Allocator *allocator,
     GltfMaterialPbrMetallicRoughness *gltf_material_pbr_metallic_roughness) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_material_pbr_metallic_roughness != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_material_pbr_metallic_roughness != NULL);
 }
 
 bool GltfTextureInfo_parse(const GltfParsingContext *ctx,
                            GltfTextureInfo *gltf_texture_info,
                            const JsonObject *gltf_texture_info_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_texture_info != NULL);
-  ASSERT(gltf_texture_info_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_texture_info != NULL);
+  LSTD_ASSERT(gltf_texture_info_json != NULL);
 
   double index_d;
   if (!json_object_get_number(gltf_texture_info_json, "index", &index_d)) {
-    LOG_ERROR("Texture info index couldn't be parsed");
+    LOG0_ERROR("Texture info index couldn't be parsed");
     return false;
   }
 
@@ -1010,38 +1025,38 @@ bool GltfTextureInfo_parse(const GltfParsingContext *ctx,
 }
 void GltfTextureInfo_deinit(Allocator *allocator,
                             GltfTextureInfo *gltf_texture_info) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_texture_info != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_texture_info != NULL);
 }
 
 // bool GltfMaterialNormalTextureInfo_parse(
 //     const ParsingContext *ctx,
 //     GltfMaterialNormalTextureInfo *gltf_normal_texture_info,
 //     const JsonObject *gltf_normal_texture_info_json) {
-//   ASSERT(ctx != NULL);
-//   ASSERT(gltf_normal_texture_info != NULL);
-//   ASSERT(gltf_normal_texture_info_json != NULL);
+//   LSTD_ASSERT(ctx != NULL);
+//   LSTD_ASSERT(gltf_normal_texture_info != NULL);
+//   LSTD_ASSERT(gltf_normal_texture_info_json != NULL);
 
 //   return true;
 // }
 // void GltfMaterialNormalTextureInfo_deinit(
 //     Allocator *allocator,
 //     GltfMaterialNormalTextureInfo *gltf_normal_texture_info) {
-//   ASSERT(allocator != NULL);
-//   ASSERT(gltf_normal_texture_info != NULL);
+//   LSTD_ASSERT(allocator != NULL);
+//   LSTD_ASSERT(gltf_normal_texture_info != NULL);
 // }
 bool parse_accessors(const GltfParsingContext *ctx, Gltf *gltf,
                      size_t buffer_size, const u8 *buffer,
                      size_t buffer_view_count, GltfBufferView *buffer_views,
                      const JsonArray *gltf_accessors_json) {
 
-  ASSERT(ctx != NULL);
-  ASSERT(gltf != NULL);
-  ASSERT(gltf_accessors_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf != NULL);
+  LSTD_ASSERT(gltf_accessors_json != NULL);
 
   size_t accessor_count = json_array_length(gltf_accessors_json);
   gltf->accessor_count = accessor_count;
-  gltf->accessors = allocator_allocate_array(ctx->allocator, accessor_count,
+  gltf->accessors = Allocator_allocate_array(ctx->allocator, accessor_count,
                                              sizeof(GltfAccessor));
 
   for (size_t accessor_index = 0; accessor_index < accessor_count;
@@ -1066,9 +1081,9 @@ bool GltfAccessor_parse(const GltfParsingContext *ctx,
                         const u8 *buffer, size_t buffer_view_count,
                         GltfBufferView *buffer_views,
                         const JsonObject *gltf_accessor_json) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_accessor != NULL);
-  ASSERT(gltf_accessor_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_accessor != NULL);
+  LSTD_ASSERT(gltf_accessor_json != NULL);
 
   char *name;
   if (json_object_get_string(gltf_accessor_json, "name", &name)) {
@@ -1182,14 +1197,14 @@ bool parse_buffer_views(const GltfParsingContext *ctx,
                         const JsonArray *gltf_buffer_views_json,
                         const u8 *binary_data) {
 
-  ASSERT(ctx != NULL);
-  ASSERT(out_buffer_view_count != NULL);
-  ASSERT(out_buffer_views != NULL);
-  ASSERT(gltf_buffer_views_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(out_buffer_view_count != NULL);
+  LSTD_ASSERT(out_buffer_views != NULL);
+  LSTD_ASSERT(gltf_buffer_views_json != NULL);
 
   size_t buffer_view_count = json_array_length(gltf_buffer_views_json);
   *out_buffer_view_count = buffer_view_count;
-  *out_buffer_views = allocator_allocate_array(
+  *out_buffer_views = Allocator_allocate_array(
       ctx->allocator, buffer_view_count, sizeof(GltfBufferView));
 
   for (size_t buffer_view_index = 0; buffer_view_index < buffer_view_count;
@@ -1212,9 +1227,9 @@ bool GltfBufferView_parse(const GltfParsingContext *ctx,
                           GltfBufferView *gltf_buffer_view,
                           const JsonObject *gltf_buffer_view_json,
                           const u8 *binary_data) {
-  ASSERT(ctx != NULL);
-  ASSERT(gltf_buffer_view != NULL);
-  ASSERT(gltf_buffer_view_json != NULL);
+  LSTD_ASSERT(ctx != NULL);
+  LSTD_ASSERT(gltf_buffer_view != NULL);
+  LSTD_ASSERT(gltf_buffer_view_json != NULL);
 
   char *name;
   if (json_object_get_string(gltf_buffer_view_json, "name", &name)) {
@@ -1266,50 +1281,50 @@ bool GltfBufferView_parse(const GltfParsingContext *ctx,
   return true;
 }
 void GltfBuffer_deinit(Allocator *allocator, GltfBuffer *gltf_buffer) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_buffer != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_buffer != NULL);
 
-  allocator_free(allocator, gltf_buffer->name);
+  Allocator_free(allocator, gltf_buffer->name);
 }
 
 void GltfBufferView_deinit(Allocator *allocator,
                            GltfBufferView *gltf_buffer_view) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_buffer_view != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_buffer_view != NULL);
 
-  allocator_free(allocator, gltf_buffer_view->name);
+  Allocator_free(allocator, gltf_buffer_view->name);
 }
 
 void GltfAccessor_deinit(Allocator *allocator, GltfAccessor *gltf_accessor) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_accessor != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_accessor != NULL);
   if (gltf_accessor->name != NULL) {
-    allocator_free(allocator, gltf_accessor->name);
+    Allocator_free(allocator, gltf_accessor->name);
   }
 }
 void GltfScene_deinit(Allocator *allocator, GltfScene *gltf_scene) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_scene != NULL);
-  allocator_free(allocator, gltf_scene->name);
-  allocator_free(allocator, gltf_scene->nodes);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_scene != NULL);
+  Allocator_free(allocator, gltf_scene->name);
+  Allocator_free(allocator, gltf_scene->nodes);
 }
 void GltfNode_deinit(Allocator *allocator, GltfNode *gltf_node) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_node != NULL);
-  allocator_free(allocator, gltf_node->name);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_node != NULL);
+  Allocator_free(allocator, gltf_node->name);
   if (gltf_node->children_count > 0) {
-    allocator_free(allocator, gltf_node->children);
+    Allocator_free(allocator, gltf_node->children);
   }
   if (gltf_node->weight_count > 0) {
-    allocator_free(allocator, gltf_node->weights);
+    Allocator_free(allocator, gltf_node->weights);
   }
 }
 void GltfMesh_deinit(Allocator *allocator, GltfMesh *gltf_mesh) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_mesh != NULL);
-  allocator_free(allocator, gltf_mesh->name);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_mesh != NULL);
+  Allocator_free(allocator, gltf_mesh->name);
   if (gltf_mesh->weight_count > 0) {
-    allocator_free(allocator, gltf_mesh->weights);
+    Allocator_free(allocator, gltf_mesh->weights);
   }
 
   for (size_t primitive_index = 0; primitive_index < gltf_mesh->primitive_count;
@@ -1317,21 +1332,21 @@ void GltfMesh_deinit(Allocator *allocator, GltfMesh *gltf_mesh) {
     GltfMeshPrimitive_deinit(allocator,
                              &gltf_mesh->primitives[primitive_index]);
   }
-  allocator_free(allocator, gltf_mesh->primitives);
+  Allocator_free(allocator, gltf_mesh->primitives);
 }
 
 void GltfMeshPrimitive_deinit(Allocator *allocator,
                               GltfMeshPrimitive *gltf_mesh_primitive) {
-  ASSERT(allocator != NULL);
-  ASSERT(gltf_mesh_primitive != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(gltf_mesh_primitive != NULL);
   for (size_t primitive_attribute_index = 0;
        primitive_attribute_index < gltf_mesh_primitive->attribute_count;
        primitive_attribute_index++) {
     GltfMeshPrimitiveAttribute *primitive_attribute =
         &gltf_mesh_primitive->attributes[primitive_attribute_index];
-    allocator_free(allocator, primitive_attribute->name);
+    Allocator_free(allocator, primitive_attribute->name);
   }
-  allocator_free(allocator, gltf_mesh_primitive->attributes);
+  Allocator_free(allocator, gltf_mesh_primitive->attributes);
 }
 GltfMeshPrimitiveAttribute *gltf_mesh_primitive_attribute_by_name(
     const char *name, GltfMeshPrimitiveAttribute *attribute_array,

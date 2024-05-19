@@ -1,10 +1,10 @@
 #include "ecs.h"
-#include "../assert.h"
-#include "../bitset.h"
-#include "../log.h"
-#include "../memory.h"
-#include "src/hash.h"
-#include "src/vec.h"
+#include "../common.h"
+#include <lisiblestd/assert.h>
+#include <lisiblestd/bitset.h>
+#include <lisiblestd/log.h>
+#include <lisiblestd/memory.h>
+#include <lisiblestd/vec.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,19 +18,19 @@ struct EcsQuery {
 };
 EcsQuery *EcsQuery_new(Allocator *allocator,
                        const EcsQueryDescriptor *query_descriptor) {
-  ASSERT(allocator != NULL);
-  ASSERT(query_descriptor != NULL);
-  EcsQuery *query = allocator_allocate(allocator, sizeof(EcsQuery));
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(query_descriptor != NULL);
+  EcsQuery *query = Allocator_allocate(allocator, sizeof(EcsQuery));
   if (!query) {
-    LOG_ERROR("Couldn't allocate query");
+    LOG0_ERROR("Couldn't allocate query");
     goto err;
   }
 
   query->component_count = query_descriptor->component_count;
-  query->components = allocator_allocate_array(
+  query->components = Allocator_allocate_array(
       allocator, query->component_count, sizeof(char *));
   if (!query->components) {
-    LOG_ERROR("Couldn't allocate query component array");
+    LOG0_ERROR("Couldn't allocate query component array");
     goto cleanup_query;
   }
 
@@ -40,7 +40,7 @@ EcsQuery *EcsQuery_new(Allocator *allocator,
     query->components[component_index] = memory_clone_string(
         allocator, query_descriptor->components[component_index]);
     if (!query->components[component_index]) {
-      LOG_ERROR("Couldn't allocate query component");
+      LOG0_ERROR("Couldn't allocate query component");
       goto cleanup_query_components;
     }
   }
@@ -49,32 +49,32 @@ EcsQuery *EcsQuery_new(Allocator *allocator,
 
 cleanup_query_components:
   for (size_t i = 0; i < component_index; i++) {
-    allocator_free(allocator, query->components[i]);
+    Allocator_free(allocator, query->components[i]);
   }
-  allocator_free(allocator, query->components);
+  Allocator_free(allocator, query->components);
 cleanup_query:
-  allocator_free(allocator, query);
+  Allocator_free(allocator, query);
 err:
   return NULL;
 }
 
 void EcsQuery_destroy(EcsQuery *query, Allocator *allocator) {
-  ASSERT(query != NULL);
-  ASSERT(allocator != NULL);
+  LSTD_ASSERT(query != NULL);
+  LSTD_ASSERT(allocator != NULL);
   for (size_t component_index = 0; component_index < query->component_count;
        component_index++) {
-    allocator_free(allocator, query->components[component_index]);
+    Allocator_free(allocator, query->components[component_index]);
   }
-  allocator_free(allocator, query->components);
-  allocator_free(allocator, query);
+  Allocator_free(allocator, query->components);
+  Allocator_free(allocator, query);
 }
 size_t EcsQuery_component_count(const EcsQuery *query) {
-  ASSERT(query != NULL);
+  LSTD_ASSERT(query != NULL);
   return query->component_count;
 }
 char *EcsQuery_component(const EcsQuery *query, size_t component_index) {
-  ASSERT(query != NULL);
-  ASSERT(component_index < query->component_count);
+  LSTD_ASSERT(query != NULL);
+  LSTD_ASSERT(component_index < query->component_count);
   return query->components[component_index];
 }
 
@@ -90,9 +90,9 @@ struct ComponentStore {
 };
 
 ComponentStore *component_store_new(Allocator *allocator, size_t item_size) {
-  ASSERT(allocator != NULL);
+  LSTD_ASSERT(allocator != NULL);
   const size_t INITIAL_CAPACITY = 32;
-  ComponentStore *store = allocator_allocate(allocator, sizeof(ComponentStore));
+  ComponentStore *store = Allocator_allocate(allocator, sizeof(ComponentStore));
   if (!store)
     goto err;
 
@@ -103,47 +103,47 @@ ComponentStore *component_store_new(Allocator *allocator, size_t item_size) {
   store->data = NULL;
   if (item_size > 0) {
     store->data =
-        allocator_allocate_array(allocator, store->capacity, store->item_size);
+        Allocator_allocate_array(allocator, store->capacity, store->item_size);
     if (!store->data) {
-      LOG_ERROR("ComponentStore allocation failed");
+      LOG0_ERROR("ComponentStore allocation failed");
       goto err;
     }
   }
-  store->bitset = allocator_allocate_array(
+  store->bitset = Allocator_allocate_array(
       allocator, BITNSLOTS(INITIAL_CAPACITY), sizeof(u8));
   if (!store->bitset) {
-    LOG_ERROR("ComponentStore bitset allocation failed");
+    LOG0_ERROR("ComponentStore bitset allocation failed");
     goto cleanup_data;
   }
 
   return store;
 cleanup_data:
-  allocator_free(allocator, store->data);
+  Allocator_free(allocator, store->data);
 err:
   return NULL;
 }
 
 void component_store_destroy(Allocator *allocator, ComponentStore *store) {
-  ASSERT(store != NULL);
+  LSTD_ASSERT(store != NULL);
   (void)allocator;
   if (store->data != NULL) {
-    allocator_free(store->allocator, store->data);
+    Allocator_free(store->allocator, store->data);
   }
-  allocator_free(store->allocator, store->bitset);
-  allocator_free(store->allocator, store);
+  Allocator_free(store->allocator, store->bitset);
+  Allocator_free(store->allocator, store);
 }
 
 void component_store_dctor(Allocator *allocator, void *store) {
-  ASSERT(allocator != NULL);
-  ASSERT(store != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(store != NULL);
   component_store_destroy(allocator, store);
 }
 
 void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
-  ASSERT(store != NULL);
-  LOG_TRACE("Ensuring component store capacity");
+  LSTD_ASSERT(store != NULL);
+  LOG0_TRACE("Ensuring component store capacity");
   if (store->capacity > capacity) {
-    LOG_TRACE("Requested capacity is smaller than store capacity");
+    LOG0_TRACE("Requested capacity is smaller than store capacity");
     return;
   }
 
@@ -154,30 +154,30 @@ void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
 
   if (store->item_size != 0) {
     LOG_TRACE(
-        "Reallocating component store data buffer from capacity: %d, size: "
-        "%d to capacity: %d, size: %d",
+        "Reallocating component store data buffer from capacity: %zu, size: "
+        "%zu to capacity: %zu, size: %zu",
         store->capacity, store->capacity * store->item_size, new_capacity,
         new_capacity * store->item_size);
 
-    store->data = allocator_reallocate(store->allocator, store->data,
+    store->data = Allocator_reallocate(store->allocator, store->data,
                                        store->capacity * store->item_size,
                                        new_capacity * store->item_size);
     if (!store->data) {
-      PANIC("Couldn't reallocate component store buffer from capacity %d "
-            "to %d",
+      PANIC("Couldn't reallocate component store buffer from capacity %zu "
+            "to %zu",
             store->capacity, new_capacity);
     }
   }
 
   LOG_TRACE(
-      "Reallocating component store bitset buffer from size: %d, to size: %d",
+      "Reallocating component store bitset buffer from size: %zu, to size: %zu",
       BITNSLOTS(store->capacity), BITNSLOTS(new_capacity));
-  store->bitset = allocator_reallocate(store->allocator, store->bitset,
+  store->bitset = Allocator_reallocate(store->allocator, store->bitset,
                                        BITNSLOTS(store->capacity) * sizeof(u8),
                                        BITNSLOTS(new_capacity) * sizeof(u8));
   if (!store->bitset) {
-    PANIC("Couldn't reallocate component store bitset from capacity %d "
-          "to %d",
+    PANIC("Couldn't reallocate component store bitset from capacity %zu "
+          "to %zu",
           store->capacity, new_capacity);
   }
   store->capacity = new_capacity;
@@ -185,9 +185,9 @@ void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
 
 void component_store_set(ComponentStore *store, EcsId entity_id,
                          const void *data) {
-  ASSERT(store != NULL);
-  ASSERT(data != NULL || store->item_size == 0);
-  LOG_TRACE("Setting component of size %d for entity: %d", store->item_size,
+  LSTD_ASSERT(store != NULL);
+  LSTD_ASSERT(data != NULL || store->item_size == 0);
+  LOG_TRACE("Setting component of size %zu for entity: %zu", store->item_size,
             entity_id);
 
   if (entity_id >= store->capacity) {
@@ -195,8 +195,8 @@ void component_store_set(ComponentStore *store, EcsId entity_id,
   }
 
   if (store->item_size > 0) {
-    LOG_DEBUG("entity_id: %d", entity_id);
-    LOG_DEBUG("store->item_size: %d", store->item_size);
+    LOG_DEBUG("entity_id: %zu", entity_id);
+    LOG_DEBUG("store->item_size: %zu", store->item_size);
     char *store_data_ptr = &((char *)store->data)[entity_id * store->item_size];
     memmove(store_data_ptr, (char *)data, store->item_size * sizeof(char));
   }
@@ -204,7 +204,7 @@ void component_store_set(ComponentStore *store, EcsId entity_id,
 }
 
 void *component_store_get(ComponentStore *store, EcsId entity_id) {
-  ASSERT(store != NULL);
+  LSTD_ASSERT(store != NULL);
   if (!BITTEST(store->bitset, entity_id)) {
     return NULL;
   }
@@ -246,11 +246,11 @@ void ecs_command_execute(Ecs *ecs, EcsCommand *command) {
 void ecs_command_deinit(Allocator *allocator, EcsCommand *command) {
   switch (command->type) {
   case EcsCommandType_InsertComponent:
-    allocator_free(allocator, command->insert_component.component_name);
-    allocator_free(allocator, command->insert_component.component_data);
+    Allocator_free(allocator, command->insert_component.component_name);
+    Allocator_free(allocator, command->insert_component.component_data);
     break;
   case EcsCommandType_InsertRelationship:
-    allocator_free(allocator, command->insert_relationship.relationship_name);
+    Allocator_free(allocator, command->insert_relationship.relationship_name);
     break;
   default:
     break;
@@ -259,8 +259,8 @@ void ecs_command_deinit(Allocator *allocator, EcsCommand *command) {
 
 void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue,
                             Ecs *ecs) {
-  ASSERT(allocator != NULL);
-  ASSERT(queue != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(queue != NULL);
 
   queue->allocator = allocator;
   queue->ecs = ecs;
@@ -268,14 +268,14 @@ void ecs_command_queue_init(Allocator *allocator, EcsCommandQueue *queue,
 }
 
 void ecs_command_queue_deinit(EcsCommandQueue *queue) {
-  ASSERT(queue != NULL);
+  LSTD_ASSERT(queue != NULL);
   EcsCommandVec_deinit(&queue->commands);
 }
 
 void ecs_command_queue_register_system(EcsCommandQueue *queue,
                                        const EcsSystemDescriptor *system) {
-  ASSERT(queue != NULL);
-  ASSERT(system != NULL);
+  LSTD_ASSERT(queue != NULL);
+  LSTD_ASSERT(system != NULL);
 
   EcsCommand command;
   command.type = EcsCommandType_RegisterSystem;
@@ -285,7 +285,7 @@ void ecs_command_queue_register_system(EcsCommandQueue *queue,
   EcsCommandVec_append(&queue->commands, &command, 1);
 }
 EcsId ecs_command_queue_create_entity(EcsCommandQueue *queue) {
-  ASSERT(queue != NULL);
+  LSTD_ASSERT(queue != NULL);
   EcsCommand command = {.type = EcsCommandType_CreateEntity};
   EcsId entity_id = ecs_reserve_entity(queue->ecs);
   EcsCommandVec_append(&queue->commands, &command, 1);
@@ -296,14 +296,14 @@ void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
                                          char *component_name,
                                          size_t component_size,
                                          void *component_data) {
-  ASSERT(queue != NULL);
-  ASSERT(component_name != NULL);
-  ASSERT(component_data != NULL);
+  LSTD_ASSERT(queue != NULL);
+  LSTD_ASSERT(component_name != NULL);
+  LSTD_ASSERT(component_data != NULL);
 
   char *owned_component_name =
       memory_clone_string(queue->allocator, component_name);
   void *owned_component_data =
-      allocator_allocate(queue->allocator, component_size);
+      Allocator_allocate(queue->allocator, component_size);
   memcpy(owned_component_data, component_data, component_size);
 
   EcsCommand command = {.type = EcsCommandType_InsertComponent,
@@ -318,8 +318,8 @@ void ecs_command_queue_insert_component_(EcsCommandQueue *queue, EcsId entity,
 void ecs_command_queue_insert_tag_component_(EcsCommandQueue *queue,
                                              EcsId entity,
                                              char *component_name) {
-  ASSERT(queue != NULL);
-  ASSERT(component_name != NULL);
+  LSTD_ASSERT(queue != NULL);
+  LSTD_ASSERT(component_name != NULL);
   char *owned_component_name =
       memory_clone_string(queue->allocator, component_name);
 
@@ -335,8 +335,8 @@ void ecs_command_queue_insert_relationship_(EcsCommandQueue *queue,
                                             EcsId source_entity,
                                             char *relationship_name,
                                             EcsId target_entity) {
-  ASSERT(queue != NULL);
-  ASSERT(relationship_name != NULL);
+  LSTD_ASSERT(queue != NULL);
+  LSTD_ASSERT(relationship_name != NULL);
 
   char *owned_relationship_name =
       memory_clone_string(queue->allocator, relationship_name);
@@ -348,7 +348,7 @@ void ecs_command_queue_insert_relationship_(EcsCommandQueue *queue,
   EcsCommandVec_append(&queue->commands, &command, 1);
 }
 void ecs_command_queue_finish(Ecs *ecs, EcsCommandQueue *queue) {
-  ASSERT(queue != NULL);
+  LSTD_ASSERT(queue != NULL);
   for (size_t command_index = 0; command_index < queue->commands.length;
        command_index++) {
     ecs_command_execute(ecs, &queue->commands.data[command_index]);
@@ -365,8 +365,8 @@ void ecs_default_init_system(EcsCommandQueue *queue, EcsQueryIt *it) {
 void RelationshipStore_dctor(Allocator *allocator, void *store);
 void ecs_init(Allocator *allocator, Ecs *ecs, EcsSystemFn init_system,
               void *system_context) {
-  ASSERT(allocator != NULL);
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(ecs != NULL);
 
   ecs->allocator = allocator;
   ecs->entity_count = 0;
@@ -406,7 +406,7 @@ void ecs_register_system(Ecs *ecs,
 }
 
 void ecs_run_systems(Ecs *ecs, const void *system_context) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
   for (size_t i = 0; i < ecs->systems.length; i++) {
     EcsQueryIt it = ecs_query(ecs, ecs->systems.data[i].query);
     it.ctx = system_context;
@@ -415,35 +415,35 @@ void ecs_run_systems(Ecs *ecs, const void *system_context) {
   }
 }
 void ecs_process_command_queue(Ecs *ecs) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
   ecs_command_queue_finish(ecs, &ecs->command_queue);
 }
 
 EcsId ecs_create_entity(Ecs *ecs) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
 
   EcsId id = ecs->entity_count;
   ecs->entity_count++;
   return id;
 }
 EcsId ecs_reserve_entity(Ecs *ecs) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
   EcsId reserved_entity_id = ecs->entity_count + ecs->reserved_entity_count;
   ecs->reserved_entity_count++;
   return reserved_entity_id;
 }
 
 size_t ecs_get_entity_count(const Ecs *ecs) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
   return ecs->entity_count;
 }
 
 void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
                            size_t component_size, const void *data) {
-  ASSERT(ecs != NULL);
-  ASSERT(data != NULL || component_size == 0);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(data != NULL || component_size == 0);
 
-  LOG_DEBUG("Inserting component %s for entity %d", component_name, entity_id);
+  LOG_DEBUG("Inserting component %s for entity %zu", component_name, entity_id);
   if (!HashTable_has(&ecs->component_stores, component_name)) {
     LOG_DEBUG("Component store not found for component %s, creating it",
               component_name);
@@ -451,7 +451,7 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
     if (!store) {
       goto err;
     }
-    LOG_DEBUG("Component store successfully created");
+    LOG0_DEBUG("Component store successfully created");
     HashTable_insert(&ecs->component_stores, strdup(component_name), store);
   }
 
@@ -471,22 +471,22 @@ typedef struct {
 } RelationshipStore;
 
 void ecs_id_dctor_fn(Allocator *allocator, void *ecs_id) {
-  ASSERT(allocator != NULL);
-  ASSERT(ecs_id != NULL);
-  allocator_free(allocator, ecs_id);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(ecs_id != NULL);
+  Allocator_free(allocator, ecs_id);
 }
 
 void HashSet_dctor_fn(Allocator *allocator, void *set) {
-  ASSERT(allocator != NULL);
-  ASSERT(set != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(set != NULL);
   HashSet_deinit(set);
-  allocator_free(allocator, set);
+  Allocator_free(allocator, set);
 }
 
 bool RelationshipStore_init(Allocator *allocator,
                             RelationshipStore *relationship_store) {
-  ASSERT(allocator != NULL);
-  ASSERT(relationship_store != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(relationship_store != NULL);
   if (!HashTable_init_with_dctors(
           allocator, &relationship_store->sources_for_entity, 16,
           ecs_id_hash_fn, ecs_id_eq_fn, ecs_id_dctor_fn, HashSet_dctor_fn)) {
@@ -498,36 +498,36 @@ bool RelationshipStore_init(Allocator *allocator,
 }
 
 RelationshipStore *RelationshipStore_create(Allocator *allocator) {
-  ASSERT(allocator != NULL);
+  LSTD_ASSERT(allocator != NULL);
   RelationshipStore *relationship_store =
-      allocator_allocate(allocator, sizeof(RelationshipStore));
+      Allocator_allocate(allocator, sizeof(RelationshipStore));
   RelationshipStore_init(allocator, relationship_store);
   return relationship_store;
 }
 
 void RelationshipStore_deinit(RelationshipStore *store) {
-  ASSERT(store != NULL);
+  LSTD_ASSERT(store != NULL);
   HashTable_deinit(&store->sources_for_entity);
   HashTable_deinit(&store->targets_for_entity);
 }
 
 void RelationshipStore_destroy(Allocator *allocator, RelationshipStore *store) {
-  ASSERT(allocator != NULL);
-  ASSERT(store != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(store != NULL);
   RelationshipStore_deinit(store);
-  allocator_free(allocator, store);
+  Allocator_free(allocator, store);
 }
 
 void RelationshipStore_dctor(Allocator *allocator, void *store) {
-  ASSERT(allocator != NULL);
-  ASSERT(store != NULL);
+  LSTD_ASSERT(allocator != NULL);
+  LSTD_ASSERT(store != NULL);
   RelationshipStore_destroy(allocator, store);
 }
 
 void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
                               EcsId target) {
-  ASSERT(ecs != NULL);
-  ASSERT(relationship_name != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(relationship_name != NULL);
 
   if (!HashTable_has(&ecs->relationship_stores, relationship_name)) {
     RelationshipStore *relationship_store =
@@ -549,9 +549,9 @@ void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
   }
 
   if (!HashTable_has(&relationship_store->sources_for_entity, &target)) {
-    EcsId *key = allocator_allocate(ecs->allocator, sizeof(EcsId));
+    EcsId *key = Allocator_allocate(ecs->allocator, sizeof(EcsId));
     *key = target;
-    HashSet *hash_set = allocator_allocate(ecs->allocator, sizeof(HashSet));
+    HashSet *hash_set = Allocator_allocate(ecs->allocator, sizeof(HashSet));
     HashSet_init_with_dctor(ecs->allocator, hash_set, 16, ecs_id_hash_fn,
                             ecs_id_eq_fn, ecs_id_dctor_fn);
 
@@ -561,9 +561,9 @@ void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
       HashTable_get(&relationship_store->sources_for_entity, &target);
 
   if (!HashTable_has(&relationship_store->targets_for_entity, &source)) {
-    EcsId *key = allocator_allocate(ecs->allocator, sizeof(EcsId));
+    EcsId *key = Allocator_allocate(ecs->allocator, sizeof(EcsId));
     *key = source;
-    HashSet *hash_set = allocator_allocate(ecs->allocator, sizeof(HashSet));
+    HashSet *hash_set = Allocator_allocate(ecs->allocator, sizeof(HashSet));
     HashSet_init_with_dctor(ecs->allocator, hash_set, 16, ecs_id_hash_fn,
                             ecs_id_eq_fn, ecs_id_dctor_fn);
     HashTable_insert(&relationship_store->targets_for_entity, key, hash_set);
@@ -571,9 +571,9 @@ void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
   HashSet *targets =
       HashTable_get(&relationship_store->targets_for_entity, &source);
 
-  EcsId *owned_source = allocator_allocate(ecs->allocator, sizeof(EcsId));
+  EcsId *owned_source = Allocator_allocate(ecs->allocator, sizeof(EcsId));
   *owned_source = source;
-  EcsId *owned_target = allocator_allocate(ecs->allocator, sizeof(EcsId));
+  EcsId *owned_target = Allocator_allocate(ecs->allocator, sizeof(EcsId));
   *owned_target = target;
 
   HashSet_insert(sources, owned_source);
@@ -582,7 +582,7 @@ void ecs_insert_relationship_(Ecs *ecs, EcsId source, char *relationship_name,
 
 bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
                         const char *component_name) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
 
   ComponentStore *store = HashTable_get(&ecs->component_stores, component_name);
   if (!store)
@@ -593,7 +593,7 @@ bool ecs_has_component_(const Ecs *ecs, EcsId entity_id,
 
 void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
                          const char *component_name) {
-  ASSERT(ecs != NULL);
+  LSTD_ASSERT(ecs != NULL);
 
   ComponentStore *store = HashTable_get(&ecs->component_stores, component_name);
 
@@ -605,8 +605,8 @@ void *ecs_get_component_(const Ecs *ecs, EcsId entity_id,
 HashSet *ecs_get_relationship_sources_(const Ecs *ecs,
                                        const char *relationship_name,
                                        EcsId target) {
-  ASSERT(ecs != NULL);
-  ASSERT(relationship_name != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(relationship_name != NULL);
 
   RelationshipStore *store =
       HashTable_get(&ecs->relationship_stores, relationship_name);
@@ -619,8 +619,8 @@ HashSet *ecs_get_relationship_sources_(const Ecs *ecs,
 
 HashSet *ecs_get_relationship_targets_(const Ecs *ecs, EcsId source,
                                        const char *relationship_name) {
-  ASSERT(ecs != NULL);
-  ASSERT(relationship_name != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(relationship_name != NULL);
 
   RelationshipStore *store =
       HashTable_get(&ecs->relationship_stores, relationship_name);
@@ -631,8 +631,8 @@ HashSet *ecs_get_relationship_targets_(const Ecs *ecs, EcsId source,
 }
 
 size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query) {
-  ASSERT(ecs != NULL);
-  ASSERT(query != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(query != NULL);
 
   size_t result = 0;
 
@@ -649,8 +649,8 @@ size_t ecs_count_matching(const Ecs *ecs, const EcsQuery *query) {
 
 bool ecs_query_is_matching(const Ecs *ecs, const EcsQuery *query,
                            EcsId entity_id) {
-  ASSERT(ecs != NULL);
-  ASSERT(query != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(query != NULL);
 
   bool matches = true;
   size_t component_index = 0;
@@ -678,22 +678,21 @@ struct EcsQueryItState {
 };
 
 EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
-  ASSERT(ecs != NULL);
-  ASSERT(query != NULL);
+  LSTD_ASSERT(ecs != NULL);
+  LSTD_ASSERT(query != NULL);
 
   EcsQueryIt iterator = {0};
   iterator.allocator = ecs->allocator;
-  iterator.state = allocator_allocate(ecs->allocator, sizeof(EcsQueryItState));
-  ASSERT(iterator.state != NULL);
+  iterator.state = Allocator_allocate(ecs->allocator, sizeof(EcsQueryItState));
+  LSTD_ASSERT(iterator.state != NULL);
   memset(iterator.state, 0, sizeof(EcsQueryItState));
   iterator.state->iterating = false;
-  iterator.state->matching_entities = allocator_allocate_array(
+  iterator.state->matching_entities = Allocator_allocate_array(
       ecs->allocator, ecs->entity_count, sizeof(size_t));
-  ASSERT(iterator.state->matching_entities != NULL);
+  LSTD_ASSERT(iterator.state->matching_entities != NULL);
 
   for (size_t i = 0; i < query->component_count; i++) {
-    ASSERT(i < ECS_QUERY_MAX_COMPONENT_COUNT - 1,
-           "Too many components in the query");
+    LSTD_ASSERT(i < ECS_QUERY_MAX_COMPONENT_COUNT - 1);
     ComponentStore *component_store =
         HashTable_get(&ecs->component_stores, query->components[i]);
     iterator.state->component_stores[i] = component_store;
@@ -711,8 +710,8 @@ EcsQueryIt ecs_query(const Ecs *ecs, const EcsQuery *query) {
 }
 
 bool ecs_query_it_next(EcsQueryIt *it) {
-  ASSERT(it != NULL);
-  ASSERT(it->state != NULL);
+  LSTD_ASSERT(it != NULL);
+  LSTD_ASSERT(it->state != NULL);
 
   if (it->state->iterating == false) {
     it->state->iterating = true;
@@ -728,17 +727,17 @@ bool ecs_query_it_next(EcsQueryIt *it) {
   return true;
 }
 void ecs_query_it_deinit(EcsQueryIt *it) {
-  ASSERT(it != NULL);
+  LSTD_ASSERT(it != NULL);
   if (it->state == NULL)
     return;
-  allocator_free(it->allocator, it->state->matching_entities);
-  allocator_free(it->allocator, it->state);
+  Allocator_free(it->allocator, it->state->matching_entities);
+  Allocator_free(it->allocator, it->state);
   it->state = NULL;
   it->allocator = NULL;
 }
 void *ecs_query_it_get_(const EcsQueryIt *it, size_t component) {
-  ASSERT(it != NULL);
-  ASSERT(it->state != NULL);
+  LSTD_ASSERT(it != NULL);
+  LSTD_ASSERT(it->state != NULL);
 
   if (!it->state->component_stores[component])
     return NULL;
@@ -748,6 +747,6 @@ void *ecs_query_it_get_(const EcsQueryIt *it, size_t component) {
       it->state->matching_entities[it->state->current_matching_entity]);
 }
 EcsId ecs_query_it_entity_id(const EcsQueryIt *it) {
-  ASSERT(it != NULL);
+  LSTD_ASSERT(it != NULL);
   return it->state->matching_entities[it->state->current_matching_entity];
 }

@@ -1,7 +1,7 @@
 #include "matrix.h"
-#include "../assert.h"
 #include "math.h"
 #include "vector.h"
+#include <lisiblestd/assert.h>
 #include <string.h>
 
 IMPL_MAT4(int, mat4i)
@@ -28,7 +28,7 @@ void mat4_set_to_identity(mat4 mat) {
 }
 void mat4_set_to_orthographic(mat4 mat, float near, float far, float left,
                               float right, float top, float bottom) {
-  ASSERT(mat != NULL);
+  LSTD_ASSERT(mat != NULL);
   mat[0] = 2.f / (right - left);
   mat[1] = 0.f;
   mat[2] = 0.f;
@@ -51,7 +51,7 @@ void mat4_set_to_orthographic(mat4 mat, float near, float far, float left,
 }
 void mat4_set_to_perspective(mat4 mat, float fov_y_deg, float aspect,
                              float near, float far) {
-  ASSERT(mat != NULL);
+  LSTD_ASSERT(mat != NULL);
   float fov_y_rad = fov_y_deg * 2.0f * M_PI / 360.0f;
 
   float focalLength = 1 / tan(fov_y_rad / 2);
@@ -109,8 +109,8 @@ void mat4_look_at(mat4 mat, const v3f *eye, const v3f *center, const v3f *up) {
   mat[15] = 1.f;
 }
 void mat4_set_to_translation(mat4 mat, const v3f *translation) {
-  ASSERT(mat != NULL);
-  ASSERT(translation != NULL);
+  LSTD_ASSERT(mat != NULL);
+  LSTD_ASSERT(translation != NULL);
   mat[0] = 1.0;
   mat[1] = 0.0;
   mat[2] = 0.0;
@@ -130,8 +130,8 @@ void mat4_set_to_translation(mat4 mat, const v3f *translation) {
 }
 
 void mat4_set_to_scale(mat4 mat, const v3f *scale) {
-  ASSERT(mat != NULL);
-  ASSERT(scale != NULL);
+  LSTD_ASSERT(mat != NULL);
+  LSTD_ASSERT(scale != NULL);
   mat[0] = scale->x;
   mat[1] = 0.0;
   mat[2] = 0.0;
@@ -198,7 +198,7 @@ void mat4_inverse(mat4 mat, mat4 out_mat) {
                         mat[1 * 4 + 2] * a0123);
 
   if (fabs(det) < 0.000001) {
-    LOG_ERROR("matrix non inversible");
+    LOG0_ERROR("matrix non inversible");
     return;
   }
 

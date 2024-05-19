@@ -1,8 +1,9 @@
 #ifndef CUTTERENG_ASSET_H
 #define CUTTERENG_ASSET_H
 
-#include "memory.h"
+#include <lisiblestd/memory.h>
 #include <stdalign.h>
+#include <stdbool.h>
 
 #define ASSET_STORE_CAPACITY 1024
 typedef size_t AssetHandle;

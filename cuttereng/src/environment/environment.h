@@ -2,8 +2,7 @@
 #define CUTTERENG_ENVIRONMENT_ENVIRONMENT_H
 /// @file
 
-#include "memory.h"
-#include "src/memory.h"
+#include <lisiblestd/memory.h>
 
 /// Get the configuration file path.
 ///
