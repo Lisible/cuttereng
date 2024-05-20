@@ -185,18 +185,18 @@ bool configuration_from_json(Json *configuration_json,
   LSTD_ASSERT(output_configuration != NULL);
 
   if (configuration_json->type != JSON_OBJECT) {
-    LOG0_ERROR("project_configuration.json's root should be an object");
+    LOG_ERROR("project_configuration.json's root should be an object");
     return false;
   }
   JsonObject *configuration_json_object = configuration_json->object;
   Json *title_json = json_object_get(configuration_json_object, "title");
   if (!title_json) {
-    LOG0_ERROR("no property title found in project_configuration.json");
+    LOG_ERROR("no property title found in project_configuration.json");
     return false;
   }
 
   if (title_json->type != JSON_STRING) {
-    LOG0_ERROR("title is not a string");
+    LOG_ERROR("title is not a string");
     return false;
   }
 
@@ -207,7 +207,7 @@ bool configuration_from_json(Json *configuration_json,
   Json *window_size_json =
       json_object_get(configuration_json->object, "window_size");
   if (!window_size_json) {
-    LOG0_ERROR("no window_size property found in project_configuration.json");
+    LOG_ERROR("no window_size property found in project_configuration.json");
     return false;
   }
 
@@ -224,29 +224,29 @@ bool window_size_from_json(Json *json_value, WindowSize *window_size) {
   LSTD_ASSERT(window_size != NULL);
 
   if (json_value->type != JSON_OBJECT) {
-    LOG0_ERROR("window_size property is not an object");
+    LOG_ERROR("window_size property is not an object");
     return false;
   }
 
   Json *width = json_object_get(json_value->object, "width");
   if (!width) {
-    LOG0_ERROR("window_size.width not found");
+    LOG_ERROR("window_size.width not found");
     return false;
   }
 
   if (width->type != JSON_NUMBER) {
-    LOG0_ERROR("window_size.width should be a number");
+    LOG_ERROR("window_size.width should be a number");
     return false;
   }
   window_size->width = width->number;
 
   Json *height = json_object_get(json_value->object, "height");
   if (!height) {
-    LOG0_ERROR("window_size.height not found");
+    LOG_ERROR("window_size.height not found");
     return false;
   }
   if (height->type != JSON_NUMBER) {
-    LOG0_ERROR("window_size.height should be a number");
+    LOG_ERROR("window_size.height should be a number");
     return false;
   }
   window_size->height = height->number;
@@ -255,7 +255,7 @@ bool window_size_from_json(Json *json_value, WindowSize *window_size) {
 
 void configuration_debug_print(Configuration *configuration) {
   LSTD_ASSERT(configuration != NULL);
-  LOG0_DEBUG("Configuration");
+  LOG_DEBUG("Configuration");
   LOG_DEBUG("title: %s", configuration->application_title);
   window_size_debug_print(&configuration->window_size);
 }

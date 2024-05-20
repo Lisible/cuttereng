@@ -22,7 +22,7 @@ static const size_t KB = 1000;
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
 void cutter_bootstrap(EcsSystemFn ecs_init_system) {
-  LOG0_INFO("Bootstrapping...");
+  LOG_INFO("Bootstrapping...");
   char *configuration_file_path =
       env_get_configuration_file_path(&system_allocator);
   LOG_DEBUG("Configuration file path: %s", configuration_file_path);

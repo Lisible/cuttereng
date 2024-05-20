@@ -22,7 +22,7 @@ EcsQuery *EcsQuery_new(Allocator *allocator,
   LSTD_ASSERT(query_descriptor != NULL);
   EcsQuery *query = Allocator_allocate(allocator, sizeof(EcsQuery));
   if (!query) {
-    LOG0_ERROR("Couldn't allocate query");
+    LOG_ERROR("Couldn't allocate query");
     goto err;
   }
 
@@ -30,7 +30,7 @@ EcsQuery *EcsQuery_new(Allocator *allocator,
   query->components = Allocator_allocate_array(
       allocator, query->component_count, sizeof(char *));
   if (!query->components) {
-    LOG0_ERROR("Couldn't allocate query component array");
+    LOG_ERROR("Couldn't allocate query component array");
     goto cleanup_query;
   }
 
@@ -40,7 +40,7 @@ EcsQuery *EcsQuery_new(Allocator *allocator,
     query->components[component_index] = memory_clone_string(
         allocator, query_descriptor->components[component_index]);
     if (!query->components[component_index]) {
-      LOG0_ERROR("Couldn't allocate query component");
+      LOG_ERROR("Couldn't allocate query component");
       goto cleanup_query_components;
     }
   }
@@ -105,14 +105,14 @@ ComponentStore *component_store_new(Allocator *allocator, size_t item_size) {
     store->data =
         Allocator_allocate_array(allocator, store->capacity, store->item_size);
     if (!store->data) {
-      LOG0_ERROR("ComponentStore allocation failed");
+      LOG_ERROR("ComponentStore allocation failed");
       goto err;
     }
   }
   store->bitset = Allocator_allocate_array(
       allocator, BITNSLOTS(INITIAL_CAPACITY), sizeof(u8));
   if (!store->bitset) {
-    LOG0_ERROR("ComponentStore bitset allocation failed");
+    LOG_ERROR("ComponentStore bitset allocation failed");
     goto cleanup_data;
   }
 
@@ -141,9 +141,9 @@ void component_store_dctor(Allocator *allocator, void *store) {
 
 void component_store_ensure_capacity(ComponentStore *store, size_t capacity) {
   LSTD_ASSERT(store != NULL);
-  LOG0_TRACE("Ensuring component store capacity");
+  LOG_TRACE("Ensuring component store capacity");
   if (store->capacity > capacity) {
-    LOG0_TRACE("Requested capacity is smaller than store capacity");
+    LOG_TRACE("Requested capacity is smaller than store capacity");
     return;
   }
 
@@ -451,7 +451,7 @@ void ecs_insert_component_(Ecs *ecs, EcsId entity_id, char *component_name,
     if (!store) {
       goto err;
     }
-    LOG0_DEBUG("Component store successfully created");
+    LOG_DEBUG("Component store successfully created");
     HashTable_insert(&ecs->component_stores, strdup(component_name), store);
   }
 

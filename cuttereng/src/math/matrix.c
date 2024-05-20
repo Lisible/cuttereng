@@ -198,7 +198,7 @@ void mat4_inverse(mat4 mat, mat4 out_mat) {
                         mat[1 * 4 + 2] * a0123);
 
   if (fabs(det) < 0.000001) {
-    LOG0_ERROR("matrix non inversible");
+    LOG_ERROR("matrix non inversible");
     return;
   }
 

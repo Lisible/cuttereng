@@ -129,14 +129,14 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   u32 magic_number = GltfParsingContext_parse_u32(&ctx);
   LOG_DEBUG("GLB magic number: %x", magic_number);
   if (magic_number != GLB_MAGIC_NUMBER) {
-    LOG0_ERROR("Invalid GLB magic number");
+    LOG_ERROR("Invalid GLB magic number");
     goto err;
   }
 
   u32 version = GltfParsingContext_parse_u32(&ctx);
   LOG_DEBUG("%x", version);
   if (version != 2) {
-    LOG0_ERROR("Only GLB version 2 is supported");
+    LOG_ERROR("Only GLB version 2 is supported");
     goto err;
   }
   u32 length = GltfParsingContext_parse_u32(&ctx);
@@ -146,20 +146,20 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   LOG_DEBUG("GLB json chunk data length: %d", json_chunk_data_length);
   u32 json_chunk_type = GltfParsingContext_parse_u32(&ctx);
   if (json_chunk_type != GLB_CHUNK_TYPE_JSON) {
-    LOG0_ERROR("GLB JSON chunk has wrong type");
+    LOG_ERROR("GLB JSON chunk has wrong type");
     goto err;
   }
   const u8 *json_chunk_data = &ctx.data[ctx.current_index];
   GltfParsingContext_skip_bytes(&ctx, json_chunk_data_length);
   Json *gltf_json = json_parse_from_str(allocator, (char *)json_chunk_data);
   if (gltf_json == NULL) {
-    LOG0_ERROR("Couldn't parse GLTF json");
+    LOG_ERROR("Couldn't parse GLTF json");
     goto err;
   }
 
   JsonObject *gltf_json_object = json_as_object(gltf_json);
   if (gltf_json_object == NULL) {
-    LOG0_ERROR("The root value of GLTF json is not an object");
+    LOG_ERROR("The root value of GLTF json is not an object");
     goto err;
   }
 
@@ -167,7 +167,7 @@ Gltf *Gltf_parse_glb(Allocator *allocator, const u8 *data,
   LOG_DEBUG("GLB binary chunk data length: %d", binary_chunk_data_length);
   u32 binary_chunk_type = GltfParsingContext_parse_u32(&ctx);
   if (binary_chunk_type != GLB_CHUNK_TYPE_BIN) {
-    LOG0_ERROR("GLB binary chunk has wrong type");
+    LOG_ERROR("GLB binary chunk has wrong type");
     goto err;
   }
   const u8 *binary_chunk_data = &ctx.data[ctx.current_index];
@@ -279,7 +279,7 @@ void parse_main_scene(const GltfParsingContext *ctx, Gltf *gltf,
   LSTD_ASSERT(gltf_json != NULL);
   double main_scene;
   if (!json_object_get_number(gltf_json, "mainScene", &main_scene)) {
-    LOG0_DEBUG("no main scene found");
+    LOG_DEBUG("no main scene found");
     gltf->has_main_scene = false;
   } else {
     gltf->main_scene = (int)main_scene;
@@ -293,7 +293,7 @@ bool parse_scenes(const GltfParsingContext *ctx, Gltf *gltf,
   LSTD_ASSERT(ctx != NULL);
   LSTD_ASSERT(gltf != NULL);
   LSTD_ASSERT(gltf_scenes_json != NULL);
-  LOG0_DEBUG("Parsing scenes");
+  LOG_DEBUG("Parsing scenes");
   size_t scene_count = json_array_length(gltf_scenes_json);
   LOG_DEBUG("Scene count: %zu", scene_count);
   gltf->scene_count = scene_count;
@@ -356,7 +356,7 @@ bool parse_nodes(const GltfParsingContext *ctx, Gltf *gltf,
   LSTD_ASSERT(ctx != NULL);
   LSTD_ASSERT(gltf != NULL);
   LSTD_ASSERT(gltf_nodes_json != NULL);
-  LOG0_DEBUG("Parsing nodes");
+  LOG_DEBUG("Parsing nodes");
 
   size_t node_count = json_array_length(gltf_nodes_json);
   gltf->node_count = node_count;
@@ -367,12 +367,12 @@ bool parse_nodes(const GltfParsingContext *ctx, Gltf *gltf,
     LOG_DEBUG("Parsing node %zu", node_index);
     Json *node_json = json_array_at(gltf_nodes_json, node_index);
     if (node_json->type != JSON_OBJECT) {
-      LOG0_DEBUG("Node type is not object");
+      LOG_DEBUG("Node type is not object");
       return false;
     }
 
     if (!GltfNode_parse(ctx, &gltf->nodes[node_index], node_json->object)) {
-      LOG0_DEBUG("Couldn't parse node");
+      LOG_DEBUG("Couldn't parse node");
       return false;
     }
   }
@@ -398,7 +398,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   double camera;
   if (!json_object_get_number(gltf_node_json, "camera", &camera)) {
     gltf_node->has_camera = false;
-    LOG0_DEBUG("Node has no camera");
+    LOG_DEBUG("Node has no camera");
   } else {
     gltf_node->camera = (size_t)camera;
     gltf_node->has_camera = true;
@@ -408,7 +408,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   JsonArray *children = NULL;
   if (!json_object_get_array(gltf_node_json, "children", &children)) {
     gltf_node->children_count = 0;
-    LOG0_DEBUG("Node has no child");
+    LOG_DEBUG("Node has no child");
   } else {
     size_t children_count = json_array_length(children);
     gltf_node->children_count = children_count;
@@ -429,11 +429,11 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
   double skin;
   if (!json_object_get_number(gltf_node_json, "skin", &skin)) {
     gltf_node->has_skin = false;
-    LOG0_DEBUG("Node has no skin");
+    LOG_DEBUG("Node has no skin");
   } else {
     gltf_node->skin = (size_t)skin;
     gltf_node->has_skin = true;
-    LOG0_DEBUG("Node has skin");
+    LOG_DEBUG("Node has skin");
   }
 
   JsonArray *matrix = NULL;
@@ -459,7 +459,7 @@ bool GltfNode_parse(const GltfParsingContext *ctx, GltfNode *gltf_node,
 
   double mesh;
   if (!json_object_get_number(gltf_node_json, "mesh", &mesh)) {
-    LOG0_DEBUG("Node has no mesh");
+    LOG_DEBUG("Node has no mesh");
     gltf_node->has_mesh = false;
   } else {
     gltf_node->mesh = (size_t)mesh;
@@ -605,7 +605,7 @@ bool GltfMesh_parse(const GltfParsingContext *ctx, GltfMesh *gltf_mesh,
   LSTD_ASSERT(ctx != NULL);
   LSTD_ASSERT(gltf_mesh != NULL);
   LSTD_ASSERT(gltf_mesh_json != NULL);
-  LOG0_DEBUG("Parsing mesh");
+  LOG_DEBUG("Parsing mesh");
 
   char *mesh_name = NULL;
   json_object_get_string(gltf_mesh_json, "name", &mesh_name);
@@ -796,14 +796,14 @@ bool GltfImage_parse(const GltfParsingContext *ctx, GltfImage *gltf_image,
   char *mime_type = NULL;
   if (json_object_get_string(gltf_image_json, "mimeType", &mime_type)) {
     if (strncmp(mime_type, "image/png", 10) != 0) {
-      LOG0_ERROR("Only image/png mime type is supported for glTF image data");
+      LOG_ERROR("Only image/png mime type is supported for glTF image data");
       return false;
     }
   }
 
   double buffer_view_id;
   if (!json_object_get_number(gltf_image_json, "bufferView", &buffer_view_id)) {
-    LOG0_ERROR("Gltf image needs a buffer view as uri images aren't supported");
+    LOG_ERROR("Gltf image needs a buffer view as uri images aren't supported");
     return false;
   }
 
@@ -906,7 +906,7 @@ bool GltfMaterial_parse(const GltfParsingContext *ctx,
   LSTD_ASSERT(gltf_material != NULL);
   LSTD_ASSERT(gltf_material_json != NULL);
 
-  LOG0_DEBUG("Parsing material");
+  LOG_DEBUG("Parsing material");
 
   char *material_name = NULL;
   json_object_get_string(gltf_material_json, "name", &material_name);
@@ -1009,7 +1009,7 @@ bool GltfTextureInfo_parse(const GltfParsingContext *ctx,
 
   double index_d;
   if (!json_object_get_number(gltf_texture_info_json, "index", &index_d)) {
-    LOG0_ERROR("Texture info index couldn't be parsed");
+    LOG_ERROR("Texture info index couldn't be parsed");
     return false;
   }
 

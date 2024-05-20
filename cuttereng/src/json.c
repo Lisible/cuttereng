@@ -105,21 +105,24 @@ bool parse_value(GltfParsingContext *ctx, Json *value) {
     parse_number(ctx, value);
   } else if (current_character(ctx) == TOKEN_DOUBLE_QUOTE) {
     if (!parse_string(ctx, value)) {
-      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json string");
+      JSON_LOG_PARSE_ERROR("couldn't parse json string", ctx->line,
+                           ctx->column);
       goto err;
     }
   } else if (current_character(ctx) == TOKEN_ARRAY_BEGIN) {
     if (!parse_array(ctx, value)) {
-      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json array");
+      JSON_LOG_PARSE_ERROR("couldn't parse json array", ctx->line, ctx->column);
       goto err;
     }
   } else if (current_character(ctx) == TOKEN_OBJECT_BEGIN) {
     if (!parse_object(ctx, value)) {
-      JSON_LOG0_PARSE_ERROR(ctx, "couldn't parse json object");
+      JSON_LOG_PARSE_ERROR("couldn't parse json object", ctx->line,
+                           ctx->column);
       goto err;
     }
   } else {
-    JSON_LOG_PARSE_ERROR(ctx, "unexpected token: %c", current_character(ctx));
+    JSON_LOG_PARSE_ERROR("unexpected token: %c", ctx->line, ctx->column,
+                         current_character(ctx));
     goto err;
   }
 
@@ -166,7 +169,7 @@ struct JsonObject {
 JsonObject *json_object_create(Allocator *allocator) {
   JsonObject *object = Allocator_allocate(allocator, sizeof(JsonObject));
   if (!object) {
-    LOG0_ERROR("json object allocation failed");
+    LOG_ERROR("json object allocation failed");
     goto err;
   }
 
@@ -236,7 +239,7 @@ bool parse_array(GltfParsingContext *ctx, Json *output_value) {
 
   Json *elements = Allocator_allocate(ctx->allocator, capacity * sizeof(Json));
   if (!elements) {
-    LOG0_ERROR("memory allocation failed");
+    LOG_ERROR("memory allocation failed");
     goto err;
   }
 
@@ -250,7 +253,7 @@ bool parse_array(GltfParsingContext *ctx, Json *output_value) {
                                       old_capacity * sizeof(Json),
                                       capacity * sizeof(Json));
       if (!elements) {
-        LOG0_ERROR("memory reallocation failed");
+        LOG_ERROR("memory reallocation failed");
         goto err;
       }
     }
@@ -301,7 +304,7 @@ bool parse_string(GltfParsingContext *ctx, Json *output_value) {
   char *string = Allocator_allocate_array(ctx->allocator, estimated_string_size,
                                           sizeof(char));
   if (!string) {
-    LOG0_ERROR("json string allocation failed");
+    LOG_ERROR("json string allocation failed");
     goto err;
   }
 
@@ -325,8 +328,8 @@ bool parse_string(GltfParsingContext *ctx, Json *output_value) {
             write_utf8_from_code_point(string, string_index, code_point);
       } else {
         if (!is_escapable_character(current_character(ctx))) {
-          JSON_LOG_PARSE_ERROR(ctx, "character %c is not escapable",
-                               current_character(ctx));
+          JSON_LOG_PARSE_ERROR("character %c is not escapable", ctx->line,
+                               ctx->column, current_character(ctx));
           goto cleanup_string;
         }
 

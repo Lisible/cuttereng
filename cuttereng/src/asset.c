@@ -142,7 +142,7 @@ AssetHandle assets_store_(Assets *assets, const char *asset_type,
 
 void assets_clear(Assets *assets) {
   LSTD_ASSERT(assets != NULL);
-  LOG0_DEBUG("Clearing assets...");
+  LOG_DEBUG("Clearing assets...");
   HashTable_clear(&assets->asset_stores);
 }
 
