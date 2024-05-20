@@ -16,6 +16,7 @@ void engine_init(Engine *engine, const Configuration *configuration,
   LSTD_ASSERT(engine != NULL);
   LSTD_ASSERT(configuration != NULL);
   LSTD_ASSERT(window != NULL);
+  lstd_log_init();
   InputState_init(&engine->input_state);
   engine->assets = assets_new(&system_allocator);
   assets_register_asset_type(engine->assets, Image, &image_loader,
