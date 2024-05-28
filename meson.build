@@ -1,4 +1,4 @@
-project('cuttereng', 'c', default_options: ['c_std=c18', 'warning_level=3'])
+project('cuttereng', 'c', default_options: ['c_std=gnu18', 'warning_level=3'])
 
 if get_option('buildtype') == 'debug'
   add_project_arguments('-DDEBUG', language: 'c')
