@@ -18,7 +18,40 @@
 #include <string.h>
 
 static const size_t KB = 1000;
+Arena frame_arena;
+Allocator frame_allocator;
 
+#ifdef CUTTERENG_PLAYDATE_BACKEND
+PlaydateAPI *pd;
+Engine engine;
+static int update(void *userdata) {
+  PlaydateAPI *pd = userdata;
+  // engine_update(&frame_allocator, &engine, pd->system->getElapsedTime());
+  return 1;
+}
+
+int cuttereng_pd_event_handler(PlaydateAPI *apd, PDSystemEvent event,
+                               uint32_t arg, EcsSystemFn ecs_init_system) {
+  (void)arg;
+
+  if (event == kEventInit) {
+    pd = apd;
+    frame_allocator = Arena_allocator(&frame_arena);
+    Arena_init(&frame_arena, &system_allocator, 1000 * KB);
+    Configuration config = {0};
+    engine_init(&engine, &config, ecs_init_system);
+    // EcsId playdate_api = ecs_create_entity(&engine.ecs);
+    // ecs_insert_component(&engine.ecs, playdate_api, PlaydateComponent,
+    //                      {.pd_api = pd});
+    // pd->system->setUpdateCallback(update, pd);
+  }
+
+  return 0;
+}
+#endif
+
+#ifdef CUTTERENG_SDL_BACKEND
+#include <SDL2/SDL.h>
 void event_from_sdl_event(SDL_Event *sdl_event, Event *event);
 
 void cutter_bootstrap(EcsSystemFn ecs_init_system) {
@@ -49,7 +82,7 @@ void cutter_bootstrap(EcsSystemFn ecs_init_system) {
   if (joystick_count > 0) {
     controller = SDL_GameControllerOpen(0);
   }
-  engine_init(&engine, &config, ecs_init_system, window);
+  engine_init(&engine, &config, ecs_init_system);
 
   Arena frame_arena;
   Allocator frame_allocator = Arena_allocator(&frame_arena);
@@ -294,3 +327,4 @@ void event_from_sdl_event(SDL_Event *sdl_event, Event *event) {
     break;
   }
 }
+#endif

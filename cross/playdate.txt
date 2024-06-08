@@ -1,0 +1,16 @@
+[binaries]
+c = 'arm-none-eabi-gcc'
+ar = 'arm-none-eabi-ar'
+objcopy = 'arm-none-eabi-objcopy'
+strip = 'arm-none-eabi-strip'
+size = 'arm-none-eabi-size'
+ld = 'arm-none-eabi-ld'
+
+[host_machine]
+system = 'none'
+cpu_family = 'arm'
+cpu = 'cortex-m7'
+endian = 'little'
+
+[properties]
+is_playdate_build = true
