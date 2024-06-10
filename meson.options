@@ -1,3 +1,0 @@
-option('playdate_sdk_path', type: 'string', value: '/opt/playdate-sdk')
-option('use_sdl_backend', type: 'boolean', value: true)
-option('use_playdate_backend', type: 'boolean', value: false)

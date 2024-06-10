@@ -7,6 +7,7 @@
 #include "input.h"
 #include "json.h"
 #include "math/matrix.h"
+#include <SDL.h>
 
 typedef struct {
   unsigned int width;
@@ -37,7 +38,7 @@ typedef struct {
 } SystemContext;
 
 void engine_init(Engine *engine, const Configuration *config,
-                 EcsSystemFn init_system);
+                 EcsSystemFn init_system, SDL_Window *window);
 void engine_set_current_time(Engine *engine, float current_time_secs);
 void engine_deinit(Engine *engine);
 void engine_handle_events(Engine *engine, Event *event);
